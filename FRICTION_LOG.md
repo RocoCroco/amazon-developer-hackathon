@@ -14,3 +14,9 @@ Format: what I tried / what I expected / what happened / how I solved it.
 - Expected: car seat recalls as JSON.
 - Happened: HTTP 403 `{"message":"Missing Authentication Token"}` (API Gateway's answer for unknown routes, which suggests an auth problem when it isn't one). nhtsa.gov docs pages return 403 to automated fetches too.
 - Solved: found via search that child seats/equipment/tires are in the daily bulk flat file `static.nhtsa.gov/odi/ffdd/rcl/`, verified it (462 child-seat rows). Documented in docs/data-sources.md.
+
+## F3 - CPSC `Title=` filter is silently ignored (2026-10-01)
+- Tried: `Recall?format=json&Title=Govee` (the docs page lists `Title` as a parameter) to look up recalls by brand.
+- Expected: recalls whose title contains "Govee".
+- Happened: HTTP 200 with ALL 10,027 recalls (27 MB). No error, no warning. `ProductName=Govee` works and returns 1 recall.
+- Solved: provider uses `ProductName` (substring search) for brand and item name, caches per term and caps results; a test asserts `Title=` is never used.

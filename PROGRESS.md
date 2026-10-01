@@ -3,14 +3,13 @@
 _Last updated: 2026-10-01_
 
 ## Current task
-T1.4 - MCP server skeleton (official TS SDK, spec 2025-11-25+, stateless Streamable HTTP, JSON responses), in-memory store, tools `add_item` + `check_item`; verified by a scripted MCP SDK client over HTTP.
+T1.5 - DynamoDB data layer replacing the in-memory store (ItemStore interface in src/store.ts). Household IDs are already validated as unguessable (>=22 base64url chars) in src/handler.ts.
 
 ## Done
-- Phase 0, T1.1, T1.2 (Recall schema + CPSC adapter), T1.3 (matcher in src/matcher/: normalize.ts, match.ts; 21 tests green).
+- Phase 0; T1.1-T1.4. MCP server: src/handler.ts (web-standard, stateless, demo key + household header), src/node-server.ts (local), src/tools.ts (add_item, check_item), src/voice.ts, src/recalls/provider.ts (CPSC live+cache, static). 36 tests green; `npm run test:live` (real CPSC via MCP) passes.
 
 ## Left
-- Install @modelcontextprotocol/sdk (check version supports protocol 2025-11-25), zod; build src/server.ts (createServer), src/http.ts (Node http, POST /mcp, stateless), tools add_item/check_item with voice-first responses, in-memory store, a CPSC recall provider (live fetch + cache, or fixture in tests).
-- Integration test: start server on a random port, connect with SDK Client + StreamableHTTPClientTransport, list tools, add item, check item.
+- DynamoDBItemStore implementing ItemStore with @aws-sdk/lib-dynamodb; table design: PK=HOUSEHOLD#<id>, SK=ITEM#<id>. Tests with an injected fake DocumentClient (or aws-sdk-client-mock). Helper to generate household IDs (crypto.randomBytes(16) base64url).
 
 ## Next step
-`npm i -w @recall-guardian/mcp-server @modelcontextprotocol/sdk zod`, read the SDK's README for the Streamable HTTP server example, then write src/server.ts.
+`npm i -w @recall-guardian/mcp-server @aws-sdk/client-dynamodb @aws-sdk/lib-dynamodb` and `-D aws-sdk-client-mock`; check for native-binary deps (Windows Application Control, see FRICTION_LOG F1) by running tests right after install.

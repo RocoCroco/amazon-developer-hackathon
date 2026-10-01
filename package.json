@@ -13,7 +13,8 @@
     "test": "vitest run --passWithNoTests",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "test:live": "node scripts/test-live.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
