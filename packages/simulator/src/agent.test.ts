@@ -64,7 +64,13 @@ describe('agent over a real MCP connection', () => {
     expect(second.reply).toMatch(/stop using/);
 
     // The model saw the real tool list and the tool result in its next request.
-    expect(llm.calls[0]?.tools.map((t) => t.name).sort()).toEqual(['add_item', 'check_item']);
+    expect(llm.calls[0]?.tools.map((t) => t.name).sort()).toEqual([
+      'add_item',
+      'check_item',
+      'list_items',
+      'remove_item',
+      'update_item',
+    ]);
     const lastCall = llm.calls[3]!;
     const resultBlock = lastCall.messages.at(-1)!.content[0] as Extract<
       Block,

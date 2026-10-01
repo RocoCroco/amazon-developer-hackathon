@@ -58,7 +58,13 @@ describe('MCP server over Streamable HTTP', () => {
     expect(LATEST_PROTOCOL_VERSION).toBe('2025-11-25');
     expect(client.getServerVersion()?.name).toBe('recall-guardian');
     const { tools } = await client.listTools();
-    expect(tools.map((t) => t.name).sort()).toEqual(['add_item', 'check_item']);
+    expect(tools.map((t) => t.name).sort()).toEqual([
+      'add_item',
+      'check_item',
+      'list_items',
+      'remove_item',
+      'update_item',
+    ]);
     await client.close();
   });
 

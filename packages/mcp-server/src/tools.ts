@@ -1,5 +1,4 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import {
   brandChoice,
@@ -8,10 +7,11 @@ import {
   questionFor,
   suggestBrands,
 } from './matcher/clarify.js';
-import { confirmMatches, type ConfirmedMatch, type Confirmer } from './matcher/confirm.js';
+import { confirmMatches, type ConfirmedMatch } from './matcher/confirm.js';
 import { findMatches, type Item } from './matcher/match.js';
-import type { RecallProvider } from './recalls/provider.js';
-import type { ItemStore } from './store.js';
+import { registerInventoryTools } from './tools-inventory.js';
+import { itemFields, reply, type ToolContext } from './tool-common.js';
+import { definedFields } from './store.js';
 import {
   firstSentence,
   spokenBrandNotFound,
@@ -19,45 +19,6 @@ import {
   spokenItem,
   spokenPeriodMiss,
 } from './voice.js';
-
-export interface ToolContext {
-  householdId: string;
-  store: ItemStore;
-  recalls: RecallProvider;
-  /** Optional second opinion from a language model; downgrade-only (see matcher/confirm.ts). */
-  confirmer?: Confirmer;
-}
-
-/**
- * Voice-first result: the first text block is ONE short spoken sentence (or two); the second holds
- * the details as JSON, also exposed as structuredContent. URLs never go in the spoken summary.
- */
-function reply(summary: string, details: Record<string, unknown>): CallToolResult {
-  const structured = { summary, ...details };
-  return {
-    content: [
-      { type: 'text', text: summary },
-      { type: 'text', text: JSON.stringify(structured) },
-    ],
-    structuredContent: structured,
-  };
-}
-
-const itemFields = {
-  name: z.string().min(1).describe('What the product is, e.g. "car seat" or "space heater"'),
-  brand: z.string().optional().describe('Who makes it, e.g. "Graco"'),
-  model: z.string().optional().describe('Model number or name from the sticker, if known'),
-  year: z.number().int().min(1950).max(2100).optional().describe('Year made or bought, if known'),
-  month: z
-    .number()
-    .int()
-    .min(1)
-    .max(12)
-    .optional()
-    .describe(
-      'Month (1-12) made or bought, if known; only needed when a recall covers a short period',
-    ),
-};
 
 function matchSummary(m: ConfirmedMatch) {
   return {
@@ -173,9 +134,11 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     async ({ item_id, ...fields }) => {
       let item: Item | undefined;
       if (item_id) {
-        item = await ctx.store.getItem(ctx.householdId, item_id);
-        if (!item)
+        const saved = await ctx.store.getItem(ctx.householdId, item_id);
+        if (!saved)
           return reply("I couldn't find that item in your household.", { status: 'not_found' });
+        // Details given now (a year, a month, the model) win over what was saved, for this check only.
+        item = { ...saved, ...definedFields(fields) };
       } else if (fields.name) {
         item = { ...fields, name: fields.name };
       } else {
@@ -187,4 +150,6 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       return check(item, ctx);
     },
   );
+
+  registerInventoryTools(server, ctx);
 }
