@@ -51,7 +51,7 @@ export function buildPrompt(item: Item, match: Match): string {
     `product: ${item.name}`,
     `brand: ${item.brand ?? 'unknown'}`,
     `model: ${item.model ?? 'unknown'}`,
-    `year made or bought: ${item.year ?? 'unknown'}`,
+    `year made or bought: ${item.year ?? 'unknown'}${item.month ? `, month ${item.month}` : ''}`,
     '',
     `AUTOMATIC CHECK: ${match.level}; still open: ${match.missing.join(', ') || 'nothing'}`,
   ].join('\n');
@@ -125,7 +125,7 @@ export class InMemoryVerdictCache implements VerdictCache {
 
 /** Same item facts + same recall content + same automatic result = same question to the model. */
 export function cacheKey(item: Item, match: Match): string {
-  const facts = [item.name, item.brand ?? '', item.model ?? '', item.year ?? '']
+  const facts = [item.name, item.brand ?? '', item.model ?? '', item.year ?? '', item.month ?? '']
     .map((s) => String(s).trim().toLowerCase())
     .join('|');
   return createHash('sha256')

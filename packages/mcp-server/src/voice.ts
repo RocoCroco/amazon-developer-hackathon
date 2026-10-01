@@ -1,3 +1,4 @@
+import { questionFor, type Clarification, type PeriodMiss } from './matcher/clarify.js';
 import type { ConfirmedMatch } from './matcher/confirm.js';
 import type { Item } from './matcher/match.js';
 
@@ -27,12 +28,6 @@ export function firstSentence(text: string, maxChars = 160): string {
   return sentence.length > maxChars ? `${sentence.slice(0, maxChars - 1).trimEnd()}.` : sentence;
 }
 
-const QUESTIONS = {
-  model: 'What is the model number? It is usually on a sticker on the bottom or back.',
-  year: 'About what year was it made or bought?',
-  lot: 'Please read me the lot or date code printed on the package, so I can compare it with the recall.',
-} as const;
-
 /** Spoken one-liner for a check result. Never claims a match we are not sure about. */
 export function spokenCheckSummary(item: Item, matches: ConfirmedMatch[]): string {
   const what = spokenItem(item);
@@ -44,6 +39,16 @@ export function spokenCheckSummary(item: Item, matches: ConfirmedMatch[]): strin
   if (best.level === 'strong') {
     return `Your ${what} is recalled. ${hazard}`;
   }
-  const question = best.question ?? QUESTIONS[best.missing[0] ?? 'model'];
+  const { question } = questionFor(best, matches);
   return `There is a recall for a similar item, and I need one more detail to be sure. ${question}`;
+}
+
+/** Nothing matched, but the brand is one or two keystrokes from a recalled brand. */
+export function spokenBrandNotFound(item: Item, suggestion: Clarification): string {
+  return `I could not find any recalls under the brand ${item.brand}. ${suggestion.question}`;
+}
+
+/** The recall exists for this brand and model, but not for the owner's year. */
+export function spokenPeriodMiss(item: Item, miss: PeriodMiss): string {
+  return `There is a recall for your ${spokenItem({ ...item, year: undefined })}, but only for items ${miss.period}. Yours is from ${item.year}, so it does not look affected. ${miss.clarification.question}`;
 }

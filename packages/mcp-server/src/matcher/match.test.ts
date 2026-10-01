@@ -158,12 +158,25 @@ describe('deterministic matcher', () => {
     };
     const item: Item = { name: 'car seat', brand: 'Acme', model: 'Roadster' };
 
-    it('is confident only when the item year verifies the production window', () => {
-      expect(matchItem({ ...item, year: 2008 }, seat)?.level).toBe('strong');
+    it('is confident only when the item period verifies the production window', () => {
+      // Window 2008-05-01 .. 2009-04-30: the year 2009 is only partly inside, the month settles it.
+      expect(matchItem({ ...item, year: 2008, month: 6 }, seat)?.level).toBe('strong');
       const noYear = matchItem(item, seat);
       expect(noYear?.level).toBe('possible');
       expect(noYear?.missing).toEqual(['year']);
       expect(matchItem({ ...item, year: 2012 }, seat)).toBeNull();
+      expect(matchItem({ ...item, year: 2008, month: 3 }, seat)).toBeNull(); // before the window
+    });
+
+    it('asks for the month when the year is only partly inside the window', () => {
+      const partial = matchItem({ ...item, year: 2008 }, seat);
+      expect(partial?.level).toBe('possible');
+      expect(partial?.missing).toEqual(['month']);
+    });
+
+    it('is confident from the year alone when the whole year lies inside the window', () => {
+      const wide = { ...seat, manufacturedFrom: '2007-01-01', manufacturedTo: '2010-12-31' };
+      expect(matchItem({ ...item, year: 2008 }, wide)?.level).toBe('strong');
     });
 
     it('uses only the production window, not the model-year column of the file', () => {

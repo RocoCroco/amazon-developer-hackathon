@@ -40,12 +40,6 @@ const proseNames = (r: Recall, model: string) => {
 };
 const covers = (r: Recall, model: string) =>
   listed(r).includes(normalizeModel(model)) || proseNames(r, model);
-const yearInWindow = (r: Recall, y: number) =>
-  !!r.manufacturedFrom &&
-  !!r.manufacturedTo &&
-  y >= Number(r.manufacturedFrom.slice(0, 4)) &&
-  y <= Number(r.manufacturedTo.slice(0, 4));
-
 /** A brand a person would plausibly say (the CPSC importer field is noisy). */
 const sane = (brand: string | undefined): brand is string =>
   !!brand &&
@@ -157,6 +151,32 @@ function consumer(corpus: Recall[]): LabeledItem[] {
   return out;
 }
 
+/** First and last day (ISO) of a month, or of a whole year. Part of the coverage policy, not the matcher. */
+function span(year: number, month?: number): { start: string; end: string } {
+  if (!month) return { start: `${year}-01-01`, end: `${year}-12-31` };
+  const mm = String(month).padStart(2, '0');
+  const last = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return { start: `${year}-${mm}-01`, end: `${year}-${mm}-${String(last).padStart(2, '0')}` };
+}
+const overlaps = (r: Recall, year: number, month?: number) => {
+  const { start, end } = span(year, month);
+  return (
+    !!r.manufacturedFrom &&
+    !!r.manufacturedTo &&
+    end >= r.manufacturedFrom &&
+    start <= r.manufacturedTo
+  );
+};
+const wholeInside = (r: Recall, year: number) => {
+  const { start, end } = span(year);
+  return (
+    !!r.manufacturedFrom &&
+    !!r.manufacturedTo &&
+    start >= r.manufacturedFrom &&
+    end <= r.manufacturedTo
+  );
+};
+
 function seats(corpus: Recall[]): LabeledItem[] {
   const out: LabeledItem[] = [];
   const all = corpus.filter((r) => r.category === 'car_seat');
@@ -169,35 +189,46 @@ function seats(corpus: Recall[]): LabeledItem[] {
       continue;
     n += 1;
     const year = Number(recall.manufacturedFrom.slice(0, 4));
-    const strong = all
-      .filter((r) => sameBrand(r, brand) && covers(r, model) && yearInWindow(r, year))
-      .map((r) => r.id);
-    // Same brand and model but the recall has no production window: we can only ask for the year.
-    const unverifiable = all
-      .filter(
-        (r) =>
-          sameBrand(r, brand) && covers(r, model) && !r.manufacturedFrom && !strong.includes(r.id),
-      )
-      .map((r) => r.id);
+    const month = Number(recall.manufacturedFrom.slice(5, 7));
+    const sameModel = all.filter((r) => sameBrand(r, brand) && covers(r, model));
+    // Same brand and model but the recall has no production window: we can only ask.
+    const noWindow = sameModel.filter((r) => !r.manufacturedFrom).map((r) => r.id);
+
+    // Year and month known: strong when that month overlaps the recall's window.
     out.push({
       id: `gs${n}-ok`,
       kind: 'positive',
       requireOpen: false,
-      says: `${brand} ${model} made ${year}`,
-      item: { name: 'car seat', brand, model, year },
-      strong,
-      possible: unverifiable,
+      says: `${brand} ${model} made ${year}-${month}`,
+      item: { name: 'car seat', brand, model, year, month },
+      strong: sameModel.filter((r) => overlaps(r, year, month)).map((r) => r.id),
+      possible: noWindow,
     });
-    const late = Number(recall.manufacturedTo.slice(0, 4)) + 30;
+    // Only the year known: strong only when the WHOLE year lies inside the window; else we ask for the month.
     out.push({
-      id: `gs${n}-year`,
+      id: `gs${n}-year-only`,
+      kind: 'positive',
+      requireOpen: false,
+      says: `${brand} ${model} made ${year} (month unknown)`,
+      item: { name: 'car seat', brand, model, year },
+      strong: sameModel.filter((r) => wholeInside(r, year)).map((r) => r.id),
+      possible: [
+        ...noWindow,
+        ...sameModel.filter((r) => overlaps(r, year) && !wholeInside(r, year)).map((r) => r.id),
+      ],
+    });
+    out.push({
+      id: `gs${n}-late`,
       kind: 'hard-negative',
       requireOpen: false,
       says: `${brand} ${model} made long after the recalled window`,
-      item: { name: 'car seat', brand, model, year: late },
-      possible: all
-        .filter((r) => sameBrand(r, brand) && covers(r, model) && !r.manufacturedFrom)
-        .map((r) => r.id),
+      item: {
+        name: 'car seat',
+        brand,
+        model,
+        year: Number(recall.manufacturedTo.slice(0, 4)) + 30,
+      },
+      possible: noWindow,
     });
   }
   return out;

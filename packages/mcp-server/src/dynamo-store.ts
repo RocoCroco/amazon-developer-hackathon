@@ -34,11 +34,12 @@ interface ItemRecord extends StoredItem {
 
 /** Drops the storage-only attributes (keys, TTL). */
 function toStored(record: ItemRecord): StoredItem {
-  const { id, createdAt, name, brand, model, year } = record;
+  const { id, createdAt, name, brand, model, year, month } = record;
   const item: StoredItem = { id, createdAt, name };
   if (brand !== undefined) item.brand = brand;
   if (model !== undefined) item.model = model;
   if (year !== undefined) item.year = year;
+  if (month !== undefined) item.month = month;
   return item;
 }
 

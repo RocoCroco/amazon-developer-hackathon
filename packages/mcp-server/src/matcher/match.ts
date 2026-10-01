@@ -19,11 +19,14 @@ export interface Item {
   name: string;
   brand?: string;
   model?: string;
+  /** Year made or bought. */
   year?: number;
+  /** Month (1-12) made or bought, when the owner knows it. Needed only for short recall windows. */
+  month?: number;
 }
 
 /** What we still need to ask the user to decide. */
-export type Missing = 'model' | 'year' | 'lot';
+export type Missing = 'model' | 'year' | 'month' | 'lot';
 
 export type MatchLevel = 'strong' | 'possible';
 
@@ -90,6 +93,14 @@ function formsConflict(wanted: string[], available: Set<string>): boolean {
   if (itemForms.length === 0) return false;
   const recallForms = [...available].filter((t) => FORMS.has(t));
   return recallForms.length > 0 && !itemForms.some((f) => available.has(f));
+}
+
+/** First and last day (ISO) of the month, or of the whole year when the month is unknown. */
+function itemPeriod(year: number, month?: number): { start: string; end: string } {
+  if (!month) return { start: `${year}-01-01`, end: `${year}-12-31` };
+  const mm = String(month).padStart(2, '0');
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return { start: `${year}-${mm}-01`, end: `${year}-${mm}-${String(lastDay).padStart(2, '0')}` };
 }
 
 function brandHaystack(recall: Recall): string {
@@ -238,17 +249,22 @@ export function matchItem(item: Item, recall: Recall): Match | null {
   const missing = new Set<Missing>(best.missing);
   let verified = best.verified;
 
-  // Manufacturing window (child seats, tires...): the item's year must fall inside it.
+  // Manufacturing window (child seats, tires...): the item's period must fall inside it.
   // (Not for vehicles: there the item's year is the model year, the window is production dates.)
   if (recall.category !== 'vehicle' && (recall.manufacturedFrom || recall.manufacturedTo)) {
-    const from = Number(recall.manufacturedFrom?.slice(0, 4)) || 0;
-    const to = Number(recall.manufacturedTo?.slice(0, 4)) || 9999;
     if (item.year) {
-      if (item.year < from || item.year > to) return null;
-      verified = true;
-      reasons.push(
-        `made within the recalled period (${recall.manufacturedFrom} to ${recall.manufacturedTo})`,
-      );
+      const period = itemPeriod(item.year, item.month);
+      const from = recall.manufacturedFrom ?? '0000-01-01';
+      const to = recall.manufacturedTo ?? '9999-12-31';
+      if (period.end < from || period.start > to) return null;
+      const wholePeriodInside = period.start >= from && period.end <= to;
+      if (wholePeriodInside || item.month) {
+        verified = true;
+        reasons.push(`made within the recalled period (${from} to ${to})`);
+      } else {
+        // The recall covers only part of that year: the owner's year cannot settle it, the month can.
+        missing.add('month');
+      }
     } else {
       missing.add('year');
     }

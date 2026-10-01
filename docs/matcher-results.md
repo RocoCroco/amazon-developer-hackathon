@@ -14,10 +14,10 @@ The matcher never answers just yes/no. It returns one of:
   |---|---|
   | consumer product (CPSC) | brand + a model code the recall lists (or its prose names) |
   | vehicle (NHTSA) | brand + an **exactly equal** model name + the **model year** of that product line |
-  | child seat, tire, equipment (NHTSA) | brand + model, and the item's year inside the recall's **production window**; or a code printed on the product (part of a longer model, or a listed prefix such as "model numbers beginning with 310") |
+  | child seat, tire, equipment (NHTSA) | brand + model, and the item's period inside the recall's **production window**: the **whole year** must be inside it, or the owner gives the **month**; or a code printed on the product (part of a longer model, or a listed prefix such as "model numbers beginning with 310") |
   | food, drug (openFDA) | never: lots are only on the label, so we ask for the lot code |
 
-- **possible** - fits so far, a detail is open. Comes with `missing` = `model`, `year` or `lot`, which becomes
+- **possible** - fits so far, a detail is open. Comes with `missing` = `model`, `year`, `month` or `lot`, which becomes
   the clarifying question. The assistant must not claim a recall for a "possible" match.
 - **no match** - brand not named, a different product, a different model, a year outside the recalled years or
   window, or a different dosage form ("tablets" vs "elixir").
@@ -32,11 +32,11 @@ Corpus: **1,313 real recalls**, fetched by `scripts/fetch-matcher-corpus.mjs` fr
 
 Two evaluation sets, each item compared against every recall in the corpus:
 
-1. **Hand-labeled: 69 items** (31 positives, 11 "open" questions, 27 hard negatives; see
+1. **Hand-labeled: 77 items** (33 positives, 14 "open" questions, 30 hard negatives; see
    `test/matcher-items.ts`). The hard negatives are: same brand but another model, same model but another brand, other product from the same
    brand, brand that is only a prefix of another word, year outside the recalled window, wrong dosage form,
    no brand at all.
-2. **Generated: 432 items** from the corpus itself (`test/generated-items.ts`): each real vehicle, consumer
+2. **Generated: 478 items** from the corpus itself (`test/generated-items.ts`): each real vehicle, consumer
    and car-seat recall yields a positive plus perturbed negatives (a year far outside the recall, a model that
    does not exist). Expectations come from an explicit coverage policy over the structured fields and prose,
    written independently of the matcher.
@@ -45,11 +45,11 @@ Two evaluation sets, each item compared against every recall in the corpus:
 
 | Set | Items | Item x recall pairs | Strong TP | Strong FP | Strong FN | Strong precision | Strong recall |
 |---|---|---|---|---|---|---|---|
-| Hand-labeled | 69 | 90,597 | 32 | 0 | 0 | **100%** | **100%** |
-| Generated | 432 | 567,216 | 265 | 0 | 0 | **100%** | **100%** |
+| Hand-labeled | 77 | 101,101 | 34 | 0 | 0 | **100%** | **100%** |
+| Generated | 478 | 627,614 | 267 | 0 | 0 | **100%** | **100%** |
 
-- Hand-labeled: all 19 expected open matches were found; 0 false alarms.
-- Generated: 11 "false alarms", all of the form "possible" (never strong): e.g. item "Evenflo Titan" vs a
+- Hand-labeled: all 22 expected open matches were found; 0 false alarms.
+- Generated: 15 "false alarms", all of the form "possible" (never strong): e.g. item "Evenflo Titan" vs a
   recall of "Evenflo Titan 65", or "Evenflo Litemax" vs "Revolve 180 Litemax Nxt". The model is only part of a
   longer listed name, so the matcher asks for the full model number instead of guessing. These are acceptable.
 - The CI gate is `precision >= 95%` (and `recall >= 90%` on the generated set).
@@ -77,7 +77,13 @@ Honest history, because the first numbers were not good and some labels were wro
    - brand names with filler words ("Fun and Function") could never match themselves;
    - the model-year column of the NHTSA seat rows conflicts with the item's "made/bought" year, so for seats and
      tires only the production window is used.
-3. Final numbers are in the table above.
+3. **Month granularity (added while writing the clarification flows).** One real recall, Graco Extend2Fit, covers
+   seats made November 2015 to January 2016. An owner saying "made in 2016" may or may not be inside it, so a
+   year-only check over-claimed. Now an item's year counts as verified only when the whole year lies inside the
+   window; otherwise the matcher stays "possible" and asks which month (`missing: month`). That turned 12 hand-
+   labeled "strong" expectations into open ones until the label got a month (recall dropped to 62.5% at that moment,
+   precision stayed 100%); I added 8 items for these short-window cases and a "year only" variant to the generator.
+4. Final numbers are in the table above.
 
 ## Limits (be skeptical)
 
