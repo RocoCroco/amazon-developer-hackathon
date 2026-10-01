@@ -5,6 +5,17 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "build": "node -e \"console.log('infra: nothing to build yet')\""
+    "build": "tsc -p tsconfig.json",
+    "synth": "npm run build && cdk synth",
+    "deploy": "npm run build && cdk deploy --require-approval never",
+    "diff": "npm run build && cdk diff"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.272.0",
+    "constructs": "^10.8.1"
+  },
+  "devDependencies": {
+    "aws-cdk": "^2.1143.0",
+    "esbuild": "^0.28.2"
   }
 }
