@@ -36,7 +36,7 @@ Target: thin end-to-end slice (Phase 1) working by ~day 7 (Oct 8), then widen.
 - [x] T4.2 `check_household`, `get_alerts`, `get_remedy`, `resolve_alert`; `check_item` upgraded with the full matcher. **Done when:** tool tests pass.
 - [x] T4.3 Voice-first review of every tool response (SPEC §5). **Done when:** each tool has a test asserting a short spoken summary.
 - [x] T4.4 Daily watcher: EventBridge schedule → Lambda → alerts, deployed. **Done when:** a manual invocation of the deployed Lambda creates alerts from a seeded recall.
-- [ ] T4.5 Cost check: `docs/costs.md`. **Done when:** estimate < $10/month at demo usage.
+- [x] T4.5 Cost check: `docs/costs.md`. **Done when:** estimate < $10/month at demo usage.
 
 ## Phase 5 — Alexa+ simulator, full
 - [ ] T5.1 Voice: push-to-talk via Web Speech API recognition; spoken replies via Amazon Polly (neural voice, serverless, cached/limited usage); text fallback; alerts panel with polling of `get_alerts`. Clean, Alexa-like look. **Done when:** full demo story works by typing (Playwright); voice path verified by script where possible, rest in manual checklist.
