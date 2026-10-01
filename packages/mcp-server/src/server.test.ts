@@ -60,9 +60,13 @@ describe('MCP server over Streamable HTTP', () => {
     const { tools } = await client.listTools();
     expect(tools.map((t) => t.name).sort()).toEqual([
       'add_item',
+      'check_household',
       'check_item',
+      'get_alerts',
+      'get_remedy',
       'list_items',
       'remove_item',
+      'resolve_alert',
       'update_item',
     ]);
     await client.close();

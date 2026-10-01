@@ -33,7 +33,7 @@ Target: thin end-to-end slice (Phase 1) working by ~day 7 (Oct 8), then widen.
 
 ## Phase 4 — Full MCP tool set
 - [x] T4.1 `list_items`, `update_item`, `remove_item` (confirm before destructive actions). **Done when:** tool tests pass.
-- [ ] T4.2 `check_household`, `get_alerts`, `get_remedy`, `resolve_alert`; `check_item` upgraded with the full matcher. **Done when:** tool tests pass.
+- [x] T4.2 `check_household`, `get_alerts`, `get_remedy`, `resolve_alert`; `check_item` upgraded with the full matcher. **Done when:** tool tests pass.
 - [ ] T4.3 Voice-first review of every tool response (SPEC §5). **Done when:** each tool has a test asserting a short spoken summary.
 - [ ] T4.4 Daily watcher: EventBridge schedule → Lambda → alerts, deployed. **Done when:** a manual invocation of the deployed Lambda creates alerts from a seeded recall.
 - [ ] T4.5 Cost check: `docs/costs.md`. **Done when:** estimate < $10/month at demo usage.

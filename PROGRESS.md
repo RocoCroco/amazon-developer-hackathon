@@ -3,16 +3,16 @@
 _Last updated: 2026-10-01_
 
 ## Current task
-T4.1 - `list_items`, `update_item`, `remove_item` MCP tools (confirm before destructive actions). Done when tool tests pass.
+T4.3 - Voice-first review of every tool response (SPEC section 5): each tool has a test asserting a SHORT spoken summary. Known TODO from earlier: model codes are spaced for TTS ("H 7 1 3 1") inside `summary`, which also shows in the written transcript; add a separate `spoken` field (spaced codes) and keep `summary` readable, or decide which the simulator displays/speaks.
 
 ## Done
-- Phase 0; Phase 1 (T1.7 live Bedrock only blocked, B1); Phase 2; Phase 3: T3.1 matcher + eval (docs/matcher-results.md), T3.2 confirmer ([!] live call only), T3.3 clarifying flows (src/matcher/clarify.ts; tool statuses recalled | need_info | no_recall | outside_period; Missing = model|year|month|lot; Item.month added; tools accept `month`). 170 tests green, lint clean.
-- NOT redeployed since T1.6: the deployed Lambda has the old matcher. Redeploy (`cd infra && npm run deploy`) happens in T4.4 (watcher) - remember `node scripts/smoke-deployed.mjs` afterwards.
+- Phase 0-3; T4.1 (list_items, update_item, remove_item with two-step confirm); T4.2 (check_household, get_alerts, get_remedy, resolve_alert; alerts.ts, dynamo-alerts.ts, household-check.ts [checkItems/recordAlerts with supersede option, reused by the watcher], remedy.ts, severity.ts). 9 MCP tools total. 238 tests green, lint clean.
+- Alert rules: id = hash(item+recall) so no duplicates; resolved stays resolved unless a question became a confirmed recall (then reopens, counts as new); confirmed never downgraded; items with only open questions get ONE alert (best candidate); full checks supersede stale questions, the watcher must call recordAlerts WITHOUT supersede.
+- NOT redeployed since T1.6: deployed Lambda is old (2 tools). Redeploy in T4.4 together with the watcher: `cd infra && npm run deploy`, then `node scripts/smoke-deployed.mjs` (update the script for new tools if needed).
 
-## Left (T4.1)
-- ItemStore interface (src/store.ts): add updateItem(householdId, itemId, patch) and removeItem(householdId, itemId); implement in InMemoryItemStore and DynamoItemStore (UpdateCommand/DeleteCommand; tests with aws-sdk-client-mock).
-- Tools in src/tools.ts: list_items (spoken summary "You have 3 items: ..."), update_item (item_id + fields; summary), remove_item (two-step: first call without confirm=true returns need_confirmation and asks "Do you want me to remove your X?", only confirm:true deletes) - SPEC §5 "Confirm before destructive actions".
-- Also let check_item with a registered item_id use month; and update the simulator mock brain/system prompt for the new tools (packages/simulator/src/agent.ts SYSTEM_PROMPT mentions tools).
+## Left (T4.3)
+- Audit all 9 tool summaries: one or two short sentences, no URLs/markup, numbers as words/digits for speech, no raw model codes read as words. Add tests/spoken-summaries.test.ts that calls every tool and asserts: summary length < ~280 chars, no "http", no JSON-looking text, ends with a sentence terminator, details only in structuredContent.
+- Add `spoken` field (model/part codes spaced) where codes appear; make `summary` the display text. Check the simulator UI/agent system prompt (packages/simulator/src/agent.ts SYSTEM_PROMPT) mentions the new tools; update the mock brain if needed.
 
 ## Next step
-Extend ItemStore with updateItem/removeItem (+ in-memory + Dynamo impls and tests), then add the three tools.
+Write packages/mcp-server/src/spoken-summaries.test.ts that drives every tool through the MCP client and asserts the spoken-summary rules above; fix whatever fails.

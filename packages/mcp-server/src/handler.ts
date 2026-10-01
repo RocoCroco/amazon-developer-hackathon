@@ -1,6 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
+import { InMemoryAlertStore, type AlertStore } from './alerts.js';
 import type { Confirmer } from './matcher/confirm.js';
 import type { RecallProvider } from './recalls/provider.js';
 import type { ItemStore } from './store.js';
@@ -10,6 +11,8 @@ import { SERVER_NAME, SERVER_VERSION } from './version.js';
 export interface McpDeps {
   store: ItemStore;
   recalls: RecallProvider;
+  /** Alerts storage; in-memory when absent. */
+  alerts?: AlertStore;
   /** Optional LLM second opinion on matches (off when absent). */
   confirmer?: Confirmer;
   /** When set, every request must send `Authorization: Bearer <demoKey>`. */
@@ -39,6 +42,7 @@ function keyMatches(header: string | null, expected: string): boolean {
  * A fresh server+transport is created per request, as the SDK requires in stateless mode.
  */
 export function createMcpHandler(deps: McpDeps): (req: Request) => Promise<Response> {
+  const alertStore = deps.alerts ?? new InMemoryAlertStore();
   return async (req) => {
     if (deps.demoKey && !keyMatches(req.headers.get('authorization'), deps.demoKey)) {
       return json(401, { error: 'Missing or invalid demo key' });
@@ -52,6 +56,7 @@ export function createMcpHandler(deps: McpDeps): (req: Request) => Promise<Respo
     registerTools(server, {
       householdId,
       store: deps.store,
+      alertStore,
       recalls: deps.recalls,
       confirmer: deps.confirmer,
     });

@@ -1,4 +1,5 @@
 import { GetParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
+import { DynamoAlertStore } from './dynamo-alerts.js';
 import { createDocClient, DynamoItemStore } from './dynamo-store.js';
 import { createMcpHandler } from './handler.js';
 import { CpscRecallProvider } from './recalls/provider.js';
@@ -75,8 +76,10 @@ function getHandler(): Promise<McpHandler> {
     const table = process.env.TABLE_NAME;
     const keyParam = process.env.DEMO_KEY_PARAM;
     if (!table || !keyParam) throw new Error('TABLE_NAME and DEMO_KEY_PARAM must be set');
+    const db = createDocClient();
     return createMcpHandler({
-      store: new DynamoItemStore(createDocClient(), table),
+      store: new DynamoItemStore(db, table),
+      alerts: new DynamoAlertStore(db, table),
       recalls: new CpscRecallProvider(),
       demoKey: await readDemoKey(keyParam),
     });

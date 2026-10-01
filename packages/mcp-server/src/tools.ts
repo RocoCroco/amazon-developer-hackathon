@@ -9,9 +9,11 @@ import {
 } from './matcher/clarify.js';
 import { confirmMatches, type ConfirmedMatch } from './matcher/confirm.js';
 import { findMatches, type Item } from './matcher/match.js';
+import { recordAlerts } from './household-check.js';
+import { registerAlertTools } from './tools-alerts.js';
 import { registerInventoryTools } from './tools-inventory.js';
 import { itemFields, reply, type ToolContext } from './tool-common.js';
-import { definedFields } from './store.js';
+import { definedFields, type StoredItem } from './store.js';
 import {
   firstSentence,
   spokenBrandNotFound,
@@ -39,7 +41,7 @@ function matchSummary(m: ConfirmedMatch) {
   };
 }
 
-async function check(item: Item, ctx: ToolContext) {
+async function check(item: Item, ctx: ToolContext, saved?: StoredItem) {
   if (!item.brand) {
     return reply(`Who makes your ${item.name}? I need the brand to check it.`, {
       status: 'need_info',
@@ -52,6 +54,12 @@ async function check(item: Item, ctx: ToolContext) {
     ? await confirmMatches(item, found, ctx.confirmer)
     : found;
   const best = matches[0];
+  // A saved item that matches something gets an alert, so get_remedy / get_alerts can pick it up.
+  if (saved && best) {
+    await recordAlerts(ctx.alertStore, ctx.householdId, [{ item: saved, matches }], {
+      supersede: true,
+    });
+  }
 
   // We never claim a recall for a brand we cannot pin down: ask which one.
   if (best?.level !== 'strong') {
@@ -133,8 +141,9 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     },
     async ({ item_id, ...fields }) => {
       let item: Item | undefined;
+      let saved: StoredItem | undefined;
       if (item_id) {
-        const saved = await ctx.store.getItem(ctx.householdId, item_id);
+        saved = await ctx.store.getItem(ctx.householdId, item_id);
         if (!saved)
           return reply("I couldn't find that item in your household.", { status: 'not_found' });
         // Details given now (a year, a month, the model) win over what was saved, for this check only.
@@ -147,9 +156,10 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
           still_needed: ['name'],
         });
       }
-      return check(item, ctx);
+      return check(item, ctx, saved);
     },
   );
 
   registerInventoryTools(server, ctx);
+  registerAlertTools(server, ctx);
 }

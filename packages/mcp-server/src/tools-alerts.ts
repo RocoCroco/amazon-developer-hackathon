@@ -1,0 +1,208 @@
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
+import type { Alert } from './alerts.js';
+import { checkItems, recordAlerts } from './household-check.js';
+import { buildRemedy } from './remedy.js';
+import { reply, type ToolContext } from './tool-common.js';
+import { firstSentence } from './voice.js';
+
+const MAX_ITEMS_PER_CHECK = 25;
+
+const WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+
+/** Small counts as words, which a voice reads better than digits: "two items". */
+const plural = (n: number, one: string, many = `${one}s`) =>
+  `${WORDS[n] ?? n} ${n === 1 ? one : many}`;
+
+/** The alert as the assistant and the UI see it. */
+const alertView = (a: Alert) => ({
+  alert_id: a.id,
+  item_id: a.itemId,
+  item: a.itemName,
+  kind: a.kind,
+  severity: a.severity,
+  title: a.recall.title,
+  hazard: a.recall.hazard,
+  published: a.recall.publishedAt,
+  source: a.recall.source,
+  question: a.question,
+  created_at: a.createdAt,
+});
+
+export function registerAlertTools(server: McpServer, ctx: ToolContext): void {
+  server.registerTool(
+    'check_household',
+    {
+      title: 'Check everything the household owns',
+      description:
+        'Check every registered item for recalls right now and record an alert for each recall found. ' +
+        'Say only what the summary says: items with status "recalled" are recalled; "need_info" ones ' +
+        'still need the question answered.',
+      annotations: { openWorldHint: true },
+    },
+    async () => {
+      const all = await ctx.store.listItems(ctx.householdId);
+      if (all.length === 0) {
+        return reply(
+          "You haven't registered anything yet. Tell me about something you own and I'll check it.",
+          { status: 'empty', checked: 0 },
+        );
+      }
+      const items = all.slice(0, MAX_ITEMS_PER_CHECK);
+      const outcomes = await checkItems(items, ctx.recalls, ctx.confirmer);
+      const { all: touched } = await recordAlerts(ctx.alertStore, ctx.householdId, outcomes, {
+        supersede: true,
+      });
+
+      // Best alert per item: a confirmed recall beats an open question.
+      const best = new Map<string, Alert>();
+      for (const a of touched) {
+        const known = best.get(a.itemId);
+        if (!known || (known.kind !== 'recalled' && a.kind === 'recalled')) best.set(a.itemId, a);
+      }
+      const ranked = [...best.values()];
+      const recalled = ranked.filter((a) => a.kind === 'recalled');
+      const needInfo = ranked.filter((a) => a.kind === 'need_info');
+      const unchecked = items.filter((i) => !i.brand);
+
+      const parts: string[] = [];
+      if (recalled.length === 0 && needInfo.length === 0) {
+        parts.push(
+          `Good news: I checked ${plural(items.length - unchecked.length, 'item')} and found no recalls.`,
+        );
+      } else {
+        parts.push(`I checked ${plural(items.length, 'item')}.`);
+        const top = [...recalled].sort(
+          (a, b) =>
+            ({ high: 0, medium: 1, low: 2 })[a.severity] -
+            { high: 0, medium: 1, low: 2 }[b.severity],
+        )[0];
+        if (top) {
+          parts.push(
+            `Your ${top.itemName} is recalled. ${firstSentence(top.recall.hazard || top.recall.title)}`,
+          );
+          if (recalled.length > 1)
+            parts.push(
+              `${plural(recalled.length - 1, 'other item')} ${recalled.length === 2 ? 'is' : 'are'} recalled too.`,
+            );
+        }
+        if (needInfo.length)
+          parts.push(`I need one more detail to check ${plural(needInfo.length, 'item')}.`);
+      }
+      if (unchecked.length) {
+        parts.push(
+          `I could not check your ${unchecked[0]!.name} because I do not know who makes it.`,
+        );
+      }
+      return reply(parts.join(' '), {
+        status: recalled.length ? 'recalled' : needInfo.length ? 'need_info' : 'clear',
+        checked: items.length - unchecked.length,
+        recalled: recalled.map(alertView),
+        need_info: needInfo.map(alertView),
+        unchecked: unchecked.map((i) => ({ item_id: i.id, item: i.name })),
+        skipped: all.length - items.length,
+      });
+    },
+  );
+
+  server.registerTool(
+    'get_alerts',
+    {
+      title: 'List open recall alerts',
+      description:
+        'Open alerts for this household, most severe first: confirmed recalls, then items that still need a ' +
+        'detail. Use get_remedy for the steps to fix a recall.',
+      annotations: { readOnlyHint: true },
+    },
+    async () => {
+      const alerts = await ctx.alertStore.listAlerts(ctx.householdId, 'open');
+      if (alerts.length === 0) {
+        return reply('You have no open recall alerts.', { count: 0, alerts: [] });
+      }
+      const top = alerts[0]!;
+      const recalled = alerts.filter((a) => a.kind === 'recalled').length;
+      const summary =
+        top.kind === 'recalled'
+          ? `You have ${plural(recalled, 'recall alert')}. The most urgent is your ${top.itemName}. ${firstSentence(top.recall.hazard || top.recall.title)} Want me to walk you through the fix?`
+          : `I still need one detail to check your ${top.itemName}. ${top.question ?? ''}`.trim();
+      return reply(summary, { count: alerts.length, alerts: alerts.map(alertView) });
+    },
+  );
+
+  server.registerTool(
+    'get_remedy',
+    {
+      title: 'How to fix a recall',
+      description:
+        'Step-by-step remedy for an alert: what to do right now, whether the fix is a free repair, ' +
+        'replacement or refund, and who to contact. Read the summary aloud; links are only in the details.',
+      inputSchema: { alert_id: z.string().describe('alert_id from get_alerts or check_household') },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ alert_id }) => {
+      const alert = await ctx.alertStore.getAlert(ctx.householdId, alert_id);
+      if (!alert) {
+        return reply("I couldn't find that alert.", { status: 'not_found' });
+      }
+      if (alert.kind !== 'recalled') {
+        return reply(
+          `I am not sure yet that this recall covers your ${alert.itemName}. ${alert.question ?? ''}`.trim(),
+          { status: 'need_info', ...alertView(alert) },
+        );
+      }
+      const remedy = buildRemedy(alert);
+      return reply(remedy.spoken, {
+        status: 'remedy',
+        ...alertView(alert),
+        steps: remedy.steps,
+        options: remedy.options,
+        stop_using: remedy.stopUsing,
+        phone: remedy.phone,
+        web: remedy.web,
+        recall_url: alert.recall.url,
+      });
+    },
+  );
+
+  server.registerTool(
+    'resolve_alert',
+    {
+      title: 'Mark an alert as handled',
+      description:
+        'Close an alert once the user dealt with it: fixed (got the repair/replacement/refund), ' +
+        'stopped_using, not_affected (checked the label: not in the recalled batch) or dismissed.',
+      inputSchema: {
+        alert_id: z.string().describe('alert_id from get_alerts'),
+        resolution: z.enum(['fixed', 'stopped_using', 'not_affected', 'dismissed']),
+      },
+      annotations: { idempotentHint: true },
+    },
+    async ({ alert_id, resolution }) => {
+      const existing = await ctx.alertStore.getAlert(ctx.householdId, alert_id);
+      if (!existing) return reply("I couldn't find that alert.", { status: 'not_found' });
+      if (existing.status === 'resolved') {
+        return reply(`That alert for your ${existing.itemName} was already closed.`, {
+          status: 'already_resolved',
+          alert_id,
+        });
+      }
+      const resolved = await ctx.alertStore.resolveAlert(ctx.householdId, alert_id, resolution);
+      const sentence = {
+        fixed: `Great, I marked the recall for your ${existing.itemName} as fixed.`,
+        stopped_using: `Okay, I noted that you stopped using your ${existing.itemName}.`,
+        not_affected: `Okay, I closed the alert for your ${existing.itemName}: it is not affected.`,
+        dismissed: `Okay, I dismissed the alert for your ${existing.itemName}.`,
+      }[resolution];
+      const open = (await ctx.alertStore.listAlerts(ctx.householdId, 'open')).length;
+      return reply(
+        `${sentence} ${open ? `You have ${plural(open, 'open alert')} left.` : 'No open alerts left.'}`,
+        {
+          status: 'resolved',
+          alert_id,
+          resolution: resolved?.resolution,
+          open_alerts: open,
+        },
+      );
+    },
+  );
+}

@@ -1,5 +1,6 @@
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
+import type { AlertStore } from './alerts.js';
 import type { Confirmer } from './matcher/confirm.js';
 import type { RecallProvider } from './recalls/provider.js';
 import type { ItemStore } from './store.js';
@@ -7,6 +8,7 @@ import type { ItemStore } from './store.js';
 export interface ToolContext {
   householdId: string;
   store: ItemStore;
+  alertStore: AlertStore;
   recalls: RecallProvider;
   /** Optional second opinion from a language model; downgrade-only (see matcher/confirm.ts). */
   confirmer?: Confirmer;

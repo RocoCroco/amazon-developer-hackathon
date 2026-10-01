@@ -66,9 +66,13 @@ describe('agent over a real MCP connection', () => {
     // The model saw the real tool list and the tool result in its next request.
     expect(llm.calls[0]?.tools.map((t) => t.name).sort()).toEqual([
       'add_item',
+      'check_household',
       'check_item',
+      'get_alerts',
+      'get_remedy',
       'list_items',
       'remove_item',
+      'resolve_alert',
       'update_item',
     ]);
     const lastCall = llm.calls[3]!;
