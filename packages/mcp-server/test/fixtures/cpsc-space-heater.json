@@ -1,0 +1,178 @@
+[
+  {
+    "RecallID": 10086,
+    "RecallNumber": "25036",
+    "RecallDate": "2024-11-07T00:00:00",
+    "Description": "This recall involves GoveeLife and Govee smart electric space heaters with Model Numbers H7130 (including the H7130101 variation), H7131, H7132, H7133, H7134, and H7135. \"GoveeLife\" or \"Govee\" is printed on the front or side of each unit. The space heaters were sold in black and white and measure from 9 inches to 26 inches in height, depending on the model. The model number is located on the manufacturer's label on the underside of each unit.",
+    "URL": "https://www.cpsc.gov/Recalls/2025/GoveeLife-and-Govee-Smart-Electric-Space-Heaters-Recalled-Due-to-Fire-and-Burn-Hazards-Imported-by-Govee",
+    "Title": "GoveeLife and Govee Smart Electric Space Heaters Recalled Due to Fire and Burn Hazards; Imported by Govee",
+    "ConsumerContact": "GoveeLife or Govee toll-free at 833-772-5360 from 9 a.m. to 5 p.m. ET Monday through Friday, or online at https://us.govee.com or www.goveelife.com and click on \"Recall Information\" on the top of the page, or https://recall.goveelife.com/heater-recall for more information and to participate in the recall.",
+    "LastPublishDate": "2024-11-07T00:00:00",
+    "Products": [
+      {
+        "Name": "GoveeLife and Govee Smart Electric Space Heaters",
+        "Description": "",
+        "Model": "",
+        "Type": "",
+        "CategoryID": "",
+        "NumberOfUnits": "About 512,500 (In addition, about 48,600 in Canada)"
+      }
+    ],
+    "Inconjunctions": [
+      {
+        "URL": "https://recalls-rappels.canada.ca/en/alert-recall/goveelife-and-govee-smart-electric-space-heaters-recalled-due-fire-hazard"
+      }
+    ],
+    "Images": [
+      {
+        "URL": "https://www.cpsc.gov/s3fs-public/space-1.png",
+        "Caption": "Recalled Model H7130"
+      },
+      {
+        "URL": "https://www.cpsc.gov/s3fs-public/space-2.png",
+        "Caption": "Recalled Model H7131"
+      },
+      {
+        "URL": "https://www.cpsc.gov/s3fs-public/space-3.png",
+        "Caption": "Recalled Model H7132"
+      },
+      {
+        "URL": "https://www.cpsc.gov/s3fs-public/space-4.png",
+        "Caption": "Recalled Model H7133"
+      },
+      {
+        "URL": "https://www.cpsc.gov/s3fs-public/space-5.png",
+        "Caption": "Recalled Model H7134"
+      },
+      {
+        "URL": "https://www.cpsc.gov/s3fs-public/space-6.png",
+        "Caption": "Recalled Model H7135"
+      }
+    ],
+    "Injuries": [
+      {
+        "Name": "The firms have received 113 reports of overheating, including seven reports of fires and one report of a minor burn injury."
+      }
+    ],
+    "Manufacturers": [],
+    "Retailers": [
+      {
+        "Name": "Online at Amazon.com, https://us.govee.com, the Govee Home App and TikTok Shop from September 2021 through September 2024 for between $30 and $150.",
+        "CompanyID": ""
+      }
+    ],
+    "Importers": [
+      {
+        "Name": "Govee Moments Trading Limited, of China and Govee Moments Limited, of China",
+        "CompanyID": ""
+      }
+    ],
+    "Distributors": [],
+    "SoldAtLabel": null,
+    "ManufacturerCountries": [
+      {
+        "Country": "China"
+      }
+    ],
+    "ProductUPCs": [],
+    "Hazards": [
+      {
+        "Name": "The smart electric space heaters can overheat, posing fire and burn hazards. Testing determined the smart electric space heaters do not comply with the voluntary industry safety standard, UL 1278, posing an overheating and fire risk from wireless control features.",
+        "HazardType": "",
+        "HazardTypeID": ""
+      }
+    ],
+    "Remedies": [
+      {
+        "Name": "Consumers should immediately stop using the recalled electric space heaters and contact the brands for a refund. Unplug the electric space heater, cut the power cord, and send an image of the destroyed electric space heater, the manufacturer's label and SN Code on the bottom or side of the unit to GoveeLife or Govee through the link https://recall.goveelife.com/heater-recall. Consumers who do not have the original order number will receive a refund ranging from $31.80 to $106.63, depending on the model purchased. For consumers who do have the original order number, they will receive a full refund of the purchase price. Consumers can find the order number in their purchase records on online sales channels. They can also contact heatersupport@goveelife.com if they have problems finding the order number."
+      }
+    ],
+    "RemedyOptions": [
+      {
+        "Option": "Refund"
+      }
+    ]
+  },
+  {
+    "RecallID": 9234,
+    "RecallNumber": "22723",
+    "RecallDate": "2022-02-10T00:00:00",
+    "Description": "This recall involves Shop LC personal electric space heaters. The heaters are black or white with a gold grill and were sold individually or in sets of two. The heaters sold individually have a dome-shaped top and a carrying handle. The heaters sold in sets of two are cylinder shaped. The heaters measure about 8.46 inches tall and 5.3 inches wide. The following SKU numbers are included in this recall (The SKU numbers are not included physically on the product.): SHOP LC SKU PRODUCT 3666115 Set of 2 Black Personal Space Electric Heater (110V, 400W) (Cord Length 3.28 Ft.) 3666117 Set of 2 White Personal Space Electric Heater (110V, 400W) (Cord Length 3.28 Ft.) 3666118 White Personal Space Electric Heater (110V, 400W) (Cord Length 3.28 Ft.) 3666119 Black Personal Space Electric Heater (110V, 400W) (Cord Length 3.28 Ft.)",
+    "URL": "https://www.cpsc.gov/Recalls/2022/Shop-LC-Recalls-Electric-Space-Heaters-Due-to-Fire-and-Burn-Hazards-Recall-Alert",
+    "Title": "Shop LC Recalls Electric Space Heaters Due to Fire and Burn Hazards (Recall Alert)",
+    "ConsumerContact": "Shop LC toll-free at 877-899-0078 anytime, email at customerservice@shoplc.com or online at https://www.shoplc.com/productrecalls.html or www.shoplc.com and click on \"Product Recalls\" at the bottom of the page.",
+    "LastPublishDate": "2022-02-10T00:00:00",
+    "Products": [
+      {
+        "Name": "Personal Electric Space Heaters",
+        "Description": "",
+        "Model": "",
+        "Type": "",
+        "CategoryID": "",
+        "NumberOfUnits": "About 4,500"
+      }
+    ],
+    "Inconjunctions": [],
+    "Images": [
+      {
+        "URL": "https://www.cpsc.gov/s3fs-public/pic-1_14.png",
+        "Caption": "Recalled Black Personal Space Electric Heater - Set of 2"
+      },
+      {
+        "URL": "https://www.cpsc.gov/s3fs-public/pic-2_12.png",
+        "Caption": "Recalled White Personal Space Electric Heater - Set of 2"
+      },
+      {
+        "URL": "https://www.cpsc.gov/s3fs-public/pic-3_6.png",
+        "Caption": "Recalled Black Personal Space Electric Heater"
+      },
+      {
+        "URL": "https://www.cpsc.gov/s3fs-public/pic-4_3.png",
+        "Caption": "Recalled White Personal Space Electric Heater"
+      }
+    ],
+    "Injuries": [
+      {
+        "Name": "Shop LC has received two reports of the electric heaters overheating. No injuries have been reported."
+      }
+    ],
+    "Manufacturers": [],
+    "Retailers": [
+      {
+        "Name": "Shop LC television networks airing on DirecTV channels 75 and 226, AT&T channels 399 and 1399, Verizon channel 159, Comcast, Cox, Time Warner, Charter, Roku, Amazon Fire, Google Chromecast, Samsung Smart TV and online at www.shoplc.com. from December 2020 through February 2021 for about $20.",
+        "CompanyID": ""
+      }
+    ],
+    "Importers": [
+      {
+        "Name": "The Jewelry Channel Inc., dba Shop LC, of Austin, Texas",
+        "CompanyID": ""
+      }
+    ],
+    "Distributors": [],
+    "SoldAtLabel": null,
+    "ManufacturerCountries": [
+      {
+        "Country": "China"
+      }
+    ],
+    "ProductUPCs": [],
+    "Hazards": [
+      {
+        "Name": "The electric space heaters can overheat, posing fire and burn hazards.",
+        "HazardType": "",
+        "HazardTypeID": ""
+      }
+    ],
+    "Remedies": [
+      {
+        "Name": "Consumers should immediately stop using the recalled electric space heaters and return the product to Shop LC.  Shop LC is notifying all known purchasers directly and providing free return labels with pre-paid postage. Upon receipt of the recalled electric heaters, Shop LC will refund consumers through the original method of payment."
+      }
+    ],
+    "RemedyOptions": [
+      {
+        "Option": "Refund"
+      }
+    ]
+  }
+]
