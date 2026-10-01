@@ -1,9 +1,12 @@
 # BLOCKERS
 
-## B1 - Bedrock model access (blocks: T3.2 real call, T1.7 real Claude)
-- What: human enables Bedrock Claude model access in us-east-1 (said they would do it on 2026-10-01).
-- Why: needed for the LLM confirmation step and the simulator brain.
-- Workaround: Bedrock is mocked until access is confirmed; verify available model IDs in the account first.
+## B1 - Bedrock model access (blocks: live verification of T1.7, T3.2 real call; everything else uses mocks)
+- 2026-10-01 ~19:2x: real Converse calls succeeded for `us.anthropic.claude-haiku-4-5-20251001-v1:0` and `us.anthropic.claude-sonnet-4-6`.
+- A few minutes later the SAME calls (CLI and SDK) fail: `ResourceNotFoundException: Model use case details have not been submitted for this account. Fill out the Anthropic use case details form ... try again in 15 minutes.`
+- `us.anthropic.claude-sonnet-5-5` returned AccessDenied ("not available for this account") earlier.
+- Human action: in the Bedrock console (us-east-1) complete the Anthropic use-case details form / model access for Claude Haiku 4.5 (and Sonnet 4.6 optional), then wait ~15 min.
+- Workaround: ScriptedLlm mock in tests. Once access works, run `npm run test:live` (packages/simulator/src/live.test.ts) and mark T1.7 [x].
+- Decision: dev/tests/default model = Haiku 4.5, configurable via BEDROCK_MODEL_ID.
 
 ## B2 - Repo visibility / judge sharing (blocks: T7.2)
 - What: human decides: make public, or keep private and share with the judging team (docs/rules.md). Mini challenges may need public.

@@ -32,3 +32,9 @@ Format: what I tried / what I expected / what happened / how I solved it.
 - Expected: a per-function cap.
 - Happened: `aws lambda get-account-settings` shows ConcurrentExecutions=10 and UnreservedConcurrentExecutions=10. AWS requires >=10 unreserved, so no reservation is possible; the account-wide cap of 10 is also shared by every future function (watcher included).
 - Solved (for now): rely on the demo key (401 for others), 30 s timeout, 512 MB, and turn limits in the simulator. Asked the human to request a Lambda concurrency quota increase (BLOCKERS B3, non-blocking).
+
+## F6 - Bedrock access flipped from working to "use case details not submitted" (2026-10-01)
+- Tried: Converse with Haiku 4.5 and Sonnet 4.6 (worked), then again ~minutes later from the SDK and the CLI.
+- Expected: same result.
+- Happened: `ResourceNotFoundException: Model use case details have not been submitted for this account ... try again in 15 minutes.` for every Anthropic model. Sonnet 5.5 earlier said "not available for this account" (AccessDenied) - a different, less actionable message. `list-foundation-models` shows models as ACTIVE regardless of whether the account can invoke them.
+- Solved: not solved from our side (account/console action). Tests use a scripted LLM; live test is opt-in (`npm run test:live`). Logged in BLOCKERS B1.
