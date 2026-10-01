@@ -44,8 +44,8 @@ Target: thin end-to-end slice (Phase 1) working by ~day 7 (Oct 8), then widen.
 - [x] T5.3 Deploy simulator publicly (S3/CloudFront or Lambda). **Done when:** reachable via public URL, abuse limits (turn limit, throttling) in place.
 
 ## Phase 6 — Quality and submission material
-- [ ] T6.1 End-to-end test of the demo story (automated where possible).
-- [ ] T6.2 README: problem, stat, architecture diagram (Mermaid), setup, deploy, how to test, license.
+- [x] T6.1 End-to-end test of the demo story (automated where possible).
+- [x] T6.2 README: problem, stat, architecture diagram (Mermaid), setup, deploy, how to test, license.
 - [x] T6.3 Verify the 6% vs 50% CPSC figures against the original source and the claim "Amazon notifies customers about recalls of products bought on Amazon"; cite sources in README and `docs/sources.md`; fix SPEC/video script if wrong.
 - [ ] T6.4 Finalize FRICTION_LOG.md and FEEDBACK.md.
 - [ ] T6.5 Write `docs/video-script.md`: < 3 min English script following SPEC §8, with exact phrases to say to the simulator.
