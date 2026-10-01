@@ -41,4 +41,8 @@ export interface Recall {
   /** ISO dates of the manufacturing window, when known. */
   manufacturedFrom?: string;
   manufacturedTo?: string;
+  /** How urgent the recall is, when the source says (FDA class, NHTSA do-not-drive). Used to order alerts. */
+  severity?: Severity;
 }
+
+export type Severity = 'high' | 'medium' | 'low';
