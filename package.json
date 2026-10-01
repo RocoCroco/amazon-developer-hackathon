@@ -4,10 +4,27 @@
   "private": true,
   "license": "MIT",
   "description": "MCP server that turns Alexa+ into a recall guardian for everything in the home",
-  "workspaces": ["packages/*", "infra"],
+  "workspaces": [
+    "packages/*",
+    "infra"
+  ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present",
-    "lint": "npm run lint --workspaces --if-present"
+    "build": "tsc -p tsconfig.json && npm run build --workspaces --if-present",
+    "test": "vitest run --passWithNoTests",
+    "lint": "eslint . && prettier --check .",
+    "format": "prettier --write .",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.3",
+    "eslint": "^10.11.0",
+    "prettier": "^3.9.9",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.71.0",
+    "vitest": "^3.2.4"
+  },
+  "overrides": {
+    "rollup": "npm:@rollup/wasm-node@^4"
   }
 }

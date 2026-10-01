@@ -3,13 +3,13 @@
 _Last updated: 2026-10-01_
 
 ## Current task
-T0.2 - tooling: TypeScript, lint, formatter, Vitest.
+T0.3 - create FEEDBACK.md and docs/manual-checklist.md templates (BLOCKERS.md and FRICTION_LOG.md exist).
 
 ## Done
-- T0.0, T0.1 done (monorepo scaffold, MIT, README, build passes).
+- T0.0, T0.1, T0.2 (Vitest 3 + rollup wasm override because Windows blocks native .node files; see FRICTION_LOG F1).
 
 ## Left
-- Add tsconfig, ESLint, Prettier, Vitest to root + packages; npm test and npm run lint must pass.
+- FEEDBACK.md and docs/manual-checklist.md templates; mark T0.3.
 
 ## Next step
-Install devDependencies (typescript, vitest, eslint, typescript-eslint, prettier) at root, add configs, a trivial test in mcp-server.
+Write FEEDBACK.md and docs/manual-checklist.md, commit, then start T1.1 (data source research).
