@@ -1,0 +1,7 @@
+.env*
+.aws/
+*.pem
+credentials
+node_modules/
+cdk.out/
+dist/
