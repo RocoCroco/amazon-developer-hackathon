@@ -4,15 +4,14 @@ import type { Alert } from './alerts.js';
 import { checkItems, recordAlerts } from './household-check.js';
 import { buildRemedy } from './remedy.js';
 import { reply, type ToolContext } from './tool-common.js';
-import { firstSentence } from './voice.js';
+import { severityRank } from './recalls/severity.js';
+import { capitalize, firstSentence, spokenCount } from './voice.js';
 
 const MAX_ITEMS_PER_CHECK = 25;
 
-const WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
-
 /** Small counts as words, which a voice reads better than digits: "two items". */
 const plural = (n: number, one: string, many = `${one}s`) =>
-  `${WORDS[n] ?? n} ${n === 1 ? one : many}`;
+  `${spokenCount(n)} ${n === 1 ? one : many}`;
 
 /** The alert as the assistant and the UI see it. */
 const alertView = (a: Alert) => ({
@@ -65,34 +64,43 @@ export function registerAlertTools(server: McpServer, ctx: ToolContext): void {
       const needInfo = ranked.filter((a) => a.kind === 'need_info');
       const unchecked = items.filter((i) => !i.brand);
 
+      const open = needInfo.length + unchecked.length;
+      const cannotCheck = unchecked[0]
+        ? `I could not check your ${unchecked[0].name} because I do not know who makes it.`
+        : undefined;
       const parts: string[] = [];
-      if (recalled.length === 0 && needInfo.length === 0) {
+      const top = [...recalled].sort(
+        (a, b) => severityRank(a.severity) - severityRank(b.severity),
+      )[0];
+      if (top) {
+        // Lead with the danger; keep the rest to one short line each so it stays listenable.
+        parts.push(
+          `Your ${top.itemName} is recalled. ${firstSentence(top.recall.hazard || top.recall.title)}`,
+        );
+        const others = recalled.length - 1;
+        if (others > 0) {
+          parts.push(
+            capitalize(
+              `${plural(others, 'other item')} ${others === 1 ? 'is' : 'are'} recalled too.`,
+            ),
+          );
+        }
+        if (open > 0) {
+          parts.push(
+            capitalize(
+              `${plural(open, 'other item')} still ${open === 1 ? 'needs' : 'need'} a little help from you.`,
+            ),
+          );
+        }
+      } else if (needInfo.length > 0) {
+        parts.push(`I checked ${plural(items.length, 'item')}.`);
+        parts.push(`I need one more detail to check ${plural(needInfo.length, 'item')}.`);
+        if (cannotCheck) parts.push(cannotCheck);
+      } else {
         parts.push(
           `Good news: I checked ${plural(items.length - unchecked.length, 'item')} and found no recalls.`,
         );
-      } else {
-        parts.push(`I checked ${plural(items.length, 'item')}.`);
-        const top = [...recalled].sort(
-          (a, b) =>
-            ({ high: 0, medium: 1, low: 2 })[a.severity] -
-            { high: 0, medium: 1, low: 2 }[b.severity],
-        )[0];
-        if (top) {
-          parts.push(
-            `Your ${top.itemName} is recalled. ${firstSentence(top.recall.hazard || top.recall.title)}`,
-          );
-          if (recalled.length > 1)
-            parts.push(
-              `${plural(recalled.length - 1, 'other item')} ${recalled.length === 2 ? 'is' : 'are'} recalled too.`,
-            );
-        }
-        if (needInfo.length)
-          parts.push(`I need one more detail to check ${plural(needInfo.length, 'item')}.`);
-      }
-      if (unchecked.length) {
-        parts.push(
-          `I could not check your ${unchecked[0]!.name} because I do not know who makes it.`,
-        );
+        if (cannotCheck) parts.push(cannotCheck);
       }
       return reply(parts.join(' '), {
         status: recalled.length ? 'recalled' : needInfo.length ? 'need_info' : 'clear',

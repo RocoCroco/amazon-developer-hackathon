@@ -43,9 +43,31 @@ describe('unknown model', () => {
     const ac = findMatches({ name: 'window air conditioner', brand: 'Friedrich' }, corpus);
     const q = questionFor(ac[0]!, ac);
     expect(q.kind).toBe('model');
-    expect(q.options?.length).toBeGreaterThanOrEqual(1);
-    expect(q.question).toMatch(/Is yours one of these/);
+    expect(q.options).toHaveLength(1);
+    expect(q.question).toMatch(/^That recall covers .+\. What is the model number\?/);
     expect(q.question).toMatch(/sticker on the bottom or back/);
+  });
+
+  it('lets the owner pick when two to four product lines are named', () => {
+    const item: Item = { name: 'stroller', brand: 'Acme' };
+    const joggers = recall({
+      id: 'x:4',
+      brands: ['Acme'],
+      title: 'Acme recalls joggers',
+      products: [{ name: 'Acme Jogger Stroller', models: ['J1'] }],
+    });
+    const cruisers = recall({
+      id: 'x:5',
+      brands: ['Acme'],
+      title: 'Acme recalls cruisers',
+      products: [{ name: 'Acme Cruiser Stroller', models: ['C1'] }],
+    });
+    const both = findMatches(item, [joggers, cruisers]);
+    const q = questionFor(both[0]!, both);
+    expect(q.options).toHaveLength(2);
+    expect(q.question).toMatch(
+      /^Is yours one of these: Acme (Jogger Stroller or Acme Cruiser Stroller|Cruiser Stroller or Acme Jogger Stroller)\?/,
+    );
   });
 
   it('asks for the sticker, and offers the year as the way out, when there are too many lines', () => {

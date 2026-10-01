@@ -4,7 +4,7 @@ import { MODEL_QUESTION, spokenList } from './matcher/clarify.js';
 import type { Item } from './matcher/match.js';
 import type { StoredItem } from './store.js';
 import { itemFields, reply, type ToolContext } from './tool-common.js';
-import { spokenItem } from './voice.js';
+import { spokenCount, spokenItem, withArticle } from './voice.js';
 
 /** "Graco car seat": brand and product only, for lists (model codes are tedious to listen to). */
 export function spokenName(item: Item): string {
@@ -18,10 +18,10 @@ export function spokenInventory(items: StoredItem[]): string {
   if (items.length === 0) {
     return "You haven't registered anything yet. Tell me about something you own and I'll watch it for recalls.";
   }
-  const named = items.slice(0, MAX_SPOKEN_ITEMS).map((i) => `a ${spokenName(i)}`);
+  const named = items.slice(0, MAX_SPOKEN_ITEMS).map((i) => withArticle(spokenName(i)));
   const more = items.length - named.length;
-  if (more > 0) named.push(`${more} more`);
-  const count = items.length === 1 ? 'one item' : `${items.length} items`;
+  if (more > 0) named.push(`${spokenCount(more)} more`);
+  const count = items.length === 1 ? 'one item' : `${spokenCount(items.length)} items`;
   return `You have ${count}: ${spokenList(named, 'and')}.`;
 }
 

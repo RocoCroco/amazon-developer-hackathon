@@ -63,7 +63,7 @@ describe('list_items', () => {
     await call('add_item', { name: 'car seat', brand: 'Graco', model: 'SnugRide' });
     await call('add_item', { name: 'space heater', brand: 'Govee' });
     const { summary, data } = await call('list_items');
-    expect(summary).toBe('You have 2 items: a Graco car seat and a Govee space heater.');
+    expect(summary).toBe('You have two items: a Graco car seat and a Govee space heater.');
     expect(data.items).toHaveLength(2);
     expect(data.items[0]).toMatchObject({ name: 'car seat', brand: 'Graco', model: 'SnugRide' });
   });
@@ -77,9 +77,9 @@ describe('list_items', () => {
     }));
     const spoken = spokenInventory(items);
     expect(spoken).toBe(
-      'You have 7 items: a Acme thing0, a Acme thing1, a Acme thing2, a Acme thing3, and 3 more.',
+      'You have seven items: an Acme thing0, an Acme thing1, an Acme thing2, an Acme thing3, and three more.',
     );
-    expect(spokenInventory(items.slice(0, 1))).toBe('You have one item: a Acme thing0.');
+    expect(spokenInventory(items.slice(0, 1))).toBe('You have one item: an Acme thing0.');
   });
 });
 
@@ -90,7 +90,7 @@ describe('update_item', () => {
     expect(added.data.still_needed).toEqual(['model']);
 
     const updated = await call('update_item', { item_id: added.data.item_id, model: 'H7131' });
-    expect(updated.summary).toMatch(/^Okay, I updated your Govee H 7 1 3 1 space heater\.$/);
+    expect(updated.summary).toMatch(/^Okay, I updated your Govee H7131 space heater\.$/);
     expect(updated.data.still_needed).toEqual([]);
     expect(updated.data.model).toBe('H7131');
 

@@ -3,16 +3,18 @@
 _Last updated: 2026-10-01_
 
 ## Current task
-T4.3 - Voice-first review of every tool response (SPEC section 5): each tool has a test asserting a SHORT spoken summary. Known TODO from earlier: model codes are spaced for TTS ("H 7 1 3 1") inside `summary`, which also shows in the written transcript; add a separate `spoken` field (spaced codes) and keep `summary` readable, or decide which the simulator displays/speaks.
+T4.4 - Daily watcher: EventBridge schedule -> Lambda -> alerts, deployed. Done when a manual invocation of the DEPLOYED Lambda creates alerts from a seeded recall.
 
 ## Done
-- Phase 0-3; T4.1 (list_items, update_item, remove_item with two-step confirm); T4.2 (check_household, get_alerts, get_remedy, resolve_alert; alerts.ts, dynamo-alerts.ts, household-check.ts [checkItems/recordAlerts with supersede option, reused by the watcher], remedy.ts, severity.ts). 9 MCP tools total. 238 tests green, lint clean.
-- Alert rules: id = hash(item+recall) so no duplicates; resolved stays resolved unless a question became a confirmed recall (then reopens, counts as new); confirmed never downgraded; items with only open questions get ONE alert (best candidate); full checks supersede stale questions, the watcher must call recordAlerts WITHOUT supersede.
-- NOT redeployed since T1.6: deployed Lambda is old (2 tools). Redeploy in T4.4 together with the watcher: `cd infra && npm run deploy`, then `node scripts/smoke-deployed.mjs` (update the script for new tools if needed).
+- Phase 0-3; T4.1-T4.3. 9 MCP tools; voice-first rules enforced by src/spoken-summaries.test.ts (prints the whole voice script: `npx vitest run spoken-summaries`). Model codes stay natural in tool text (the speech layer will spell them with Polly SSML in T5.1). Simulator system prompt covers all tools. 243 tests green, lint clean.
 
-## Left (T4.3)
-- Audit all 9 tool summaries: one or two short sentences, no URLs/markup, numbers as words/digits for speech, no raw model codes read as words. Add tests/spoken-summaries.test.ts that calls every tool and asserts: summary length < ~280 chars, no "http", no JSON-looking text, ends with a sentence terminator, details only in structuredContent.
-- Add `spoken` field (model/part codes spaced) where codes appear; make `summary` the display text. Check the simulator UI/agent system prompt (packages/simulator/src/agent.ts SYSTEM_PROMPT) mentions the new tools; update the mock brain if needed.
+## Left (T4.4)
+- DynamoRecallStore (RecallStore interface in src/recalls/cache.ts: getCursor/setCursor/upsert/candidates): single table, SK=RECALL#<id> with GSI or per-brand index items (PK=BRAND#<normalizedBrand>, SK=RECALL#<id>) so candidates(item) is a Query, cursors under PK=CURSOR, SK=<source>. TTL not needed (or 1 year).
+- src/watcher.ts: `runWatcher({recallStore, itemScan, alertStore, feeds, now})`: for each feed syncFeed -> `added` recalls (new ids) -> for each household with items: checkItems(items, new StaticRecallProvider(added)) -> recordAlerts WITHOUT supersede (partial view). Household enumeration: Dynamo Scan of PK begins_with HH# and SK begins_with ITEM# (small demo scale; document the cost/scale note) -> group by household.
+- src/watcher-lambda.ts handler (+ optional `{seed: Recall[]}` event to inject a fake recall for demos/tests, and `{since}` override); returns a summary {feeds, addedRecalls, households, alertsCreated}.
+- CDK: second NodejsFunction (timeout 5-10 min, 1024 MB for the NHTSA zip stream, env TABLE_NAME), EventBridge rule daily (cron 07:00 UTC), grant table RW; keep tags; test infra assertions.
+- Deploy (cd infra && npm run deploy), invoke manually with `aws lambda invoke` using a seeded recall for a registered item (create via the MCP smoke script first), verify alerts via get_alerts, then run scripts/smoke-deployed.mjs again (update it for 9 tools).
+- Concurrency quota is 10 account-wide (BLOCKERS B3): the watcher must not starve the MCP function; keep it a single invocation.
 
 ## Next step
-Write packages/mcp-server/src/spoken-summaries.test.ts that drives every tool through the MCP client and asserts the spoken-summary rules above; fix whatever fails.
+Write src/recalls/dynamo-recall-store.ts implementing RecallStore (+ tests with the fake-table pattern from src/store.test.ts), then src/watcher.ts with unit tests using InMemory stores and fake feeds.

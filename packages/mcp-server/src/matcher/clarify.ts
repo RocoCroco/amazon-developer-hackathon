@@ -1,6 +1,7 @@
 import type { Recall } from '../recalls/types.js';
 import type { ConfirmedMatch } from './confirm.js';
 import { findMatches, matchItem, type Item } from './match.js';
+import { cleanForSpeech } from '../voice.js';
 import { containsPhrase, normalizeBrand } from './normalize.js';
 
 /**
@@ -96,11 +97,19 @@ export function questionFor(best: ConfirmedMatch, all: ConfirmedMatch[]): Clarif
     ...new Set(
       all
         .filter((m) => m.missing.includes('model'))
-        .map((m) => m.product)
-        .filter((p): p is string => !!p),
+        .map((m) => (m.product ? cleanForSpeech(m.product) : ''))
+        .filter(Boolean),
     ),
   ];
-  if (names.length >= 1 && names.length <= MAX_MODEL_CHOICES) {
+  if (names.length === 1) {
+    // One product line: name it, then ask for the number.
+    return {
+      kind: 'model',
+      options: names,
+      question: `That recall covers ${names[0]}. What is the model number? ${MODEL_HELP}`,
+    };
+  }
+  if (names.length >= 2 && names.length <= MAX_MODEL_CHOICES) {
     return {
       kind: 'model',
       options: names,

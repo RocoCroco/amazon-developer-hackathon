@@ -7,7 +7,6 @@ import { startNodeServer } from './node-server.js';
 import { fromCpsc, type CpscRecall } from './recalls/cpsc.js';
 import { StaticRecallProvider } from './recalls/provider.js';
 import { InMemoryItemStore } from './store.js';
-import { spokenModel } from './voice.js';
 
 const fixture = (name: string): CpscRecall[] =>
   JSON.parse(readFileSync(new URL(`../test/fixtures/${name}`, import.meta.url), 'utf8'));
@@ -186,12 +185,5 @@ describe('endpoint protection', () => {
   it('accepts a valid request', async () => {
     const res = await post({ authorization: `Bearer ${KEY}`, 'x-household-id': HOUSEHOLD });
     expect(res.status).toBe(200);
-  });
-});
-
-describe('spoken formatting', () => {
-  it('spells model codes out for speech', () => {
-    expect(spokenModel('H7131')).toBe('H 7 1 3 1');
-    expect(spokenModel('AIR3')).toBe('AIR 3');
   });
 });

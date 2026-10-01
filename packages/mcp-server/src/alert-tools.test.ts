@@ -61,8 +61,8 @@ describe('the family story: register, check everything, get alerted, fix it', ()
     const { summary, data } = await call('check_household');
     expect(data.status).toBe('recalled');
     expect(data.checked).toBe(2);
-    expect(summary).toMatch(/^I checked two items\. Your Govee space heater is recalled\./);
-    expect(summary).toMatch(/I need one more detail to check one item\./);
+    expect(summary).toMatch(/^Your Govee space heater is recalled\. /);
+    expect(summary).toMatch(/One other item still needs a little help from you\.$/);
     expect(summary).not.toMatch(/https?:/);
     expect(data.recalled).toHaveLength(1);
     expect(data.need_info).toHaveLength(1);

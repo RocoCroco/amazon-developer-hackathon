@@ -2,19 +2,49 @@ import { questionFor, type Clarification, type PeriodMiss } from './matcher/clar
 import type { ConfirmedMatch } from './matcher/confirm.js';
 import type { Item } from './matcher/match.js';
 
-/** Spoken name of an item: "Govee H7131 space heater". Model codes are spaced out for speech. */
+/**
+ * Spoken name of an item: "Govee H7131 space heater". Model codes stay as written: the speech layer
+ * (Amazon Polly SSML in the simulator) spells them out, so the written transcript stays readable.
+ */
 export function spokenItem(item: Item): string {
-  const parts = [item.brand, item.model ? spokenModel(item.model) : undefined, item.name];
-  return parts.filter(Boolean).join(' ');
+  return [item.brand, item.model, item.name].filter(Boolean).join(' ');
 }
 
-/** "H7131" -> "H 7 1 3 1" so a text-to-speech voice reads the characters, not a word. */
-export function spokenModel(model: string): string {
-  return model
-    .replace(/[^A-Za-z0-9]+/g, ' ')
-    .trim()
-    .replace(/([A-Za-z])(?=\d)|(\d)(?=[A-Za-z0-9])/g, '$1$2 ')
-    .replace(/\s+/g, ' ');
+const COUNT_WORDS = [
+  'no',
+  'one',
+  'two',
+  'three',
+  'four',
+  'five',
+  'six',
+  'seven',
+  'eight',
+  'nine',
+  'ten',
+];
+
+/** Small counts as words, which a voice reads better than digits: 3 -> "three". */
+export function spokenCount(n: number): string {
+  return COUNT_WORDS[n] ?? String(n);
+}
+
+/** Capitalizes the first letter of a sentence built from spoken words ("one item" -> "One item"). */
+export function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/** "a Govee heater", "an Evenflo seat". A simple vowel rule: good enough for product names. */
+export function withArticle(name: string): string {
+  return `${/^[aeiou]/i.test(name) ? 'an' : 'a'} ${name}`;
+}
+
+/** Product names often carry trademark symbols a voice would read out loud. */
+export function cleanForSpeech(text: string): string {
+  return text
+    .replace(/[\u00AE\u2122\u00A9]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 /** First sentence of a text, trimmed to a speakable length, with URLs removed. */
@@ -40,7 +70,11 @@ export function spokenCheckSummary(item: Item, matches: ConfirmedMatch[]): strin
     return `Your ${what} is recalled. ${hazard}`;
   }
   const { question } = questionFor(best, matches);
-  return `There is a recall for a similar item, and I need one more detail to be sure. ${question}`;
+  // Without a model we can only point at a similar product; with the model known, it may be this one.
+  const intro = best.missing.includes('model')
+    ? 'There is a recall for a similar item'
+    : `There may be a recall for your ${what}`;
+  return `${intro}, and I need one more detail to be sure. ${question}`;
 }
 
 /** Nothing matched, but the brand is one or two keystrokes from a recalled brand. */
