@@ -1,0 +1,13 @@
+{
+  "name": "recall-guardian",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "MCP server that turns Alexa+ into a recall guardian for everything in the home",
+  "workspaces": ["packages/*", "infra"],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
+  }
+}

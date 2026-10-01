@@ -1,0 +1,10 @@
+{
+  "name": "@recall-guardian/simulator",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "node -e \"console.log('simulator: nothing to build yet')\""
+  }
+}
