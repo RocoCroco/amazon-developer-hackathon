@@ -5,4 +5,8 @@ export default tseslint.config(
   { ignores: ['**/dist/**', '**/cdk.out/**', '**/node_modules/**', '**/coverage/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
+  {
+    files: ['scripts/**/*.mjs'],
+    languageOptions: { globals: { process: 'readonly', console: 'readonly', fetch: 'readonly' } },
+  },
 );

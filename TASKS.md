@@ -13,7 +13,7 @@ Target: thin end-to-end slice (Phase 1) working by ~day 7 (Oct 8), then widen.
 
 ## Phase 1 — Thin end-to-end slice (CPSC only) — by ~day 7
 - [x] T1.1 Research and document (in `docs/data-sources.md`) the real CPSC, NHTSA (recalls + vPIC) and openFDA endpoints, parameters, date filters, limits, keys. Note explicitly which sources support "since date" queries (affects watcher design). **Done when:** each endpoint was called successfully from a script and a sample response saved as a test fixture.
-- [ ] T1.2 Common `Recall` schema + CPSC adapter. **Done when:** unit tests pass on fixtures.
+- [x] T1.2 Common `Recall` schema + CPSC adapter. **Done when:** unit tests pass on fixtures.
 - [ ] T1.3 Basic deterministic matcher (brand alias + model + year normalization). **Done when:** unit tests pass on CPSC fixtures.
 - [ ] T1.4 MCP server skeleton (official TS SDK, spec 2025-11-25+, stateless Streamable HTTP, JSON responses) with in-memory store and tools `add_item` + `check_item`. **Done when:** a scripted MCP SDK client connects over HTTP, lists tools, registers an item and checks it.
 - [ ] T1.5 DynamoDB data layer (tests with mock or DynamoDB Local) replacing the in-memory store. Household IDs are unguessable (random, ≥128 bits). **Done when:** tests pass.
