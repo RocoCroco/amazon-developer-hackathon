@@ -6,7 +6,7 @@ Manual checks that need the human go in `docs/manual-checklist.md`, not in "Done
 Target: thin end-to-end slice (Phase 1) working by ~day 7 (Oct 8), then widen.
 
 ## Phase 0 — Foundations
-- [ ] T0.0 Read the Devpost rules and judging criteria (https://amazonappdev2026.devpost.com/ and its rules page). Record in `docs/rules.md`: required deliverables, judging criteria, whether real Alexa+ integration is required or a simulator is acceptable, eligibility, submission format. **Done when:** docs/rules.md exists; if findings contradict SPEC.md, add a BLOCKERS.md entry.
+- [x] T0.0 Read the Devpost rules and judging criteria (https://amazonappdev2026.devpost.com/ and its rules page). Record in `docs/rules.md`: required deliverables, judging criteria, whether real Alexa+ integration is required or a simulator is acceptable, eligibility, submission format. **Done when:** docs/rules.md exists; if findings contradict SPEC.md, add a BLOCKERS.md entry.
 - [ ] T0.1 Create repo structure (monorepo: `packages/mcp-server`, `packages/simulator`, `infra`), MIT license, README skeleton, .gitignore (must ignore `.env*`, `.aws`, credentials). Use the EXISTING GitHub repo (`origin` = RocoCroco/amazon-developer-hackathon) — do NOT create a new one; it stays PRIVATE until T7.2. **Done when:** pushed to GitHub, CI-free build passes locally.
 - [ ] T0.2 Tooling: TypeScript, lint, formatter, Vitest. **Done when:** `npm test` and `npm run lint` pass.
 - [ ] T0.3 Create BLOCKERS.md, FRICTION_LOG.md, FEEDBACK.md (per-tool product feedback), `docs/manual-checklist.md`. Add to BLOCKERS.md: Bedrock model access (human enabling in us-east-1; mock until then). **Done when:** files exist with templates.
@@ -54,7 +54,7 @@ Target: thin end-to-end slice (Phase 1) working by ~day 7 (Oct 8), then widen.
 
 ## Phase 7 — Release
 - [ ] T7.1 Final secret scan of the whole repo and git history (e.g. gitleaks or a manual regex scan); fix anything found. **Done when:** scan is clean.
-- [ ] T7.2 Make the repo public — **only after T7.1 and only right before submission.** Needs human go-ahead: write in BLOCKERS.md and leave `[!]` for the human to flip.
+- [ ] T7.2 Make the repo public (or share with the judging team: rules allow private-shared; see docs/rules.md) — **only after T7.1 and only right before submission.** Needs human go-ahead: write in BLOCKERS.md and leave `[!]` for the human to flip.
 
 ## Stretch (only when everything above is done)
 - [ ] S1 OAuth 2.1 for households.

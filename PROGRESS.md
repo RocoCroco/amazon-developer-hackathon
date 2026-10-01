@@ -3,13 +3,13 @@
 _Last updated: 2026-10-01_
 
 ## Current task
-T0.0 — read Devpost rules and judging criteria, write docs/rules.md.
+T0.1 - monorepo structure, LICENSE, README, .gitignore.
 
 ## Done
-- CLAUDE.md PROGRESS rule; SPEC.md and TASKS.md restructured per human decisions (repo private until T7.2, Polly voice, thin slice by ~day 7, T0.0 added, security limits, Bedrock mocked until human enables access).
+- T0.0 (docs/rules.md), BLOCKERS.md created (B1 Bedrock, B2 repo visibility). Local git identity set.
 
 ## Left
-- Everything in TASKS.md.
+- Create packages/mcp-server, packages/simulator, infra, root package.json workspaces, LICENSE (MIT), README skeleton; build passes locally.
 
 ## Next step
-Fetch https://amazonappdev2026.devpost.com/ (and its rules page) with WebFetch, summarize into docs/rules.md.
+Create root package.json with npm workspaces and the three directories.
