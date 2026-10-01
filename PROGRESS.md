@@ -3,13 +3,13 @@
 _Last updated: 2026-10-01_
 
 ## Current task
-T0.3 - create FEEDBACK.md and docs/manual-checklist.md templates (BLOCKERS.md and FRICTION_LOG.md exist).
+T1.1 - research CPSC, NHTSA (recalls + vPIC), openFDA APIs; document in docs/data-sources.md; save fixtures.
 
 ## Done
-- T0.0, T0.1, T0.2 (Vitest 3 + rollup wasm override because Windows blocks native .node files; see FRICTION_LOG F1).
+- Phase 0 complete (T0.0-T0.3).
 
 ## Left
-- FEEDBACK.md and docs/manual-checklist.md templates; mark T0.3.
+- Call each endpoint from a script (scripts/ dir), save sample responses under packages/mcp-server/test/fixtures/, write docs/data-sources.md.
 
 ## Next step
-Write FEEDBACK.md and docs/manual-checklist.md, commit, then start T1.1 (data source research).
+Look up the CPSC Recalls Retrieval Web Services docs (cpsc.gov/Recalls/CPSC-Recalls-Application-Program-Interface-API-Information) and call it with a date filter.
