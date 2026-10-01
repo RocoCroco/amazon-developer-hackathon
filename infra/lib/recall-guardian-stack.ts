@@ -28,6 +28,7 @@ function findRepoRoot(from: string): string {
 const repoRoot = findRepoRoot(path.dirname(fileURLToPath(import.meta.url)));
 const lambdaEntry = path.join(repoRoot, 'packages/mcp-server/src/lambda.ts');
 const watcherEntry = path.join(repoRoot, 'packages/mcp-server/src/watcher-lambda.ts');
+const simulatorEntry = path.join(repoRoot, 'packages/simulator/src/lambda.ts');
 const lockFile = path.join(repoRoot, 'package-lock.json');
 
 export class RecallGuardianStack extends cdk.Stack {
@@ -103,6 +104,67 @@ export class RecallGuardianStack extends cdk.Stack {
     });
 
     new cdk.CfnOutput(this, 'WatcherFunctionName', { value: watcherFunction.functionName });
+
+    // The public simulator (the demo surface): UI + chat API on one Function URL. It keeps no state in
+    // memory (conversations and spending caps live in DynamoDB), so any number of containers can serve it.
+    const bedrockModel = 'anthropic.claude-haiku-4-5-20251001-v1:0';
+    const simulatorFunction = new NodejsFunction(this, 'SimulatorFunction', {
+      entry: simulatorEntry,
+      depsLockFilePath: lockFile,
+      handler: 'handler',
+      runtime: lambda.Runtime.NODEJS_22_X,
+      architecture: lambda.Architecture.ARM_64,
+      memorySize: 512,
+      timeout: cdk.Duration.seconds(60),
+      logGroup: new logs.LogGroup(this, 'SimulatorLogs', {
+        retention: logs.RetentionDays.ONE_WEEK,
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
+      }),
+      environment: {
+        TABLE_NAME: table.tableName,
+        DEMO_KEY_PARAM,
+        MCP_URL: `${url.url}mcp`,
+        WATCHER_FUNCTION: watcherFunction.functionName,
+        DAILY_TURNS: '600',
+        DAILY_SPEECH_CHARS: '120000',
+      },
+      bundling: { minify: true, sourceMap: false },
+    });
+    table.grantReadWriteData(simulatorFunction);
+    watcherFunction.grantInvoke(simulatorFunction);
+    simulatorFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['ssm:GetParameter'],
+        resources: [
+          cdk.Stack.of(this).formatArn({
+            service: 'ssm',
+            resource: 'parameter',
+            resourceName: DEMO_KEY_PARAM.slice(1),
+          }),
+        ],
+      }),
+    );
+    // One cheap Claude model, through the US cross-region inference profile.
+    simulatorFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['bedrock:InvokeModel'],
+        resources: [
+          `arn:aws:bedrock:*::foundation-model/${bedrockModel}`,
+          cdk.Stack.of(this).formatArn({
+            service: 'bedrock',
+            resource: 'inference-profile',
+            resourceName: `us.${bedrockModel}`,
+          }),
+        ],
+      }),
+    );
+    simulatorFunction.addToRolePolicy(
+      new iam.PolicyStatement({ actions: ['polly:SynthesizeSpeech'], resources: ['*'] }),
+    );
+    const simulatorUrl = simulatorFunction.addFunctionUrl({
+      authType: lambda.FunctionUrlAuthType.NONE,
+    });
+    new cdk.CfnOutput(this, 'SimulatorUrl', { value: simulatorUrl.url });
 
     new cdk.CfnOutput(this, 'McpUrl', { value: `${url.url}mcp` });
     new cdk.CfnOutput(this, 'TableName', { value: table.tableName });

@@ -85,33 +85,3 @@ export class PollySpeaker implements Speaker {
     return speech;
   }
 }
-
-/**
- * Spending guard for the public demo: each session may speak only so many characters, and the whole
- * process only so many per day. Polly neural is $16 per million characters (docs/costs.md).
- */
-export class SpeechBudget {
-  private readonly perSession = new Map<string, number>();
-  private day = '';
-  private today = 0;
-
-  constructor(
-    private readonly sessionChars = 6_000,
-    private readonly dailyChars = 120_000,
-    private readonly now: () => Date = () => new Date(),
-  ) {}
-
-  /** Records the use if it fits, and says whether it did. */
-  tryUse(sessionId: string, chars: number): boolean {
-    const today = this.now().toISOString().slice(0, 10);
-    if (today !== this.day) {
-      this.day = today;
-      this.today = 0;
-    }
-    const used = this.perSession.get(sessionId) ?? 0;
-    if (used + chars > this.sessionChars || this.today + chars > this.dailyChars) return false;
-    this.perSession.set(sessionId, used + chars);
-    this.today += chars;
-    return true;
-  }
-}

@@ -41,14 +41,23 @@ export class TurnLimitError extends Error {
 
 /** One conversation: message history, MCP connection, and limits. */
 export class Session {
-  readonly messages: Msg[] = [];
-  private turns = 0;
+  readonly messages: Msg[];
+  private turns: number;
 
+  /** `restore` rebuilds a conversation saved earlier (the Lambda keeps no memory between requests). */
   constructor(
     private readonly llm: Llm,
     private readonly mcp: McpTools,
     private readonly limits: Limits = DEFAULT_LIMITS,
-  ) {}
+    restore?: { messages: Msg[]; turns: number },
+  ) {
+    this.messages = restore ? [...restore.messages] : [];
+    this.turns = restore?.turns ?? 0;
+  }
+
+  get turnCount(): number {
+    return this.turns;
+  }
 
   async say(userText: string): Promise<TurnResult> {
     if (this.turns >= this.limits.maxTurns) throw new TurnLimitError();

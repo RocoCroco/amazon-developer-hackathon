@@ -3,3 +3,4 @@ package-lock.json
 *.md
 dist
 cdk.out
+packages/simulator/src/ui-assets.generated.ts

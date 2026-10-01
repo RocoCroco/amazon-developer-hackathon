@@ -3,7 +3,7 @@ import { mockClient } from 'aws-sdk-client-mock';
 import { sdkStreamMixin } from '@smithy/util-stream';
 import { Readable } from 'node:stream';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { clipForSpeech, PollySpeaker, SpeechBudget, toSsml } from './speech.js';
+import { clipForSpeech, PollySpeaker, toSsml } from './speech.js';
 
 describe('toSsml', () => {
   it('spells out model codes character by character', () => {
@@ -101,29 +101,5 @@ describe('PollySpeaker', () => {
     await expect(
       new PollySpeaker('Joanna', new PollyClient({ region: 'us-east-1' })).synthesize('Hi.'),
     ).rejects.toThrow(/no audio/);
-  });
-});
-
-describe('SpeechBudget', () => {
-  it('limits characters per session', () => {
-    const budget = new SpeechBudget(100, 10_000);
-    expect(budget.tryUse('a', 60)).toBe(true);
-    expect(budget.tryUse('a', 60)).toBe(false);
-    expect(budget.tryUse('b', 60)).toBe(true); // another session is unaffected
-  });
-
-  it('limits characters per day, and starts again the next day', () => {
-    let now = new Date('2026-10-01T10:00:00Z');
-    const budget = new SpeechBudget(1_000, 150, () => now);
-    expect(budget.tryUse('a', 100)).toBe(true);
-    expect(budget.tryUse('b', 100)).toBe(false);
-    now = new Date('2026-10-02T10:00:00Z');
-    expect(budget.tryUse('b', 100)).toBe(true);
-  });
-
-  it('does not charge for a request that was refused', () => {
-    const budget = new SpeechBudget(100, 10_000);
-    expect(budget.tryUse('a', 150)).toBe(false);
-    expect(budget.tryUse('a', 100)).toBe(true);
   });
 });

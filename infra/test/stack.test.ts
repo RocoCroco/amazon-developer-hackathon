@@ -84,7 +84,7 @@ describe('daily watcher', () => {
         { Type: string; Properties: { Timeout?: number } }
       >,
     ).filter((r) => r.Type === 'AWS::Lambda::Function' && r.Properties.Timeout !== undefined);
-    expect(functions).toHaveLength(2); // the MCP function and the watcher
+    expect(functions).toHaveLength(3); // the MCP function, the watcher and the simulator
   });
 
   it('runs once a day through EventBridge', () => {
@@ -96,12 +96,57 @@ describe('daily watcher', () => {
   });
 
   it('is not reachable from the internet (no Function URL on the watcher)', () => {
-    template.resourceCountIs('AWS::Lambda::Url', 1); // only the MCP function has one
+    template.resourceCountIs('AWS::Lambda::Url', 2); // the MCP function and the simulator, never the watcher
   });
 
-  it('can use the demo key parameter only from the MCP function', () => {
+  it('lets only the MCP function and the simulator read the demo key parameter', () => {
     const json = JSON.stringify(template.toJSON());
-    // The SSM read permission appears in exactly one policy.
-    expect(json.split('ssm:GetParameter').length - 1).toBe(1);
+    // The SSM read permission appears in exactly two policies.
+    expect(json.split('ssm:GetParameter').length - 1).toBe(2);
+  });
+});
+
+describe('public simulator', () => {
+  const template = synth();
+  const json = JSON.stringify(template.toJSON());
+
+  it('is a Lambda behind a Function URL that knows where everything is', () => {
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      Environment: {
+        Variables: Match.objectLike({
+          TABLE_NAME: Match.anyValue(),
+          MCP_URL: Match.anyValue(),
+          WATCHER_FUNCTION: Match.anyValue(),
+          DAILY_TURNS: '600',
+          DAILY_SPEECH_CHARS: '120000',
+        }),
+      },
+    });
+  });
+
+  it('may call Polly, one Claude model and the watcher, and nothing wider', () => {
+    expect(json).toContain('polly:SynthesizeSpeech');
+    expect(json).toContain('bedrock:InvokeModel');
+    expect(json).toContain('anthropic.claude-haiku-4-5-20251001-v1:0');
+    expect(json).toContain('lambda:InvokeFunction');
+    // No "everything" action in any policy statement (resource ARNs may use wildcards, actions may not).
+    const actions = Object.values(
+      template.toJSON().Resources as Record<
+        string,
+        {
+          Type: string;
+          Properties: { PolicyDocument?: { Statement: { Action: string | string[] }[] } };
+        }
+      >,
+    )
+      .filter((r) => r.Type === 'AWS::IAM::Policy')
+      .flatMap((r) => r.Properties.PolicyDocument!.Statement.flatMap((s) => [s.Action].flat()));
+    expect(actions.length).toBeGreaterThan(5);
+    expect(actions.filter((a) => a === '*' || /^[a-z0-9-]+:\*$/.test(a))).toEqual([]);
+  });
+
+  it('has the daily spending caps wired in', () => {
+    expect(json).toContain('DAILY_TURNS');
+    expect(json).toContain('DAILY_SPEECH_CHARS');
   });
 });

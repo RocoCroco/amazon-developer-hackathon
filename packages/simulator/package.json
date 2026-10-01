@@ -12,6 +12,7 @@
     "@aws-sdk/client-bedrock-runtime": "^3.1144.0",
     "@aws-sdk/client-lambda": "^3.1144.0",
     "@aws-sdk/client-polly": "^3.1144.0",
+    "@aws-sdk/client-ssm": "^3.1144.0",
     "@modelcontextprotocol/sdk": "^1.31.0"
   },
   "devDependencies": {

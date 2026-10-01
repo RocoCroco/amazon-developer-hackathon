@@ -13,7 +13,7 @@ import { InMemoryItemStore } from '../../mcp-server/src/store.js';
 import { runWatcher } from '../../mcp-server/src/watcher.js';
 import { RuleBasedLlm } from './mock-brain.js';
 import { startSimulator } from './server.js';
-import { SpeechBudget, type Speaker } from './speech.js';
+import type { Speaker } from './speech.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const heaters = (
@@ -51,7 +51,6 @@ beforeAll(async () => {
     llm: () => new RuleBasedLlm(),
     staticDir: path.resolve(here, '../public'),
     speaker,
-    speechBudget: new SpeechBudget(100_000, 1_000_000),
   });
   appUrl = sim.url;
   stopAll = async () => {
