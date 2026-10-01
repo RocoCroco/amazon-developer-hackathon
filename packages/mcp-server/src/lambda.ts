@@ -2,7 +2,13 @@ import { GetParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
 import { DynamoAlertStore } from './dynamo-alerts.js';
 import { createDocClient, DynamoItemStore } from './dynamo-store.js';
 import { createMcpHandler } from './handler.js';
+import { DynamoRecallStore } from './recalls/dynamo-recall-store.js';
 import { CpscRecallProvider } from './recalls/provider.js';
+import {
+  CompositeRecallProvider,
+  NhtsaVehicleProvider,
+  StoreRecallProvider,
+} from './recalls/providers.js';
 
 /** The parts of a Lambda Function URL event (payload v2) that we use. */
 export interface FunctionUrlEvent {
@@ -80,7 +86,17 @@ function getHandler(): Promise<McpHandler> {
     return createMcpHandler({
       store: new DynamoItemStore(db, table),
       alerts: new DynamoAlertStore(db, table),
-      recalls: new CpscRecallProvider(),
+      // Live CPSC (consumer products) + live NHTSA lookup (vehicles) + the cache the daily watcher keeps
+      // (child seats, equipment, tires, food, drugs).
+      recalls: new CompositeRecallProvider(
+        [
+          new CpscRecallProvider(),
+          new NhtsaVehicleProvider(),
+          new StoreRecallProvider(new DynamoRecallStore(db, table)),
+        ],
+        (error) =>
+          console.warn('recall source failed:', error instanceof Error ? error.message : error),
+      ),
       demoKey: await readDemoKey(keyParam),
     });
   })();

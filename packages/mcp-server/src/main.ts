@@ -1,4 +1,5 @@
 import { CpscRecallProvider } from './recalls/provider.js';
+import { CompositeRecallProvider, NhtsaVehicleProvider } from './recalls/providers.js';
 import { startNodeServer } from './node-server.js';
 import { InMemoryItemStore } from './store.js';
 
@@ -6,7 +7,7 @@ import { InMemoryItemStore } from './store.js';
 const server = await startNodeServer(
   {
     store: new InMemoryItemStore(),
-    recalls: new CpscRecallProvider(),
+    recalls: new CompositeRecallProvider([new CpscRecallProvider(), new NhtsaVehicleProvider()]),
     demoKey: process.env.DEMO_KEY,
   },
   Number(process.env.PORT ?? 8788),

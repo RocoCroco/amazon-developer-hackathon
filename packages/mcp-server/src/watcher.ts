@@ -2,6 +2,7 @@ import type { AlertStore } from './alerts.js';
 import { checkItems, recordAlerts } from './household-check.js';
 import type { Confirmer } from './matcher/confirm.js';
 import type { RecallStore } from './recalls/cache.js';
+import { nhtsaFlatFeed, type OpenZip } from './recalls/flatfile.js';
 import { StaticRecallProvider } from './recalls/provider.js';
 import { isoDay, syncFeed, type Feed, type SyncResult } from './recalls/sync.js';
 import type { Recall } from './recalls/types.js';
@@ -131,4 +132,31 @@ export async function runWatcher(
   }
   result.alertsCreated = result.created.length;
   return result;
+}
+
+export interface BackfillResult {
+  fetched: number;
+  added: number;
+  updated: number;
+  unchanged: number;
+}
+
+/**
+ * One-time load of EVERY child-seat recall into the cache (about 150 recalls since 1967). The daily sync
+ * only brings what is new, but an owner may register a seat recalled years ago. Does not touch the sync
+ * cursors and raises no alerts: these recalls are history, check_item reports them on request.
+ */
+export async function backfillChildSeats(
+  recalls: RecallStore,
+  open?: OpenZip,
+  now: () => Date = () => new Date(),
+): Promise<BackfillResult> {
+  const all = await nhtsaFlatFeed(open, ['C']).fetchSince('1900-01-01', isoDay(now()));
+  const r = await recalls.upsert(all);
+  return {
+    fetched: all.length,
+    added: r.added.length,
+    updated: r.updated.length,
+    unchanged: r.unchanged,
+  };
 }

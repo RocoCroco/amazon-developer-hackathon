@@ -60,12 +60,16 @@ export function firstZipEntry(zip: Readable): Readable {
 }
 
 /** Rows of the flat file received on or after `since` (YYYY-MM-DD), read line by line. */
-export async function readFlatRowsSince(zip: Readable, since: string): Promise<FlatRow[]> {
+export async function readFlatRowsSince(
+  zip: Readable,
+  since: string,
+  types?: FlatRow['type'][],
+): Promise<FlatRow[]> {
   const rows: FlatRow[] = [];
   const lines = createInterface({ input: firstZipEntry(zip), crlfDelay: Infinity });
   for await (const line of lines) {
     const row = parseFlatLine(line);
-    if (row && row.received >= since) rows.push(row);
+    if (row && row.received >= since && (!types || types.includes(row.type))) rows.push(row);
   }
   return rows;
 }
@@ -79,12 +83,15 @@ export const openNhtsaZip: OpenZip = async () => {
   return Readable.fromWeb(res.body as never);
 };
 
-/** Incremental feed over the daily NHTSA file: child seats, equipment, tires and vehicles. */
-export function nhtsaFlatFeed(open: OpenZip = openNhtsaZip): Feed {
+/**
+ * Incremental feed over the daily NHTSA file: child seats (C), equipment (E), tires (T) and vehicles (V).
+ * `types` restricts it, e.g. ['C'] for the one-time child-seat backfill.
+ */
+export function nhtsaFlatFeed(open: OpenZip = openNhtsaZip, types?: FlatRow['type'][]): Feed {
   return {
     id: 'nhtsa-flat',
     async fetchSince(since): Promise<Recall[]> {
-      return flatRowsToRecalls(await readFlatRowsSince(await open(), since));
+      return flatRowsToRecalls(await readFlatRowsSince(await open(), since, types));
     },
   };
 }
