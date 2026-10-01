@@ -1,6 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
+import type { Confirmer } from './matcher/confirm.js';
 import type { RecallProvider } from './recalls/provider.js';
 import type { ItemStore } from './store.js';
 import { registerTools } from './tools.js';
@@ -9,6 +10,8 @@ import { SERVER_NAME, SERVER_VERSION } from './version.js';
 export interface McpDeps {
   store: ItemStore;
   recalls: RecallProvider;
+  /** Optional LLM second opinion on matches (off when absent). */
+  confirmer?: Confirmer;
   /** When set, every request must send `Authorization: Bearer <demoKey>`. */
   demoKey?: string;
 }
@@ -46,7 +49,12 @@ export function createMcpHandler(deps: McpDeps): (req: Request) => Promise<Respo
     }
 
     const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION });
-    registerTools(server, { householdId, store: deps.store, recalls: deps.recalls });
+    registerTools(server, {
+      householdId,
+      store: deps.store,
+      recalls: deps.recalls,
+      confirmer: deps.confirmer,
+    });
     const transport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
       enableJsonResponse: true,

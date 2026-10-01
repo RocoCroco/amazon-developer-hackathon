@@ -1,4 +1,4 @@
-import type { Match } from './matcher/match.js';
+import type { ConfirmedMatch } from './matcher/confirm.js';
 import type { Item } from './matcher/match.js';
 
 /** Spoken name of an item: "Govee H7131 space heater". Model codes are spaced out for speech. */
@@ -34,7 +34,7 @@ const QUESTIONS = {
 } as const;
 
 /** Spoken one-liner for a check result. Never claims a match we are not sure about. */
-export function spokenCheckSummary(item: Item, matches: Match[]): string {
+export function spokenCheckSummary(item: Item, matches: ConfirmedMatch[]): string {
   const what = spokenItem(item);
   const best = matches[0];
   if (!best) {
@@ -44,6 +44,6 @@ export function spokenCheckSummary(item: Item, matches: Match[]): string {
   if (best.level === 'strong') {
     return `Your ${what} is recalled. ${hazard}`;
   }
-  const question = QUESTIONS[best.missing[0] ?? 'model'];
+  const question = best.question ?? QUESTIONS[best.missing[0] ?? 'model'];
   return `There is a recall for a similar item, and I need one more detail to be sure. ${question}`;
 }

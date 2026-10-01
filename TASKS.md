@@ -28,7 +28,7 @@ Target: thin end-to-end slice (Phase 1) working by ~day 7 (Oct 8), then widen.
 
 ## Phase 3 — Matching (technical core)
 - [x] T3.1 Full normalization + fuzzy matching (brands, model numbers, years, date ranges). Test set of ≥50 item/recall pairs from real fixtures, including hard negatives (same brand, different model). **Done when:** precision ≥95% on the set, recall also reported, results in `docs/matcher-results.md`.
-- [ ] T3.2 LLM confirmation via Bedrock returning {match, confidence, reason, clarifying_question}; cheapest suitable Claude model for dev (verify model IDs available in the account); results cached per item–recall pair. **Done when:** tests with mocked Bedrock pass, precision does not drop; one real call verified (or BLOCKERS.md entry if access is not yet enabled).
+- [!] T3.2 (code + mocked tests + cache + downgrade-only rule done; real Bedrock call blocked by B1 - run `npm run test:live`) LLM confirmation via Bedrock returning {match, confidence, reason, clarifying_question}; cheapest suitable Claude model for dev (verify model IDs available in the account); results cached per item–recall pair. **Done when:** tests with mocked Bedrock pass, precision does not drop; one real call verified (or BLOCKERS.md entry if access is not yet enabled).
 - [ ] T3.3 Clarifying-question flow when confidence is low. **Done when:** tests cover "unknown model", "ambiguous brand", "wrong year".
 
 ## Phase 4 — Full MCP tool set

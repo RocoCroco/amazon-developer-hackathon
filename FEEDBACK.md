@@ -52,3 +52,8 @@ Template per entry: **What worked / What didn't / Suggestion**.
 ## NHTSA flat file (T2.1 notes)
 - One row per make x model, with the campaign's prose repeated on every row; grouping by campaign number is required. Manufacturing windows are in BGMAN/ENDMAN only for some rows; otherwise only in prose. When both exist they can differ by a day (column 2010-04-10 vs prose "April 9"); we trust the column.
 - openFDA: `recall_number` is sometimes the string "N/A" (in both food and drug feeds), so it is not a safe primary key; use `event_id`. Documentation does not mention it.
+
+## Amazon Bedrock (T1.7 / T3.2 notes)
+- `list-foundation-models` shows models as ACTIVE even when the account cannot invoke them; the actual blocker only appears at invoke time ("Model use case details have not been submitted for this account", or "not available for this account" for newer models). A "can I invoke this model?" check in the console/CLI would save a lot of guessing.
+- Access flipped from working to failing within minutes with no change on our side (FRICTION_LOG F6).
+- Converse API is pleasant: same request shape for tool use and plain prompts; `temperature: 0` plus a JSON-only system prompt gives parseable output with a tolerant parser (we still handle fenced or chatty replies).

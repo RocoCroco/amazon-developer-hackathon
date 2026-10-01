@@ -1,7 +1,8 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
-import { findMatches, type Item, type Match } from './matcher/match.js';
+import { confirmMatches, type ConfirmedMatch, type Confirmer } from './matcher/confirm.js';
+import { findMatches, type Item } from './matcher/match.js';
 import type { RecallProvider } from './recalls/provider.js';
 import type { ItemStore } from './store.js';
 import { firstSentence, spokenCheckSummary, spokenItem } from './voice.js';
@@ -10,6 +11,8 @@ export interface ToolContext {
   householdId: string;
   store: ItemStore;
   recalls: RecallProvider;
+  /** Optional second opinion from a language model; downgrade-only (see matcher/confirm.ts). */
+  confirmer?: Confirmer;
 }
 
 /**
@@ -34,7 +37,7 @@ const itemFields = {
   year: z.number().int().min(1950).max(2100).optional().describe('Year made or bought, if known'),
 };
 
-function matchSummary(m: Match) {
+function matchSummary(m: ConfirmedMatch) {
   return {
     recall_id: m.recall.id,
     confidence: m.level,
@@ -49,6 +52,7 @@ function matchSummary(m: Match) {
     details: m.recall.summary.slice(0, 600),
     reasons: m.reasons,
     still_needed: m.missing,
+    second_opinion: m.verdict?.reason,
   };
 }
 
@@ -60,7 +64,10 @@ async function check(item: Item, ctx: ToolContext) {
     });
   }
   const candidates = await ctx.recalls.candidates(item);
-  const matches = findMatches(item, candidates);
+  const found = findMatches(item, candidates);
+  const matches: ConfirmedMatch[] = ctx.confirmer
+    ? await confirmMatches(item, found, ctx.confirmer)
+    : found;
   const best = matches[0];
   const status = !best ? 'no_recall' : best.level === 'strong' ? 'recalled' : 'need_info';
   return reply(spokenCheckSummary(item, matches), {
