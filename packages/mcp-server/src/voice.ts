@@ -30,6 +30,7 @@ export function firstSentence(text: string, maxChars = 160): string {
 const QUESTIONS = {
   model: 'What is the model number? It is usually on a sticker on the bottom or back.',
   year: 'About what year was it made or bought?',
+  lot: 'Please read me the lot or date code printed on the package, so I can compare it with the recall.',
 } as const;
 
 /** Spoken one-liner for a check result. Never claims a match we are not sure about. */

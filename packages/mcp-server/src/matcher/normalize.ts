@@ -32,12 +32,17 @@ export function normalizeText(value: string): string {
     .trim();
 }
 
-/** Canonical brand string: normalized, corporate suffixes dropped, aliases applied. */
-export function normalizeBrand(value: string): string {
-  const stripped = normalizeText(value)
+/** Removes corporate filler (inc, llc, the, and...) from already normalized text. */
+export function dropCorporate(normalized: string): string {
+  return normalized
     .split(' ')
     .filter((w) => w && !CORPORATE_WORDS.has(w))
     .join(' ');
+}
+
+/** Canonical brand string: normalized, corporate suffixes dropped, aliases applied. */
+export function normalizeBrand(value: string): string {
+  const stripped = dropCorporate(normalizeText(value));
   return BRAND_ALIASES[stripped] ?? stripped;
 }
 

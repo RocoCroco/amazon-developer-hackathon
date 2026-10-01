@@ -50,3 +50,9 @@ Format: what I tried / what I expected / what happened / how I solved it.
 - Expected: every recall gets its own id.
 - Happened: the live sync reported 69 "added" for 70 fetched. Some records have `recall_number: "N/A"` in BOTH the food and drug endpoints (a mayonnaise packet and a nystatin cream shared the id `fda:N/A`), so unrelated recalls were merged and silently overwritten.
 - Solved: `recallKey()` falls back to `event_id`, then to a content hash; regression test with the real shape. Found only because the opt-in live test (`npm run test:live`) runs against real data; the fixtures alone did not show it.
+
+## F9 - Hand-written labels agreed with the matcher too easily (2026-10-01)
+- Tried: a 69-item hand-labeled set over a 1,313-recall real corpus to measure matcher precision.
+- Expected: labels would be an independent yardstick.
+- Happened: the first run scored 90.6% precision; reviewing disagreements, 3 were wrong labels (e.g. a grill-brush model listed in two recalls, tire recalls that need a production year) and 3 were real over-claims. Because I fixed labels while looking at matcher output, the hand-labeled 100% is optimistic. A second, generated set (432 items, 567k pairs, expectations from a coverage policy over the structured fields) found four more real bugs the hand set had missed (production window applied to vehicles, "F-150" matching "F-150 Lightning", filler words in brand names, model-year vs made-year for seats).
+- Solved: both sets stay in the test suite, results and the correction history are in docs/matcher-results.md, and the doc says which number is independent.

@@ -143,16 +143,28 @@ describe('NHTSA flat file adapter', () => {
     expect(flatRowsToRecalls([]).length).toBe(0);
   });
 
-  it('finds a Graco car seat recall from brand + model', () => {
-    const hit = findMatches({ name: 'car seat', brand: 'Graco', model: 'SnugRide' }, flatRecalls);
+  it('finds a Graco car seat recall from brand + model + year', () => {
+    const item = { name: 'car seat', brand: 'Graco', model: 'SnugRide', year: 2012 };
+    const hit = findMatches(item, flatRecalls);
     expect(hit.map((m) => m.recall.sourceId)).toEqual(['14C004000']);
     expect(hit[0]?.level).toBe('strong');
   });
 
-  it('asks for the model when the user only knows the brand', () => {
+  it('asks for the year when the recall covers a manufacturing window', () => {
+    const hit = findMatches({ name: 'car seat', brand: 'Graco', model: 'SnugRide' }, flatRecalls);
+    expect(hit[0]?.level).toBe('possible');
+    expect(hit[0]?.missing).toEqual(['year']);
+  });
+
+  it('rejects a seat made outside the recalled window', () => {
+    const item = { name: 'car seat', brand: 'Graco', model: 'SnugRide', year: 2016 };
+    expect(findMatches(item, flatRecalls)).toEqual([]);
+  });
+
+  it('asks for the model (and year) when the user only knows the brand', () => {
     const hit = findMatches({ name: 'car seat', brand: 'Graco' }, flatRecalls);
     expect(hit[0]?.level).toBe('possible');
-    expect(hit[0]?.missing).toEqual(['model']);
+    expect(hit[0]?.missing).toEqual(['model', 'year']);
   });
 
   it('hard negatives: other Graco model, other product type', () => {

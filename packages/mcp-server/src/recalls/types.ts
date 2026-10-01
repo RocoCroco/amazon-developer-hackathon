@@ -12,6 +12,8 @@ export interface RecalledProduct {
   models: string[];
   /** Model years this product line covers, when the source states them per product. */
   years?: number[];
+  /** Leading characters shared by affected model numbers ("model numbers beginning with 310"). */
+  modelPrefixes?: string[];
 }
 
 /** Normalized recall shared by all source adapters. */

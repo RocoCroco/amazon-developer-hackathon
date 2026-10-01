@@ -45,6 +45,8 @@ function matchSummary(m: Match) {
     contact: m.recall.contact,
     published: m.recall.publishedAt,
     url: m.recall.url,
+    product: m.product,
+    details: m.recall.summary.slice(0, 600),
     reasons: m.reasons,
     still_needed: m.missing,
   };

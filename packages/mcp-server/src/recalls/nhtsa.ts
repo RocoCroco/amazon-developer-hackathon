@@ -1,4 +1,4 @@
-import { extractDateRange, toIsoDate } from './text.js';
+import { extractDateRange, extractModelNumbers, extractModelPrefixes, toIsoDate } from './text.js';
 import type { FetchLike } from './cpsc.js';
 import type { Recall, RecallCategory, RecalledProduct, RemedyOption } from './types.js';
 
@@ -190,6 +190,13 @@ export function flatRowsToRecalls(rows: FlatRow[]): Recall[] {
       if (r.model && !product.models.includes(r.model)) product.models.push(r.model);
       if (r.year && !product.years!.includes(r.year)) product.years!.push(r.year);
       products.set(key, product);
+    }
+    // Model numbers and prefixes named only in the prose apply to the whole campaign.
+    const textModels = extractModelNumbers(first.defect);
+    const prefixes = extractModelPrefixes(first.defect);
+    for (const product of products.values()) {
+      for (const m of textModels) if (!product.models.includes(m)) product.models.push(m);
+      if (prefixes.length) product.modelPrefixes = prefixes;
     }
     const window =
       first.begin && first.end

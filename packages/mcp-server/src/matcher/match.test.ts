@@ -87,13 +87,126 @@ describe('deterministic matcher', () => {
     expect(m[0]?.recall.title).toMatch(/Yuyitop/);
   });
 
-  it('requires the model year to be covered when the recall states years', () => {
-    const recall: Recall = { ...heaters[0]!, years: [2019, 2020] };
-    const item: Item = { name: 'space heater', brand: 'Govee', model: 'H7130' };
-    expect(matchItem({ ...item, year: 2021 }, recall)).toBeNull();
-    expect(matchItem({ ...item, year: 2020 }, recall)?.level).toBe('strong');
-    const unknownYear = matchItem(item, recall);
-    expect(unknownYear?.level).toBe('possible');
-    expect(unknownYear?.missing).toEqual(['year']);
+  describe('vehicles: model years per product line', () => {
+    const vehicle: Recall = {
+      ...heaters[0]!,
+      id: 'nhtsa:T1',
+      category: 'vehicle',
+      title: 'Toyota recall: Fuel pump',
+      brands: ['Toyota'],
+      products: [
+        { name: 'Toyota Camry', models: ['CAMRY'], years: [2018, 2019, 2020] },
+        { name: 'Toyota Tacoma', models: ['TACOMA'], years: [2017, 2018] },
+      ],
+      years: [2017, 2018, 2019, 2020],
+    };
+    const camry: Item = { name: 'car', brand: 'Toyota', model: 'Camry' };
+
+    it('requires the year of the matching product line, not of the whole campaign', () => {
+      expect(matchItem({ ...camry, year: 2020 }, vehicle)?.level).toBe('strong');
+      expect(matchItem({ ...camry, year: 2017 }, vehicle)).toBeNull(); // Tacoma-only year
+      expect(matchItem({ ...camry, model: 'Tacoma', year: 2017 }, vehicle)?.level).toBe('strong');
+    });
+
+    it('asks for the year when it is unknown', () => {
+      const m = matchItem(camry, vehicle);
+      expect(m?.level).toBe('possible');
+      expect(m?.missing).toEqual(['year']);
+    });
+
+    it('ignores the production window: the item year is the model year', () => {
+      const built = { ...vehicle, manufacturedFrom: '2025-02-25', manufacturedTo: '2025-04-03' };
+      expect(matchItem({ ...camry, year: 2019 }, built)?.level).toBe('strong');
+    });
+
+    it('does not call a longer model name an exact match ("F-150" vs "F-150 Lightning")', () => {
+      const f150: Recall = {
+        ...vehicle,
+        brands: ['Ford'],
+        title: 'Ford recall',
+        products: [{ name: 'Ford F-150 Lightning', models: ['F-150 LIGHTNING'], years: [2025] }],
+        years: [2025],
+      };
+      const m = matchItem({ name: 'truck', brand: 'Ford', model: 'F-150', year: 2025 }, f150);
+      expect(m?.level).toBe('possible');
+      expect(m?.missing).toEqual(['model']);
+    });
+  });
+
+  it('matches brands that contain filler words ("Fun and Function")', () => {
+    const recall: Recall = {
+      ...heaters[0]!,
+      brands: ['Fun and Function'],
+      title: 'Fun and Function Recalls Swing Frames',
+      products: [{ name: 'Swing Frames', models: ['MW7661'] }],
+    };
+    const item: Item = { name: 'swing frame', brand: 'Fun and Function', model: 'MW7661' };
+    expect(matchItem(item, recall)?.level).toBe('strong');
+  });
+
+  describe('child seats, tires and equipment', () => {
+    const seat: Recall = {
+      ...heaters[0]!,
+      id: 'nhtsa:S1',
+      category: 'car_seat',
+      title: 'Acme child car seat recall',
+      brands: ['Acme'],
+      products: [{ name: 'Acme Roadster', models: ['ROADSTER'], years: [2009] }],
+      years: [2009],
+      manufacturedFrom: '2008-05-01',
+      manufacturedTo: '2009-04-30',
+    };
+    const item: Item = { name: 'car seat', brand: 'Acme', model: 'Roadster' };
+
+    it('is confident only when the item year verifies the production window', () => {
+      expect(matchItem({ ...item, year: 2008 }, seat)?.level).toBe('strong');
+      const noYear = matchItem(item, seat);
+      expect(noYear?.level).toBe('possible');
+      expect(noYear?.missing).toEqual(['year']);
+      expect(matchItem({ ...item, year: 2012 }, seat)).toBeNull();
+    });
+
+    it('uses only the production window, not the model-year column of the file', () => {
+      // The row says model year 2009 but the seat was made in 2008: still inside the window.
+      expect(matchItem({ ...item, year: 2008 }, seat)).not.toBeNull();
+    });
+
+    it('does not call a name-only match confident without a window', () => {
+      const open = { ...seat, manufacturedFrom: undefined, manufacturedTo: undefined };
+      expect(matchItem({ ...item, year: 2008 }, open)?.level).toBe('possible');
+    });
+
+    it('is confident without a window when the user gives a code printed on the seat', () => {
+      const coded: Recall = {
+        ...seat,
+        manufacturedFrom: undefined,
+        manufacturedTo: undefined,
+        products: [{ name: 'Acme Roadster', models: ['ROADSTER E9L692L COWMOO'] }],
+      };
+      expect(matchItem({ ...item, model: 'E9L692L' }, coded)?.level).toBe('strong');
+      expect(matchItem({ ...item, model: 'Roadster' }, coded)?.level).toBe('possible');
+    });
+  });
+
+  describe('food and drugs', () => {
+    const drug: Recall = {
+      ...heaters[0]!,
+      id: 'fda:D1',
+      category: 'drug',
+      title: 'Safecor Health recalls Fluphenazine HCl Elixir',
+      brands: ['Safecor Health'],
+      products: [{ name: 'Fluphenazine HCl Elixir, USP, 5 mg per mL, Oral Elixir', models: [] }],
+      years: [],
+    };
+
+    it('never claims a match: the lot code is only on the package', () => {
+      const m = matchItem({ name: 'fluphenazine elixir', brand: 'Safecor Health' }, drug);
+      expect(m?.level).toBe('possible');
+      expect(m?.missing).toEqual(['lot']);
+    });
+
+    it('does not mix up dosage forms of the same drug', () => {
+      expect(matchItem({ name: 'fluphenazine tablets', brand: 'Safecor Health' }, drug)).toBeNull();
+    });
   });
 });

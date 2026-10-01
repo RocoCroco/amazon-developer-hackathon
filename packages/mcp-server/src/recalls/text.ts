@@ -101,3 +101,18 @@ export function extractDateRange(text: string): { from: string; to: string } | u
     to: iso(y2, m2, d2 ? Number(d2) : lastDayOf(y2, m2)),
   };
 }
+
+/**
+ * Model-number prefixes from prose like "model numbers beginning with 310" -> ['310'].
+ * A prefix needs a digit, so words are never mistaken for prefixes.
+ */
+export function extractModelPrefixes(text: string): string[] {
+  const found = new Set<string>();
+  const pattern =
+    /\bmodel(?:\s+(?:numbers?|nos?\.?))?\s+(?:beginning|starting)\s+with\s+([A-Z0-9-]{2,})/gi;
+  for (const m of text.matchAll(pattern)) {
+    const prefix = m[1]?.toUpperCase();
+    if (prefix && /\d/.test(prefix)) found.add(prefix);
+  }
+  return [...found];
+}
