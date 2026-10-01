@@ -44,3 +44,9 @@ Format: what I tried / what I expected / what happened / how I solved it.
 - Expected: regex source preserved byte for byte.
 - Happened: `\b` became a literal backspace character (code 8) and `\s`, `\.`, `\d` lost their backslash, so a regex silently matched nothing (no error, invisible in the editor). Edit-tool matching against the displayed text failed for the same reason.
 - Solved: write regex-bearing code only with the file Write/Edit tools; to repair, rebuilt the line with `String.fromCharCode(92)` and verified by char codes. Added a unit test per regex (extractDateRange) so this class of bug fails loudly.
+
+## F8 - openFDA records with recall_number "N/A" collapsed unrelated recalls (2026-10-01)
+- Tried: grouping per-product openFDA records by `recall_number` (fixtures looked fine) and syncing the real feeds into one cache.
+- Expected: every recall gets its own id.
+- Happened: the live sync reported 69 "added" for 70 fetched. Some records have `recall_number: "N/A"` in BOTH the food and drug endpoints (a mayonnaise packet and a nystatin cream shared the id `fda:N/A`), so unrelated recalls were merged and silently overwritten.
+- Solved: `recallKey()` falls back to `event_id`, then to a content hash; regression test with the real shape. Found only because the opt-in live test (`npm run test:live`) runs against real data; the fixtures alone did not show it.

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { findMatches } from '../matcher/match.js';
-import { fetchOpenFdaRecalls, fromOpenFda, type OpenFdaRecord } from './openfda.js';
+import { fetchOpenFdaRecalls, fromOpenFda, recallKey, type OpenFdaRecord } from './openfda.js';
 
 const load = (name: string): OpenFdaRecord[] =>
   (
@@ -49,6 +49,33 @@ describe('openFDA adapter', () => {
     const first = recalls.find((r) => r.sourceId === food[0]!.recall_number)!;
     expect(first.products).toHaveLength(2);
     expect(first.summary).toMatch(/Another sprout mix/);
+  });
+
+  it('does not merge unrelated records whose recall number is "N/A" (seen in live data)', () => {
+    const mayo = {
+      ...food[0]!,
+      recall_number: 'N/A',
+      event_id: '111',
+      product_description: 'Heinz Mayonnaise packet',
+    };
+    const cream = {
+      ...drug[0]!,
+      recall_number: 'N/A',
+      event_id: '222',
+      product_description: 'Nystatin Cream, 15 g',
+    };
+    const noIds = { ...food[1]!, recall_number: undefined, event_id: undefined };
+    const recalls = [...fromOpenFda([mayo], 'food'), ...fromOpenFda([cream], 'drug')];
+    expect(recalls.map((r) => r.id)).toEqual(['fda:event-111', 'fda:event-222']);
+    // Same feed, several N/A records: one recall each, not one merged recall.
+    expect(fromOpenFda([mayo, { ...mayo, event_id: '333' }], 'food')).toHaveLength(2);
+    // Records of one event still group together.
+    expect(
+      fromOpenFda([mayo, { ...mayo, product_description: 'Heinz Ketchup' }], 'food'),
+    ).toHaveLength(1);
+    // No number and no event id: falls back to a content hash that is stable between runs.
+    expect(recallKey(noIds)).toMatch(/^hash-[0-9a-f]{16}$/);
+    expect(recallKey(noIds)).toBe(recallKey({ ...noIds }));
   });
 
   it('matches a food item by brand and product, and rejects other brands', () => {

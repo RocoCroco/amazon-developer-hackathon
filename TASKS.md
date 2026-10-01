@@ -24,7 +24,7 @@ Target: thin end-to-end slice (Phase 1) working by ~day 7 (Oct 8), then widen.
 ## Phase 2 — Widen the data
 - [x] T2.1 NHTSA adapter (vehicles + car seats/equipment) + VIN decode. Car seat recall must be findable from brand + model. **Done when:** unit tests pass on fixtures.
 - [x] T2.2 openFDA adapter (food + drugs). **Done when:** unit tests pass on fixtures.
-- [ ] T2.3 Recall cache with incremental fetch. For sources without "since date" (likely NHTSA), design per-item re-query or bulk files. **Done when:** tests prove no duplicate recalls and correct incremental behavior per source.
+- [x] T2.3 Recall cache with incremental fetch. For sources without "since date" (likely NHTSA), design per-item re-query or bulk files. **Done when:** tests prove no duplicate recalls and correct incremental behavior per source.
 
 ## Phase 3 — Matching (technical core)
 - [ ] T3.1 Full normalization + fuzzy matching (brands, model numbers, years, date ranges). Test set of ≥50 item/recall pairs from real fixtures, including hard negatives (same brand, different model). **Done when:** precision ≥95% on the set, recall also reported, results in `docs/matcher-results.md`.

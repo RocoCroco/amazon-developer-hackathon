@@ -65,3 +65,8 @@ responses are in `packages/mcp-server/test/fixtures/`). None needs an API key.
 | openFDA | yes (`report_date`) | fetch since last run |
 | NHTSA vehicles (API) | no | re-query per registered vehicle (make/model/year), cache by campaign number |
 | NHTSA car seats/equipment/tires | via flat file RCDATE | stream daily flat file, filter by RCDATE |
+
+## Implementation notes (T2.1-T2.3)
+- **openFDA ids:** `recall_number` can be `"N/A"` (food and drug). We key recalls by recall number, else `event_id`, else a content hash (`recallKey` in `openfda.ts`).
+- **NHTSA flat file:** streamed with `node:zlib` only (`flatfile.ts`): the zip's first entry is inflated on the fly, so the 311 MB file is never held in memory. A real run over the last 30 days takes ~3.6 s and yields ~63 campaigns. Rows of one campaign are grouped into one recall.
+- **Incremental sync:** `syncFeed` pulls from (cursor - 3 days) to today, upserts by id, then advances the cursor. Re-fetched overlap counts as `unchanged`; only never-seen ids are `added` (the watcher alerts on those); a failed fetch keeps the cursor.

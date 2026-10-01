@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { FetchLike } from './cpsc.js';
 import { toIsoDate } from './text.js';
 import type { Recall, RecallCategory, Severity } from './types.js';
@@ -8,7 +9,9 @@ const CATEGORY: Record<OpenFdaKind, RecallCategory> = { food: 'food', drug: 'dru
 
 /** Subset of an openFDA enforcement report (see docs/data-sources.md). One record per product. */
 export interface OpenFdaRecord {
-  recall_number: string;
+  /** Usually "H-1339-2026", but openFDA sometimes returns "N/A" or nothing. */
+  recall_number?: string;
+  event_id?: string;
   recalling_firm?: string;
   product_description?: string;
   reason_for_recall?: string;
@@ -41,11 +44,23 @@ const clip = (text: string, max: number) =>
 const titleOf = (firm: string, description: string) =>
   `${firm || 'Company'} recalls ${clip(description.split(/[.,;]/)[0] ?? description, 90)}`;
 
-/** Groups per-product records into one Recall per recall number. */
+/**
+ * Stable key of the recall a record belongs to. The recall number is preferred; openFDA also has
+ * records whose number is "N/A" (seen in both the food and drug feeds), which must NOT be merged with
+ * each other, so those fall back to the event id and finally to a hash of the record's content.
+ */
+export function recallKey(r: OpenFdaRecord): string {
+  const number = (r.recall_number ?? '').trim();
+  if (number && number.toUpperCase() !== 'N/A') return number;
+  if (r.event_id) return `event-${r.event_id}`;
+  const content = `${r.recalling_firm}|${r.product_description}|${r.report_date}`;
+  return `hash-${createHash('sha256').update(content).digest('hex').slice(0, 16)}`;
+}
+
+/** Groups per-product records into one Recall per recall. */
 export function fromOpenFda(records: OpenFdaRecord[], kind: OpenFdaKind): Recall[] {
   const byNumber = new Map<string, OpenFdaRecord[]>();
-  for (const r of records)
-    byNumber.set(r.recall_number, [...(byNumber.get(r.recall_number) ?? []), r]);
+  for (const r of records) byNumber.set(recallKey(r), [...(byNumber.get(recallKey(r)) ?? []), r]);
 
   return [...byNumber.entries()].map(([number, group]) => {
     const first = group[0]!;

@@ -51,3 +51,4 @@ Template per entry: **What worked / What didn't / Suggestion**.
 
 ## NHTSA flat file (T2.1 notes)
 - One row per make x model, with the campaign's prose repeated on every row; grouping by campaign number is required. Manufacturing windows are in BGMAN/ENDMAN only for some rows; otherwise only in prose. When both exist they can differ by a day (column 2010-04-10 vs prose "April 9"); we trust the column.
+- openFDA: `recall_number` is sometimes the string "N/A" (in both food and drug feeds), so it is not a safe primary key; use `event_id`. Documentation does not mention it.
