@@ -1,18 +1,15 @@
 # BLOCKERS
 
-## B1 - Bedrock model access (blocks: live verification of T1.7, T3.2 real call; everything else uses mocks)
-- 2026-10-01 ~19:2x: real Converse calls succeeded for `us.anthropic.claude-haiku-4-5-20251001-v1:0` and `us.anthropic.claude-sonnet-4-6`.
-- A few minutes later the SAME calls (CLI and SDK) fail: `ResourceNotFoundException: Model use case details have not been submitted for this account. Fill out the Anthropic use case details form ... try again in 15 minutes.`
-- `us.anthropic.claude-sonnet-5-5` returned AccessDenied ("not available for this account") earlier.
-- Human action: in the Bedrock console (us-east-1) complete the Anthropic use-case details form / model access for Claude Haiku 4.5 (and Sonnet 4.6 optional), then wait ~15 min.
-- Workaround: ScriptedLlm mock in tests. Once access works, run `npm run test:live` (packages/simulator/src/live.test.ts) and mark T1.7 [x].
-- Decision: dev/tests/default model = Haiku 4.5, configurable via BEDROCK_MODEL_ID.
+## B1 - Bedrock model access - RESOLVED 2026-10-01
+- The human submitted the Anthropic use-case form. Verified: `us.anthropic.claude-haiku-4-5-20251001-v1:0` answers; `npm run test:live` passes (real Claude conversation against the deployed MCP server, and the three second-opinion verdicts).
+- `us.anthropic.claude-sonnet-5-5` was "not available for this account" earlier (not retested; Haiku 4.5 is the default and what docs/costs.md assumes).
+- T1.7 and T3.2 are marked done.
 
-## B2 - Repo visibility / judge sharing (blocks: T7.2)
-- What: human decides: make public, or keep private and share with the judging team (docs/rules.md). Mini challenges may need public.
-- Why: submission requirement.
+## B2 - Repo visibility (blocks: nothing until the end; see T7.2)
+- Decision (human): keep the repo PRIVATE until right before submission, then make it public after a full secret scan (T7.1 then T7.2). docs/rules.md: a private repo shared with the judging team is also allowed.
+- T7.2 stays `[!]` for the human to flip.
 
-## B3 - Lambda concurrency quota is 10 (blocks: nothing; hardens T1.6/T5.3) 
-- What: request a Service Quotas increase for "Concurrent executions" (Lambda, us-east-1), e.g. to 100, so reserved concurrency can cap the public functions.
-- Why: new-account quota of 10 leaves no room for reserved concurrency; an abusive caller could starve the daily watcher.
-- Workaround in place: demo key, 30 s timeout, simulator turn limits.
+## B3 - Lambda concurrency quota is 10 (non-blocking hardening)
+- The human requested an increase (Service Quotas case, desired 1000; status CASE_OPENED on 2026-10-01). Account limit is still 10 (`aws lambda get-account-settings`).
+- Check occasionally: `aws lambda get-account-settings --region us-east-1 --query AccountLimit` and `aws service-quotas list-requested-service-quota-change-history-by-quota --service-code lambda --quota-code L-B99A9384 --region us-east-1`.
+- When approved: set reserved concurrency in infra/lib/recall-guardian-stack.ts (MCP function, e.g. 20; simulator function; keep the watcher at 1), redeploy, add an infra test, note it in FRICTION_LOG F5.

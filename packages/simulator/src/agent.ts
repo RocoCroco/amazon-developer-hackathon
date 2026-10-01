@@ -100,6 +100,19 @@ export class Session {
     return { reply: 'Sorry, I got tangled up on that one. Could you say it again?', toolCalls };
   }
 
+  /**
+   * Calls an MCP tool directly, outside the conversation (the UI panels read inventory and alerts this
+   * way). Returns the tool's structured details, or {} when there are none.
+   */
+  async tool(name: string, args: Record<string, unknown> = {}): Promise<Record<string, unknown>> {
+    const out = await this.mcp.call(name, args);
+    try {
+      return JSON.parse(out.text.split('\n').at(-1) ?? '{}') as Record<string, unknown>;
+    } catch {
+      return {};
+    }
+  }
+
   close(): Promise<void> {
     return this.mcp.close();
   }

@@ -9,13 +9,20 @@
   <body>
     <header class="top">
       <div class="brand">
-        <span class="ring" aria-hidden="true"></span>
+        <span class="ring" id="ring" aria-hidden="true"></span>
         <div>
           <h1>Alexa+ <span class="tag">simulator</span></h1>
           <p>Recall Guardian · talking to a real MCP server</p>
         </div>
       </div>
-      <button id="reset" type="button" class="ghost">Reset demo</button>
+      <div class="controls">
+        <label class="switch" title="Hear Alexa's replies">
+          <input id="speak-toggle" type="checkbox" checked />
+          <span>Speak replies</span>
+        </label>
+        <button id="demo-recall" type="button" class="ghost" hidden>Simulate new recall</button>
+        <button id="reset" type="button" class="ghost">Reset demo</button>
+      </div>
     </header>
 
     <main class="layout">
@@ -26,15 +33,18 @@
             and I'll watch for recalls.
           </li>
         </ol>
+        <p id="status" class="status" aria-live="polite"></p>
         <form id="composer" class="composer" autocomplete="off">
+          <button id="mic" type="button" class="mic" aria-pressed="false" aria-label="Talk to Alexa" title="Talk to Alexa">
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+              <path
+                fill="currentColor"
+                d="M12 15a4 4 0 0 0 4-4V6a4 4 0 0 0-8 0v5a4 4 0 0 0 4 4Zm6-4a6 6 0 0 1-12 0H4a8 8 0 0 0 7 7.94V22h2v-3.06A8 8 0 0 0 20 11h-2Z"
+              />
+            </svg>
+          </button>
           <label class="sr-only" for="message">Message</label>
-          <input
-            id="message"
-            name="message"
-            type="text"
-            placeholder="Type what you'd say to Alexa…"
-            maxlength="500"
-          />
+          <input id="message" name="message" type="text" placeholder="Talk, or type what you'd say to Alexa…" maxlength="500" />
           <button id="send" type="submit">Send</button>
         </form>
       </section>

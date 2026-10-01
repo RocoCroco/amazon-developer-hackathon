@@ -7,6 +7,7 @@
   --accent: #19c3ff;
   --user: #1d4ed8;
   --alert: #ffb020;
+  --danger: #ff5d6c;
   color-scheme: dark;
 }
 
@@ -18,12 +19,7 @@ body {
   margin: 0;
   background: radial-gradient(1200px 600px at 20% -10%, #14305a 0%, var(--bg) 60%);
   color: var(--text);
-  font:
-    16px/1.5 system-ui,
-    -apple-system,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
+  font: 16px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   min-height: 100vh;
 }
 
@@ -35,10 +31,16 @@ body {
   clip: rect(0 0 0 0);
 }
 
+[hidden] {
+  display: none !important;
+}
+
 .top {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
   padding: 16px 24px;
   border-bottom: 1px solid var(--line);
 }
@@ -58,6 +60,28 @@ body {
   margin: 0;
   color: var(--muted);
   font-size: 0.85rem;
+}
+
+.controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.switch input {
+  accent-color: var(--accent);
+  width: 18px;
+  height: 18px;
 }
 
 .tag {
@@ -80,10 +104,17 @@ body {
   box-shadow:
     0 0 18px rgba(25, 195, 255, 0.6),
     inset 0 0 10px rgba(25, 195, 255, 0.4);
+  transition: border-color 0.2s;
 }
 
-.ring.busy {
+.ring.busy,
+.ring.speaking {
   animation: pulse 1s ease-in-out infinite;
+}
+
+.ring.listening {
+  border-color: #7cf0c6;
+  animation: pulse 0.7s ease-in-out infinite;
 }
 
 @keyframes pulse {
@@ -91,6 +122,14 @@ body {
     box-shadow:
       0 0 30px rgba(25, 195, 255, 0.95),
       inset 0 0 16px rgba(25, 195, 255, 0.7);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ring.busy,
+  .ring.speaking,
+  .ring.listening {
+    animation: none;
   }
 }
 
@@ -140,6 +179,22 @@ body {
   border-bottom-left-radius: 4px;
 }
 
+.bubble.proactive {
+  border-color: var(--alert);
+  box-shadow: 0 0 0 1px rgba(255, 176, 32, 0.25);
+}
+
+.bubble.proactive::before {
+  content: 'Alexa noticed something';
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--alert);
+  margin-bottom: 2px;
+}
+
 .bubble.user {
   background: var(--user);
   align-self: flex-end;
@@ -160,15 +215,20 @@ body {
 }
 
 .chip {
-  font:
-    12px/1.4 ui-monospace,
-    Consolas,
-    monospace;
+  font: 12px/1.4 ui-monospace, Consolas, monospace;
   color: var(--accent);
   background: rgba(25, 195, 255, 0.1);
   border: 1px solid rgba(25, 195, 255, 0.35);
   border-radius: 999px;
   padding: 1px 8px;
+}
+
+.status {
+  min-height: 1.4em;
+  margin: 0;
+  padding: 0 16px;
+  color: var(--muted);
+  font-size: 0.85rem;
 }
 
 .composer {
@@ -202,7 +262,7 @@ button {
 
 button:disabled {
   opacity: 0.55;
-  cursor: progress;
+  cursor: not-allowed;
 }
 
 button.ghost {
@@ -210,6 +270,29 @@ button.ghost {
   color: var(--muted);
   border: 1px solid var(--line);
   padding: 6px 14px;
+}
+
+button.ghost:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--muted);
+}
+
+button.mic {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  background: #0e1626;
+  color: var(--accent);
+  border: 1px solid var(--line);
+  flex: none;
+}
+
+button.mic[aria-pressed='true'] {
+  background: #7cf0c6;
+  color: #04261b;
+  border-color: #7cf0c6;
 }
 
 :focus-visible {
@@ -260,9 +343,40 @@ button.ghost {
   border-color: var(--alert);
 }
 
+.inventory li.alert.high {
+  border-color: var(--danger);
+}
+
+.inventory li.alert.question {
+  border-color: var(--line);
+}
+
 .inventory small {
   display: block;
   color: var(--muted);
+}
+
+.inventory .badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  padding: 0 8px;
+  margin-bottom: 2px;
+  color: #2b1a00;
+  background: var(--alert);
+}
+
+.inventory li.alert.high .badge {
+  color: #2a0006;
+  background: var(--danger);
+}
+
+.inventory li.alert.question .badge {
+  color: var(--text);
+  background: #2c3956;
 }
 
 @media (max-width: 800px) {
