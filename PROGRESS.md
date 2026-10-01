@@ -3,13 +3,15 @@
 _Last updated: 2026-10-01_
 
 ## Current task
-T1.5 - DynamoDB data layer replacing the in-memory store (ItemStore interface in src/store.ts). Household IDs are already validated as unguessable (>=22 base64url chars) in src/handler.ts.
+T1.6 - CDK stack in us-east-1 (Lambda + public HTTPS Function URL + DynamoDB on-demand), tagged Project=recall-guardian, demo key required, reserved concurrency/throttling. Deploy and verify with the scripted client against the public URL.
 
 ## Done
-- Phase 0; T1.1-T1.4. MCP server: src/handler.ts (web-standard, stateless, demo key + household header), src/node-server.ts (local), src/tools.ts (add_item, check_item), src/voice.ts, src/recalls/provider.ts (CPSC live+cache, static). 36 tests green; `npm run test:live` (real CPSC via MCP) passes.
+- Phase 0; T1.1-T1.5. DynamoItemStore (src/dynamo-store.ts: single table PK/SK, TTL attr `expiresAt`, createDocClient, newHouseholdId) with mocked-client tests. 41 tests green.
 
 ## Left
-- DynamoDBItemStore implementing ItemStore with @aws-sdk/lib-dynamodb; table design: PK=HOUSEHOLD#<id>, SK=ITEM#<id>. Tests with an injected fake DocumentClient (or aws-sdk-client-mock). Helper to generate household IDs (crypto.randomBytes(16) base64url).
+- Check AWS CLI profile works (`aws sts get-caller-identity`) and whether CDK is bootstrapped in us-east-1.
+- infra/: aws-cdk-lib + constructs + aws-cdk CLI; stack with NodejsFunction (esbuild bundling) for src/lambda.ts; Function URL (auth NONE + demo key check in code); DynamoDB table (PAY_PER_REQUEST, TTL expiresAt); tags; reserved concurrency; demo key from SSM/env at deploy (never committed).
+- src/lambda.ts: Function URL event -> Request -> createMcpHandler -> response.
 
 ## Next step
-`npm i -w @recall-guardian/mcp-server @aws-sdk/client-dynamodb @aws-sdk/lib-dynamodb` and `-D aws-sdk-client-mock`; check for native-binary deps (Windows Application Control, see FRICTION_LOG F1) by running tests right after install.
+Run `aws sts get-caller-identity` and `aws cloudformation describe-stacks --stack-name CDKToolkit --region us-east-1` to see the account state.

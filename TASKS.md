@@ -16,7 +16,7 @@ Target: thin end-to-end slice (Phase 1) working by ~day 7 (Oct 8), then widen.
 - [x] T1.2 Common `Recall` schema + CPSC adapter. **Done when:** unit tests pass on fixtures.
 - [x] T1.3 Basic deterministic matcher (brand alias + model + year normalization). **Done when:** unit tests pass on CPSC fixtures.
 - [x] T1.4 MCP server skeleton (official TS SDK, spec 2025-11-25+, stateless Streamable HTTP, JSON responses) with in-memory store and tools `add_item` + `check_item`. **Done when:** a scripted MCP SDK client connects over HTTP, lists tools, registers an item and checks it.
-- [ ] T1.5 DynamoDB data layer (tests with mock or DynamoDB Local) replacing the in-memory store. Household IDs are unguessable (random, ≥128 bits). **Done when:** tests pass.
+- [x] T1.5 DynamoDB data layer (tests with mock or DynamoDB Local) replacing the in-memory store. Household IDs are unguessable (random, ≥128 bits). **Done when:** tests pass.
 - [ ] T1.6 CDK stack in us-east-1 (Lambda + public HTTPS endpoint + DynamoDB on-demand), tagged `Project=recall-guardian`, shared demo key required on the MCP endpoint, Lambda reserved concurrency/throttling set. **Done when:** deployed and the scripted client works against the public URL.
 - [ ] T1.7 Simulator backend, text mode: Claude on Bedrock (mocked until access is enabled; see BLOCKERS.md) as the assistant, connected to the deployed MCP server as a real MCP client; per-session turn limit. **Done when:** a scripted text conversation registers an item and checks it.
 - [ ] T1.8 Minimal text web UI (transcript + inventory panel). **Done when:** typing in the browser registers and checks an item (Playwright).

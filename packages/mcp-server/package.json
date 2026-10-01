@@ -8,6 +8,8 @@
     "build": "node -e \"console.log('mcp-server: nothing to build yet')\""
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1144.0",
+    "@aws-sdk/lib-dynamodb": "^3.1144.0",
     "@modelcontextprotocol/sdk": "^1.31.0",
     "zod": "^4.6.5"
   }
