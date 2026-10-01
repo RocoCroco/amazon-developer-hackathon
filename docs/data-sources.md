@@ -70,3 +70,9 @@ responses are in `packages/mcp-server/test/fixtures/`). None needs an API key.
 - **openFDA ids:** `recall_number` can be `"N/A"` (food and drug). We key recalls by recall number, else `event_id`, else a content hash (`recallKey` in `openfda.ts`).
 - **NHTSA flat file:** streamed with `node:zlib` only (`flatfile.ts`): the zip's first entry is inflated on the fly, so the 311 MB file is never held in memory. A real run over the last 30 days takes ~3.6 s and yields ~63 campaigns. Rows of one campaign are grouped into one recall.
 - **Incremental sync:** `syncFeed` pulls from (cursor - 3 days) to today, upserts by id, then advances the cursor. Re-fetched overlap counts as `unchanged`; only never-seen ids are `added` (the watcher alerts on those); a failed fetch keeps the cursor.
+
+## What check_item can see in production (as of T5)
+- **Consumer products (CPSC):** live `ProductName` lookup by brand and by item name, cached 6 h in the Lambda.
+- **Vehicles (NHTSA API):** live lookup by make + model + model year, only when all three are known.
+- **Child seats (NHTSA flat file):** every campaign in the POST-2010 file, loaded once with the watcher's `{"backfill":true}` event (71 recalls) and kept current by the daily sync.
+- **Food, drugs, equipment, tires:** only what the daily watcher has synced (the last 14 days at first run, then daily). Older enforcement reports and tire/equipment campaigns are not searchable yet; a live openFDA lookup (`recalling_firm`/`product_description` search) and a larger backfill are the obvious next steps.
