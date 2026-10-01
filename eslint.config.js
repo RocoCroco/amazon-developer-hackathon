@@ -5,6 +5,10 @@ export default tseslint.config(
   { ignores: ['**/dist/**', '**/cdk.out/**', '**/node_modules/**', '**/coverage/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
+  {
+    files: ['packages/simulator/public/**/*.js'],
+    languageOptions: { globals: { document: 'readonly', fetch: 'readonly' } },
+  },
   // TypeScript already reports undefined names; no-undef only produces false positives on globals.
   { files: ['**/*.ts'], rules: { 'no-undef': 'off' } },
   {

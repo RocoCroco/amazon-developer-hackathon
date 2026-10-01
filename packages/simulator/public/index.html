@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Recall Guardian · Alexa+ simulator</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="top">
+      <div class="brand">
+        <span class="ring" aria-hidden="true"></span>
+        <div>
+          <h1>Alexa+ <span class="tag">simulator</span></h1>
+          <p>Recall Guardian · talking to a real MCP server</p>
+        </div>
+      </div>
+      <button id="reset" type="button" class="ghost">Reset demo</button>
+    </header>
+
+    <main class="layout">
+      <section class="chat" aria-label="Conversation">
+        <ol id="transcript" class="transcript" aria-live="polite">
+          <li class="bubble alexa">
+            Hi, I'm Alexa. Tell me about something your family owns, like a car seat or a heater,
+            and I'll watch for recalls.
+          </li>
+        </ol>
+        <form id="composer" class="composer" autocomplete="off">
+          <label class="sr-only" for="message">Message</label>
+          <input
+            id="message"
+            name="message"
+            type="text"
+            placeholder="Type what you'd say to Alexa…"
+            maxlength="500"
+          />
+          <button id="send" type="submit">Send</button>
+        </form>
+      </section>
+
+      <aside class="side">
+        <section class="panel" aria-labelledby="inv-title">
+          <h2 id="inv-title">Your household</h2>
+          <ul id="inventory" class="inventory">
+            <li class="empty">Nothing registered yet.</li>
+          </ul>
+        </section>
+        <section class="panel" aria-labelledby="alerts-title">
+          <h2 id="alerts-title">Alerts</h2>
+          <ul id="alerts" class="inventory">
+            <li class="empty">No alerts.</li>
+          </ul>
+        </section>
+      </aside>
+    </main>
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

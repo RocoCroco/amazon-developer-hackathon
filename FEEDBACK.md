@@ -44,3 +44,7 @@ Template per entry: **What worked / What didn't / Suggestion**.
 ## AWS CDK / Lambda Function URLs (T1.6 notes)
 - CDK: `NodejsFunction` + esbuild bundles the MCP SDK app into one 840 KB file in ~100 ms, deploy of the whole stack took 35 s. `logRetention` is deprecated in favor of `logGroup` (the warning is clear). Running `cdk synth` directly uses stale compiled output when the app is TS compiled separately; wrap it in an npm script that builds first.
 - Lambda Function URLs: simple public HTTPS, works with the SDK's web-standard transport via a ~30-line adapter. No built-in throttling or API keys, and new accounts' 10-concurrency quota blocks reserved concurrency (see FRICTION_LOG F5).
+
+## Playwright (T1.8 notes)
+- `playwright-core` + `npx playwright-core install chromium-headless-shell` works on this locked-down Windows machine (no Chrome/Edge installed, Application Control active); headless Chromium launches fine.
+- Playwright's `expect` matchers (`toBeVisible`, `toContainText`...) live in `@playwright/test`; with Vitest use `expect.poll(() => locator.textContent())`.
