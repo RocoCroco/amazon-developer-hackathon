@@ -10,6 +10,8 @@ import { clipForSpeech, SpeechBudget, type Speaker } from './speech.js';
 
 /** Demo-mode controls (T5.2): what the "simulate new recall" button does. */
 export interface DemoControls {
+  /** Registers the sample family (a heater with a real recall, a car seat without one). */
+  seedHousehold(session: Session): Promise<{ ok: boolean; message: string }>;
   /** Injects a brand new recall that matches something the session's household owns, via the daily watcher. */
   simulateNewRecall(session: Session): Promise<{ ok: boolean; message: string }>;
 }
@@ -58,6 +60,23 @@ async function readJson(req: IncomingMessage, maxBody: number): Promise<Record<s
 }
 
 const asString = (v: unknown) => (typeof v === 'string' ? v : '');
+
+/**
+ * Leaves nothing behind when a demo is reset: the household's items are removed (so the daily watcher
+ * stops matching new recalls against a finished demo) and its alerts are closed.
+ */
+async function clearHousehold(session: Session): Promise<void> {
+  try {
+    const alerts = ((await session.tool('get_alerts')).alerts ?? []) as { alert_id: string }[];
+    for (const a of alerts) {
+      await session.tool('resolve_alert', { alert_id: a.alert_id, resolution: 'dismissed' });
+    }
+    const items = ((await session.tool('list_items')).items ?? []) as { item_id: string }[];
+    for (const i of items) await session.tool('remove_item', { item_id: i.item_id, confirm: true });
+  } catch {
+    // Best effort: items expire by TTL anyway.
+  }
+}
 
 export async function startSimulator(
   options: SimulatorOptions,
@@ -132,6 +151,14 @@ export async function startSimulator(
       return;
     }
 
+    if (req.method === 'POST' && url.pathname === '/api/demo/seed') {
+      if (!options.demo) return json(404, {});
+      let id = asString((await readJson(req, maxBody)).sessionId);
+      let session = sessions.get(id);
+      if (!session) ({ id, session } = await open());
+      return json(200, { sessionId: id, ...(await options.demo.seedHousehold(session)) });
+    }
+
     if (req.method === 'POST' && url.pathname === '/api/demo/new-recall') {
       if (!options.demo) return json(404, {});
       const session = sessions.get(asString((await readJson(req, maxBody)).sessionId));
@@ -144,6 +171,7 @@ export async function startSimulator(
       const old = sessions.get(id);
       if (old) {
         sessions.delete(id);
+        await clearHousehold(old);
         await old.close();
       }
       return json(200, { ok: true });

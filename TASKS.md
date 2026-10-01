@@ -40,7 +40,7 @@ Target: thin end-to-end slice (Phase 1) working by ~day 7 (Oct 8), then widen.
 
 ## Phase 5 — Alexa+ simulator, full
 - [x] T5.1 Voice: push-to-talk via Web Speech API recognition; spoken replies via Amazon Polly (neural voice, serverless, cached/limited usage); text fallback; alerts panel with polling of `get_alerts`. Clean, Alexa-like look. **Done when:** full demo story works by typing (Playwright); voice path verified by script where possible, rest in manual checklist.
-- [ ] T5.2 Demo mode: seeded household + "simulate new recall" control + reset button. **Done when:** the SPEC §8 story runs start to finish 3 times in a row without errors (scripted).
+- [x] T5.2 Demo mode: seeded household + "simulate new recall" control + reset button. **Done when:** the SPEC §8 story runs start to finish 3 times in a row without errors (scripted).
 - [ ] T5.3 Deploy simulator publicly (S3/CloudFront or Lambda). **Done when:** reachable via public URL, abuse limits (turn limit, throttling) in place.
 
 ## Phase 6 — Quality and submission material

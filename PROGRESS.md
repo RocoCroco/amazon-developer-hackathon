@@ -3,17 +3,17 @@
 _Last updated: 2026-10-01_
 
 ## Current task
-T5.1 - Voice in the simulator: push-to-talk via Web Speech API recognition, spoken replies via Amazon Polly (neural, serverless, cached/limited), text fallback, alerts panel polling get_alerts, Alexa-like look. Done when the full demo story works by typing (Playwright); voice path verified by script where possible, the rest in docs/manual-checklist.md.
+T5.3 - Deploy the simulator publicly (S3/CloudFront or Lambda Function URL), abuse limits in place. Done when reachable via a public URL.
 
 ## Done
-- Phase 0-4 complete (T4.5 cost doc: docs/costs.md, ~ $8/month at demo usage, Bedrock Haiku + Polly dominate). DEPLOYED: MCP Lambda (9 tools), watcher Lambda + daily rule, DynamoDB. 266 tests green.
-- Simulator today: packages/simulator (server.ts, agent.ts [system prompt covers all 9 tools], llm.ts, mock-brain.ts, public/{index,app.js,styles.css}); text UI works against a local or deployed MCP; real Bedrock still blocked (B1) so SIM_LLM=mock is the offline brain. Mock brain only knows add_item/check_item: extend it (list/alerts/remedy/resolve intents) so the offline demo covers the SPEC section 8 story.
+- Phase 0-4; T5.1 (voice: push-to-talk, Polly with browser fallback, alerts panel, proactive messages) and T5.2 (demo mode: `Load sample family`, `Simulate new recall` -> real watcher, Reset cleans the household; SPEC s8 story passes 3x in a row: packages/simulator/src/demo-story.test.ts). B1 resolved (Bedrock works; live tests pass). 318 tests green.
+- Simulator config (packages/simulator/src/main.ts env): MCP_URL, DEMO_KEY, SIM_LLM=mock (offline brain) or Bedrock default, SPEECH=off, POLLY_VOICE_ID, WATCHER_FUNCTION (enables demo buttons; the host needs lambda:InvokeFunction).
 
-## Left (Phase 5 and 6, 7)
-- T5.1 voice (Polly via a /api/speak endpoint in the simulator backend: text -> SSML (spell model codes with <say-as interpret-as="characters">, phone digits) -> Polly neural MP3 -> browser plays; cache by hash; length/rate limits; browser SpeechSynthesis fallback if Polly unavailable), alerts panel (poll /api/alerts every few seconds -> get_alerts), transcript/inventory improvements (inventory via list_items instead of parsing tool traces), push-to-talk button with webkitSpeechRecognition + text fallback.
-- T5.2 demo mode: seeded household (stable demo household id), "simulate new recall" button (backend invokes the watcher Lambda with a seeded recall via AWS SDK lambda:InvokeCommand), reset button; run the SPEC section 8 story 3 times in a row by script.
-- T5.3 deploy simulator publicly (S3/CloudFront or Lambda Function URL), abuse limits (turn limit exists; add daily cap on model calls).
-- Phase 6: E2E story test, README (architecture diagram, setup), verify stats (6% vs 50%, Amazon claim), final FRICTION/FEEDBACK, video script, Devpost text, manual checklist. Phase 7: secret scan, make public / share with judges (human).
+## Left (T5.3 design)
+- The simulator is a stateful Node server (in-memory sessions with MCP connections). On Lambda, sessions would not persist across invocations. Options: (a) one Lambda Function URL with reserved concurrency 1 won't work reliably; (b) make the Lambda handler stateless: keep conversation history in DynamoDB keyed by session id (Session = messages + household id; MCP connection recreated per request, cheap since the MCP server is stateless); (c) run as a single warm container... Prefer (b): `SessionStore` in DynamoDB (messages JSON, turns, createdAt, TTL 1 day), simulator Lambda handler = same `handle()` routing (refactor server.ts so the request handler is a pure function `(Request) => Response` like the MCP handler, with node and Lambda adapters), static UI served from the same Lambda (small files) or S3.
+- Public HTTPS: Lambda Function URL (no CloudFront needed) for UI + API; Polly + Bedrock + Lambda invoke (watcher) IAM on the role; env: MCP_URL (the MCP function URL), DEMO_KEY param (SSM), WATCHER_FUNCTION.
+- Abuse limits: per-session turn limit (exists, persist it), speech budget (per session + daily; persist in DynamoDB or keep per-container best effort), daily global cap on model calls (DynamoDB atomic counter), message size limit (exists), reserved concurrency when B3 quota arrives.
+- Deploy via CDK in the same stack, then verify with Playwright against the deployed URL (scripts) and add the URL to README/docs/manual-checklist.
 
 ## Next step
-Extend packages/simulator/src/mock-brain.ts to cover list/alerts/remedy/resolve/check-everything intents with tests, then add the Polly /api/speak endpoint (packages/simulator/src/speech.ts) using @aws-sdk/client-polly with a fake client in tests.
+Refactor packages/simulator/src/server.ts into a runtime-agnostic handler (Request -> Response) plus node adapter, add SessionStore interface (in-memory + DynamoDB) so Session can be rebuilt from stored messages, and keep all existing tests green.

@@ -7,6 +7,7 @@ const sendButton = $('#send');
 const micButton = $('#mic');
 const resetButton = $('#reset');
 const demoButton = $('#demo-recall');
+const seedButton = $('#demo-seed');
 const speakToggle = $('#speak-toggle');
 const inventory = $('#inventory');
 const alertsList = $('#alerts');
@@ -344,6 +345,26 @@ demoButton.addEventListener('click', async () => {
   }
 });
 
+seedButton.addEventListener('click', async () => {
+  seedButton.disabled = true;
+  setStatus('Adding the sample family…');
+  try {
+    const res = await fetch('/api/demo/seed', {
+      method: 'POST',
+      headers: jsonHeaders,
+      body: JSON.stringify({ sessionId }),
+    });
+    const data = await res.json();
+    if (data.sessionId) sessionId = data.sessionId;
+    setStatus(data.message ?? '');
+    await refreshState({ announce: false });
+  } catch {
+    setStatus('Could not load the sample family.');
+  } finally {
+    seedButton.disabled = false;
+  }
+});
+
 // ---- start ------------------------------------------------------------------------------------------
 
 fetch('/api/config')
@@ -351,5 +372,6 @@ fetch('/api/config')
   .then((c) => {
     config = c;
     demoButton.hidden = !c.demo;
+    seedButton.hidden = !c.demo;
   })
   .catch(() => undefined);
