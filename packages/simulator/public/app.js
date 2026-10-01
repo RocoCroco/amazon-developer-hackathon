@@ -63,7 +63,9 @@ function renderInventory(items) {
   for (const item of items) {
     const li = document.createElement('li');
     li.textContent = [item.brand, item.name].filter(Boolean).join(' ');
-    const details = [item.model && `Model ${item.model}`, item.year && `${item.year}`].filter(Boolean);
+    const details = [item.model && `Model ${item.model}`, item.year && `${item.year}`].filter(
+      Boolean,
+    );
     if (details.length) {
       const small = document.createElement('small');
       small.textContent = details.join(' · ');
@@ -92,14 +94,18 @@ function renderAlerts(alerts) {
     const title = document.createElement('div');
     title.textContent = alert.item;
     const small = document.createElement('small');
-    small.textContent = recalled ? firstSentence(alert.hazard || alert.title) : alert.question || alert.title;
+    small.textContent = recalled
+      ? firstSentence(alert.hazard || alert.title)
+      : alert.question || alert.title;
     li.append(badge, title, small);
     alertsList.append(li);
   }
 }
 
 function firstSentence(text) {
-  const clean = String(text || '').replace(/\s+/g, ' ').trim();
+  const clean = String(text || '')
+    .replace(/\s+/g, ' ')
+    .trim();
   const end = clean.search(/[.!?](\s|$)/);
   return end === -1 ? clean : clean.slice(0, end + 1);
 }
@@ -301,9 +307,11 @@ form.addEventListener('submit', (event) => {
 resetButton.addEventListener('click', async () => {
   stopSpeaking();
   if (listening && recognizer) recognizer.abort();
-  await fetch('/api/reset', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ sessionId }) }).catch(
-    () => undefined,
-  );
+  await fetch('/api/reset', {
+    method: 'POST',
+    headers: jsonHeaders,
+    body: JSON.stringify({ sessionId }),
+  }).catch(() => undefined);
   sessionId = '';
   knownAlerts.clear();
   transcript.innerHTML = greeting;

@@ -7,7 +7,17 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   {
     files: ['packages/simulator/public/**/*.js'],
-    languageOptions: { globals: { document: 'readonly', fetch: 'readonly' } },
+    languageOptions: {
+      globals: {
+        document: 'readonly',
+        fetch: 'readonly',
+        window: 'readonly',
+        setInterval: 'readonly',
+        Audio: 'readonly',
+        URL: 'readonly',
+        SpeechSynthesisUtterance: 'readonly',
+      },
+    },
   },
   // TypeScript already reports undefined names; no-undef only produces false positives on globals.
   { files: ['**/*.ts'], rules: { 'no-undef': 'off' } },
