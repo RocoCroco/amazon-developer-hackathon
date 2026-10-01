@@ -1,63 +1,104 @@
 # PRODUCT FEEDBACK
 
-Per-tool impressions for the hackathon submission. One section per tool/SDK; add entries as we go.
-Template per entry: **What worked / What didn't / Suggestion**.
+Impressions of every tool, SDK and API used to build Recall Guardian, from a three-week-style build compressed into
+a few days. Each entry: **What worked / What didn't / Suggestion**. The matching blow-by-blow problems are in
+FRICTION_LOG.md (entries F1-F12).
 
-## MCP TypeScript SDK (@modelcontextprotocol/sdk)
--
+## MCP TypeScript SDK (`@modelcontextprotocol/sdk` 1.31, spec 2025-11-25)
+**What worked**
+- `LATEST_PROTOCOL_VERSION` is `2025-11-25` out of the box, and the SDK client negotiated it with our server first try.
+- `WebStandardStreamableHTTPServerTransport.handleRequest(Request): Promise<Response>` is the best part: one
+  handler runs under Node, Lambda and tests with a ~30-line adapter. Stateless mode plus `enableJsonResponse: true`
+  gives plain JSON replies that are easy to test with the real SDK client over a real socket.
+- `registerTool` with zod raw shapes, `structuredContent` and tool annotations (`readOnlyHint`, `destructiveHint`,
+  `idempotentHint`) is concise and maps well onto a voice product: the first text block is the spoken sentence, the
+  structured content is for the UI.
+**What didn't**
+- Stateless mode needs a new `McpServer` and transport per request; this is visible only in examples and comments.
+- There is no first-class notion of caller identity short of full OAuth. We passed a household id and a demo key in
+  headers and closed over them per request; that works but every team will reinvent it.
+**Suggestion**: a documented "serverless handler" recipe (Lambda Function URL, per-request identity) and a short
+guide on stateless identity would save a day.
 
-## Amazon Bedrock (Claude)
--
+## Amazon Bedrock (Claude Haiku 4.5, Converse API)
+**What worked**
+- The Converse API is pleasant: the same request shape for plain prompts, tool use and JSON-only prompts; `temperature: 0`
+  plus a strict system prompt gave parseable second opinions (we still parse tolerantly). Haiku 4.5 answered a full
+  tool-using turn against our MCP server in about 3-4 seconds.
+**What didn't**
+- `list-foundation-models` shows models as ACTIVE even when the account cannot invoke them. The real blocker only
+  appears at invoke time: "Model use case details have not been submitted for this account" (a form), or "not
+  available for this account" for newer models. Access also flipped from working to failing within minutes
+  (FRICTION_LOG F6) before it settled.
+- IAM for the cross-region inference profile needs both the profile ARN and the foundation-model ARNs in other regions.
+**Suggestion**: a "can I invoke this model?" check in the console and CLI, and one clear message for missing
+use-case approval, would remove most of the guessing. A documented minimal IAM policy for `us.*` inference profiles too.
 
 ## AWS CDK
--
+**What worked**
+- `NodejsFunction` + esbuild bundles the MCP SDK app into one ~840 KB file in about 100 ms; a whole stack (three
+  Lambdas, table, rule, two Function URLs) deploys in 35-150 s. The `assertions` module let us encode our safety
+  rules as tests (no hourly-cost resources, no wildcard actions, tags, Function URL only where intended).
+**What didn't**
+- `logRetention` is deprecated in favor of `logGroup` (a clear warning, easy to fix).
+- When the CDK app is compiled separately, `cdk synth` run directly uses stale output; wrap it in an npm script that builds first.
+- Default bootstrap grants AdministratorAccess to the deploy role; fine here, worth a warning for production.
+**Suggestion**: a `cdk` template for "TypeScript app compiled with tsc" that wires the build step.
 
-## AWS Lambda (Function URLs) / DynamoDB / EventBridge
--
+## AWS Lambda (Function URLs), DynamoDB, EventBridge
+**What worked**
+- Function URLs make a public HTTPS MCP endpoint trivial; the whole stack stays serverless with no hourly price.
+- DynamoDB single-table design with TTL fits a demo (inventory, alerts, recall cache, cursors, sessions, atomic daily
+  caps via conditional `ADD`). A daily `events.Rule` is ~10 lines; `aws lambda invoke --payload file://` triggers it by hand with
+  a custom event, which we use to inject a demo recall.
+**What didn't**
+- New accounts have a 10-concurrent-executions quota, which makes reserved concurrency impossible (F5); Function URLs have
+  no built-in throttling or API keys, so abuse protection has to live in code.
+- Binary responses (Polly MP3) need manual base64 handling in the Function URL adapter.
+**Suggestion**: surface the concurrency quota and its consequence when creating a Function URL; optional built-in rate limiting.
 
 ## Amazon Polly
--
+**What worked**: neural voices and SSML are excellent for this product. `<say-as interpret-as="characters">` makes
+model codes ("H7131") audible and unambiguous, and one reply costs a fraction of a cent. The API was usable without any
+account setup beyond IAM.
+**What didn't**: nothing blocking. Choosing the voice that sounds most like Alexa is a taste test the docs cannot help with.
+**Suggestion**: a short "voice assistant replies" guide (codes, phone numbers, pauses) would be popular.
 
-## CPSC Recalls API
--
+## CPSC Recalls API (SaferProducts.gov)
+**What worked**: free, no key, JSON, and it has date filters (`RecallDateStart`, `LastPublishDateStart`) that make
+incremental sync easy. `ProductName=` is a working substring search.
+**What didn't**: `Title=` is silently ignored and returns every recall (27 MB, F3); date filters are undocumented on the public
+page; `Products[].Model` is almost always empty, so model numbers have to be parsed out of free text; the importer and
+manufacturer fields contain codes and addresses that look like brands.
+**Suggestion**: document the filters, return a 400 for unknown parameters, and add structured model numbers.
 
-## NHTSA recalls API / vPIC
--
+## NHTSA recalls API, bulk flat file and vPIC
+**What worked**: `recallsByVehicle` is simple and fast; vPIC decodes VINs without a key; the daily flat file is the only
+place child seats, tires and equipment are available and is easy to stream.
+**What didn't**: no "since date" query on the API; no equipment or child-seat endpoint (unknown routes answer
+"Missing Authentication Token", F2); unknown vehicle models answer HTTP 400; the flat file is 311 MB with one row per make x
+model and the campaign text repeated on every row; manufacturing windows are sometimes only in prose and can differ by a
+day from the structured columns.
+**Suggestion**: a JSON endpoint for child seats and equipment, and a date filter on the vehicle API.
 
 ## openFDA
--
+**What worked**: a clean query language (`report_date:[A TO B]`, `sort`, paging), clear limits (240 requests/min and 1,000/day without a key), data updated weekly.
+**What didn't**: `recall_number` is sometimes the string "N/A" in both the food and drug feeds, so it is not a safe
+primary key (F8); enforcement reports carry no consumer remedy text.
+**Suggestion**: document the "N/A" case and recommend `event_id` as the key.
 
-## Tooling (Vitest, npm, Windows)
-- Vitest 5 on Windows with Application Control: misleading "Cannot find native binding" error; see FRICTION_LOG F1.
+## Playwright and Vitest (tooling)
+**What worked**: `playwright-core` plus `playwright-core install chromium-headless-shell` runs on a locked-down Windows
+machine with no Chrome installed; stubbing the Web Speech API with `addInitScript` lets us test push-to-talk and spoken
+replies in a real browser.
+**What didn't**: Vitest 5 failed on a Windows machine with Application Control because its bundler needs an unsigned
+native addon, with a misleading "Cannot find native binding" error (F1); Playwright's own matchers need `@playwright/test`,
+so under Vitest we poll locators; headless Chromium ships its own `SpeechRecognition`, which wins over a stub unless both
+names are overridden (F11).
+**Suggestion**: report Application Control blocks explicitly in the error message.
 
-## Recall APIs (T1.1 notes)
-- CPSC: free, no key, has date filters, but the date filters are undocumented on the public page, and `Products[].Model` is empty so model numbers live in free text.
-- NHTSA: vehicle JSON API is easy, but no "since date" and no car seat/equipment endpoint; need the bulk flat file (311 MB, daily). Unknown routes answer "Missing Authentication Token", which is misleading.
-- openFDA: clean query language and clear limits; nice date-range search.
-
-## MCP TypeScript SDK 1.31 (T1.4 notes)
-- Worked: `LATEST_PROTOCOL_VERSION` is `2025-11-25`; `WebStandardStreamableHTTPServerTransport.handleRequest(Request): Promise<Response>` makes Lambda/Node adapters trivial; stateless mode + `enableJsonResponse: true` gives plain JSON replies that are easy to test with the SDK client over a real socket.
-- Worked: `registerTool` with zod raw shapes and `structuredContent` is concise; zod 4 is accepted.
-- Friction: stateless mode needs a new `McpServer` + transport per request (documented only in examples/comments); per-request identity has to be passed via closure or `requestInfo.headers`, there is no first-class "caller identity" concept short of the full OAuth machinery.
-- Suggestion: a documented "serverless handler" recipe (Lambda Function URL) and a short guide on stateless identity would save time.
-
-## AWS CDK / Lambda Function URLs (T1.6 notes)
-- CDK: `NodejsFunction` + esbuild bundles the MCP SDK app into one 840 KB file in ~100 ms, deploy of the whole stack took 35 s. `logRetention` is deprecated in favor of `logGroup` (the warning is clear). Running `cdk synth` directly uses stale compiled output when the app is TS compiled separately; wrap it in an npm script that builds first.
-- Lambda Function URLs: simple public HTTPS, works with the SDK's web-standard transport via a ~30-line adapter. No built-in throttling or API keys, and new accounts' 10-concurrency quota blocks reserved concurrency (see FRICTION_LOG F5).
-
-## Playwright (T1.8 notes)
-- `playwright-core` + `npx playwright-core install chromium-headless-shell` works on this locked-down Windows machine (no Chrome/Edge installed, Application Control active); headless Chromium launches fine.
-- Playwright's `expect` matchers (`toBeVisible`, `toContainText`...) live in `@playwright/test`; with Vitest use `expect.poll(() => locator.textContent())`.
-
-## NHTSA flat file (T2.1 notes)
-- One row per make x model, with the campaign's prose repeated on every row; grouping by campaign number is required. Manufacturing windows are in BGMAN/ENDMAN only for some rows; otherwise only in prose. When both exist they can differ by a day (column 2010-04-10 vs prose "April 9"); we trust the column.
-- openFDA: `recall_number` is sometimes the string "N/A" (in both food and drug feeds), so it is not a safe primary key; use `event_id`. Documentation does not mention it.
-
-## Amazon Bedrock (T1.7 / T3.2 notes)
-- `list-foundation-models` shows models as ACTIVE even when the account cannot invoke them; the actual blocker only appears at invoke time ("Model use case details have not been submitted for this account", or "not available for this account" for newer models). A "can I invoke this model?" check in the console/CLI would save a lot of guessing.
-- Access flipped from working to failing within minutes with no change on our side (FRICTION_LOG F6).
-- Converse API is pleasant: same request shape for tool use and plain prompts; `temperature: 0` plus a JSON-only system prompt gives parseable output with a tolerant parser (we still handle fenced or chatty replies).
-
-## EventBridge + Lambda (T4.4 notes)
-- A daily `events.Rule` + `targets.LambdaFunction` is ~10 lines of CDK and deploys cleanly; the whole stack (two Lambdas, table, rule) is 150 s to deploy. Direct `aws lambda invoke --payload file://...` with `--cli-binary-format raw-in-base64-out` is the easy way to trigger a scheduled function by hand with a custom event (we use it to inject a demo recall).
-- First real run of the watcher against the live sources (last 14 days): 25 CPSC + 49 openFDA food + 11 drug + 23 NHTSA campaigns, 109 recalls, in one Lambda invocation; the NHTSA 15 MB zip is streamed, never buffered.
+## Claude Code (building with an autonomous agent on Windows)
+**What worked**: working from SPEC/TASKS/PROGRESS files with commit-per-task kept a long autonomous session resumable.
+**What didn't**: generating regex-heavy source through shell snippets silently dropped backslashes (F7); a stale cached PDF
+reader and no PDF renderer meant primary sources needed a small pure-JS extractor (F12).
+**Suggestion**: an Edit-style tool for "append this file region" would avoid most shell-escaping workarounds.

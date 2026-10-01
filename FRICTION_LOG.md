@@ -65,3 +65,15 @@ Format: what I tried / what I expected / what happened / how I solved it.
 - Still not covered in production: food/drug older than the watcher's first 14-day window, and equipment/tire recalls older than that (the cache only holds what the watcher synced). Listed in docs/data-sources.md.
 
 (F6 update) Resolved 2026-10-01 after the human submitted the Anthropic use-case form in the Bedrock console: calls succeeded within ~15 minutes. The earlier brief success was probably a propagation window of a partially processed request.
+
+## F11 - Headless Chromium's own SpeechRecognition beat my test stub (2026-10-01)
+- Tried: Playwright test that stubs `window.webkitSpeechRecognition` to simulate push-to-talk, and a second test that removes it to simulate an unsupported browser.
+- Expected: the stub is used; removing the prefixed name means "unsupported".
+- Happened: the push-to-talk test timed out and the "no recognizer" test saw an enabled mic. The page uses `window.SpeechRecognition || window.webkitSpeechRecognition`, and Chromium defines the unprefixed `SpeechRecognition` itself.
+- Solved: the stub assigns both names; the unsupported case sets both to `undefined`. Both paths are now tested (voice.e2e.test.ts).
+
+## F12 - Reading PDFs for primary sources (2026-10-01)
+- Tried: verify the "6% vs 50%" statistic from the CPSC workshop report and transcript instead of trusting search summaries.
+- Expected: WebFetch returns the text.
+- Happened: the tool reported the PDFs as binary and saved them to disk; the PDF page renderer needs poppler, which is not installed on this machine.
+- Solved: a 20-line script with `pdfjs-dist` (pure JS) extracted the text; the quotes are in docs/sources.md. It also revealed what the summaries left out: the 6% is consumer-level only, the overall correction rate is 65%.
