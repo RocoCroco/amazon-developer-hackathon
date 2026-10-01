@@ -8,3 +8,8 @@
 ## B2 - Repo visibility / judge sharing (blocks: T7.2)
 - What: human decides: make public, or keep private and share with the judging team (docs/rules.md). Mini challenges may need public.
 - Why: submission requirement.
+
+## B3 - Lambda concurrency quota is 10 (blocks: nothing; hardens T1.6/T5.3) 
+- What: request a Service Quotas increase for "Concurrent executions" (Lambda, us-east-1), e.g. to 100, so reserved concurrency can cap the public functions.
+- Why: new-account quota of 10 leaves no room for reserved concurrency; an abusive caller could starve the daily watcher.
+- Workaround in place: demo key, 30 s timeout, simulator turn limits.

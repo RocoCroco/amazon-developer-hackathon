@@ -40,3 +40,7 @@ Template per entry: **What worked / What didn't / Suggestion**.
 - Worked: `registerTool` with zod raw shapes and `structuredContent` is concise; zod 4 is accepted.
 - Friction: stateless mode needs a new `McpServer` + transport per request (documented only in examples/comments); per-request identity has to be passed via closure or `requestInfo.headers`, there is no first-class "caller identity" concept short of the full OAuth machinery.
 - Suggestion: a documented "serverless handler" recipe (Lambda Function URL) and a short guide on stateless identity would save time.
+
+## AWS CDK / Lambda Function URLs (T1.6 notes)
+- CDK: `NodejsFunction` + esbuild bundles the MCP SDK app into one 840 KB file in ~100 ms, deploy of the whole stack took 35 s. `logRetention` is deprecated in favor of `logGroup` (the warning is clear). Running `cdk synth` directly uses stale compiled output when the app is TS compiled separately; wrap it in an npm script that builds first.
+- Lambda Function URLs: simple public HTTPS, works with the SDK's web-standard transport via a ~30-line adapter. No built-in throttling or API keys, and new accounts' 10-concurrency quota blocks reserved concurrency (see FRICTION_LOG F5).

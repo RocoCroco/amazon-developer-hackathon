@@ -20,3 +20,15 @@ Format: what I tried / what I expected / what happened / how I solved it.
 - Expected: recalls whose title contains "Govee".
 - Happened: HTTP 200 with ALL 10,027 recalls (27 MB). No error, no warning. `ProductName=Govee` works and returns 1 recall.
 - Solved: provider uses `ProductName` (substring search) for brand and item name, caches per term and caps results; a test asserts `Title=` is never used.
+
+## F4 - Git Bash rewrites SSM parameter names (2026-10-01)
+- Tried: `aws ssm put-parameter --name /recall-guardian/demo-key ...` from Git Bash on Windows.
+- Expected: parameter created.
+- Happened: `Parameter name must be a fully qualified name`. MSYS path conversion turned `/recall-guardian/demo-key` into `C:/Program Files/Git/recall-guardian/demo-key`.
+- Solved: `export MSYS_NO_PATHCONV=1` (scripts/smoke-deployed.mjs sets it for child processes). Lesson: any AWS CLI argument starting with `/` needs this on Windows Git Bash.
+
+## F5 - Lambda reserved concurrency impossible on this account (2026-10-01)
+- Tried: plan to set reserved concurrency on the MCP Lambda as a cost/abuse throttle (Function URLs have no built-in throttling).
+- Expected: a per-function cap.
+- Happened: `aws lambda get-account-settings` shows ConcurrentExecutions=10 and UnreservedConcurrentExecutions=10. AWS requires >=10 unreserved, so no reservation is possible; the account-wide cap of 10 is also shared by every future function (watcher included).
+- Solved (for now): rely on the demo key (401 for others), 30 s timeout, 512 MB, and turn limits in the simulator. Asked the human to request a Lambda concurrency quota increase (BLOCKERS B3, non-blocking).
