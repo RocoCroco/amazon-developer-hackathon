@@ -7,7 +7,7 @@ Deadline: **October 23, 2026, 12:00 PT**. Everything must be submitted before th
 
 When a dangerous product is recalled (a child car seat, a space heater, a dresser that tips over, a contaminated food), most people who own it never find out.
 
-- CPSC workshop (2017): average consumer participation in recalls is ~6%. When the recall was announced only by press release, correction was ~6%; when owners were notified directly (mail, phone, email), it rose to ~50%.
+- CPSC Recall Effectiveness Workshop (2017), CPSC staff data on closed recall cases: the average consumer-level correction rate is about 6%; recalls announced by press release reach about 6% of consumers, while "recall alerts" (direct notice) reach about 50%. The agency's own workshop report lists home voice assistants among ideas to improve direct notice. Exact quotes and caveats: docs/sources.md.
 - The bottleneck is that nobody knows who owns what: almost nobody fills in product registration cards.
 - Amazon already notifies customers about recalls of products bought on Amazon. Nothing covers everything else in the home: gifts, second-hand items, hand-me-down baby gear, in-store purchases, cars, food and medicine.
 
