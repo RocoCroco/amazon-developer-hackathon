@@ -50,10 +50,10 @@ Target: thin end-to-end slice (Phase 1) working by ~day 7 (Oct 8), then widen.
 - [x] T6.4 Finalize FRICTION_LOG.md and FEEDBACK.md.
 - [x] T6.5 Write `docs/video-script.md`: < 3 min English script following SPEC §8, with exact phrases to say to the simulator.
 - [x] T6.6 Write `docs/devpost-submission.md`: project description ready to paste.
-- [ ] T6.7 Finish `docs/manual-checklist.md` (everything only the human can verify: MCP Inspector, voice in Chrome, Bedrock access, video recording, Devpost form).
+- [x] T6.7 Finish `docs/manual-checklist.md` (everything only the human can verify: MCP Inspector, voice in Chrome, Bedrock access, video recording, Devpost form).
 
 ## Phase 7 — Release
-- [ ] T7.1 Final secret scan of the whole repo and git history (e.g. gitleaks or a manual regex scan); fix anything found. **Done when:** scan is clean.
+- [x] T7.1 Final secret scan of the whole repo and git history (e.g. gitleaks or a manual regex scan); fix anything found. **Done when:** scan is clean.
 - [ ] T7.2 Make the repo public (or share with the judging team: rules allow private-shared; see docs/rules.md) — **only after T7.1 and only right before submission.** Needs human go-ahead: write in BLOCKERS.md and leave `[!]` for the human to flip.
 
 ## Stretch (only when everything above is done)

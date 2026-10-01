@@ -50,6 +50,7 @@ export class RecallGuardianStack extends cdk.Stack {
       handler: 'handler',
       runtime: lambda.Runtime.NODEJS_22_X,
       architecture: lambda.Architecture.ARM_64,
+      reservedConcurrentExecutions: 50,
       memorySize: 512,
       timeout: cdk.Duration.seconds(30),
       logGroup: new logs.LogGroup(this, 'McpLogs', {
@@ -85,6 +86,7 @@ export class RecallGuardianStack extends cdk.Stack {
       handler: 'handler',
       runtime: lambda.Runtime.NODEJS_22_X,
       architecture: lambda.Architecture.ARM_64,
+      reservedConcurrentExecutions: 1,
       memorySize: 1024,
       timeout: cdk.Duration.minutes(10),
       logGroup: new logs.LogGroup(this, 'WatcherLogs', {
@@ -114,6 +116,7 @@ export class RecallGuardianStack extends cdk.Stack {
       handler: 'handler',
       runtime: lambda.Runtime.NODEJS_22_X,
       architecture: lambda.Architecture.ARM_64,
+      reservedConcurrentExecutions: 50,
       memorySize: 512,
       timeout: cdk.Duration.seconds(60),
       logGroup: new logs.LogGroup(this, 'SimulatorLogs', {

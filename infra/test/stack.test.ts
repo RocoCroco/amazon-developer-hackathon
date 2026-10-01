@@ -150,3 +150,19 @@ describe('public simulator', () => {
     expect(json).toContain('DAILY_SPEECH_CHARS');
   });
 });
+
+describe('reserved concurrency (account quota raised to 1000)', () => {
+  const template = synth();
+  it('caps every function: 50 for the public ones, 1 for the watcher', () => {
+    const values = Object.values(
+      template.toJSON().Resources as Record<
+        string,
+        { Type: string; Properties: { ReservedConcurrentExecutions?: number; Timeout?: number } }
+      >,
+    )
+      .filter((r) => r.Type === 'AWS::Lambda::Function' && r.Properties.Timeout !== undefined)
+      .map((r) => r.Properties.ReservedConcurrentExecutions)
+      .sort((a, b) => (a ?? 0) - (b ?? 0));
+    expect(values).toEqual([1, 50, 50]);
+  });
+});
