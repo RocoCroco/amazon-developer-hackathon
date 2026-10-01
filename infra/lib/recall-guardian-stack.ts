@@ -3,6 +3,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as cdk from 'aws-cdk-lib';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as events from 'aws-cdk-lib/aws-events';
+import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
@@ -25,6 +27,7 @@ function findRepoRoot(from: string): string {
 
 const repoRoot = findRepoRoot(path.dirname(fileURLToPath(import.meta.url)));
 const lambdaEntry = path.join(repoRoot, 'packages/mcp-server/src/lambda.ts');
+const watcherEntry = path.join(repoRoot, 'packages/mcp-server/src/watcher-lambda.ts');
 const lockFile = path.join(repoRoot, 'package-lock.json');
 
 export class RecallGuardianStack extends cdk.Stack {
@@ -71,6 +74,35 @@ export class RecallGuardianStack extends cdk.Stack {
 
     // Public HTTPS endpoint; the demo key is checked in code (Function URLs have no throttling).
     const url = mcpFunction.addFunctionUrl({ authType: lambda.FunctionUrlAuthType.NONE });
+
+    // Daily watcher: pulls new recalls from the official sources, matches them against every household
+    // and raises alerts. Reads the NHTSA zip as a stream, so memory stays modest; a long timeout covers
+    // slow source APIs. It also accepts a direct invocation with a seeded recall (demo mode).
+    const watcherFunction = new NodejsFunction(this, 'WatcherFunction', {
+      entry: watcherEntry,
+      depsLockFilePath: lockFile,
+      handler: 'handler',
+      runtime: lambda.Runtime.NODEJS_22_X,
+      architecture: lambda.Architecture.ARM_64,
+      memorySize: 1024,
+      timeout: cdk.Duration.minutes(10),
+      logGroup: new logs.LogGroup(this, 'WatcherLogs', {
+        retention: logs.RetentionDays.ONE_WEEK,
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
+      }),
+      environment: { TABLE_NAME: table.tableName },
+      bundling: { minify: true, sourceMap: false },
+    });
+    table.grantReadWriteData(watcherFunction);
+
+    // Every day at 07:00 UTC (a quiet hour in the US). One invocation, so the 10-concurrency account
+    // quota (BLOCKERS B3) is never at risk.
+    new events.Rule(this, 'DailyWatcherRule', {
+      schedule: events.Schedule.cron({ minute: '0', hour: '7' }),
+      targets: [new targets.LambdaFunction(watcherFunction, { retryAttempts: 1 })],
+    });
+
+    new cdk.CfnOutput(this, 'WatcherFunctionName', { value: watcherFunction.functionName });
 
     new cdk.CfnOutput(this, 'McpUrl', { value: `${url.url}mcp` });
     new cdk.CfnOutput(this, 'TableName', { value: table.tableName });

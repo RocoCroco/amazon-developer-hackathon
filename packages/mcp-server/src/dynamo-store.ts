@@ -6,10 +6,12 @@ import {
   GetCommand,
   PutCommand,
   QueryCommand,
+  ScanCommand,
   UpdateCommand,
 } from '@aws-sdk/lib-dynamodb';
 import {
   definedFields,
+  type HouseholdSource,
   type ItemPatch,
   type ItemStore,
   type NewItem,
@@ -56,7 +58,7 @@ function toStored(record: ItemRecord): StoredItem {
  *   PK=HH#<householdId>  SK=ITEM#<itemId>   inventory items
  * Alerts and the recall cache get their own SK prefixes later.
  */
-export class DynamoItemStore implements ItemStore {
+export class DynamoItemStore implements ItemStore, HouseholdSource {
   constructor(
     private readonly db: DynamoDBDocumentClient,
     private readonly tableName: string,
@@ -132,6 +134,31 @@ export class DynamoItemStore implements ItemStore {
       if (error instanceof ConditionalCheckFailedException) return undefined;
       throw error;
     }
+  }
+
+  /**
+   * Scans the table for all inventory items, grouped by household. Fine at demo scale (a scan reads the
+   * whole small table once a day); a larger deployment would keep a household index instead.
+   */
+  async listAllHouseholds(): Promise<{ householdId: string; items: StoredItem[] }[]> {
+    const byHousehold = new Map<string, StoredItem[]>();
+    let startKey: Record<string, unknown> | undefined;
+    do {
+      const res = await this.db.send(
+        new ScanCommand({
+          TableName: this.tableName,
+          FilterExpression: 'begins_with(SK, :sk)',
+          ExpressionAttributeValues: { ':sk': 'ITEM#' },
+          ExclusiveStartKey: startKey,
+        }),
+      );
+      for (const row of (res.Items ?? []) as ItemRecord[]) {
+        const householdId = row.PK.slice('HH#'.length);
+        byHousehold.set(householdId, [...(byHousehold.get(householdId) ?? []), toStored(row)]);
+      }
+      startKey = res.LastEvaluatedKey;
+    } while (startKey);
+    return [...byHousehold.entries()].map(([householdId, items]) => ({ householdId, items }));
   }
 
   async removeItem(householdId: string, itemId: string): Promise<boolean> {

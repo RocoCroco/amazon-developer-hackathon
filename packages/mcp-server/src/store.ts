@@ -26,12 +26,17 @@ export interface ItemStore {
   removeItem(householdId: string, itemId: string): Promise<boolean>;
 }
 
+/** Every household with its items: what the daily watcher checks new recalls against. */
+export interface HouseholdSource {
+  listAllHouseholds(): Promise<{ householdId: string; items: StoredItem[] }[]>;
+}
+
 /** The fields of a patch that are actually set. */
 export function definedFields(patch: ItemPatch): ItemPatch {
   return Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)) as ItemPatch;
 }
 
-export class InMemoryItemStore implements ItemStore {
+export class InMemoryItemStore implements ItemStore, HouseholdSource {
   private readonly items = new Map<string, StoredItem[]>();
 
   async addItem(householdId: string, item: NewItem): Promise<StoredItem> {
@@ -59,6 +64,12 @@ export class InMemoryItemStore implements ItemStore {
     const updated: StoredItem = { ...list[index]!, ...definedFields(patch) };
     list[index] = updated;
     return updated;
+  }
+
+  async listAllHouseholds(): Promise<{ householdId: string; items: StoredItem[] }[]> {
+    return [...this.items.entries()]
+      .filter(([, items]) => items.length > 0)
+      .map(([householdId, items]) => ({ householdId, items: [...items] }));
   }
 
   async removeItem(householdId: string, itemId: string): Promise<boolean> {

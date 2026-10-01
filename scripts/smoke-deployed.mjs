@@ -57,5 +57,17 @@ const checked = await client.callTool({
   arguments: { item_id: added.structuredContent.item_id },
 });
 console.log('check_item ->', text(checked), '| status:', checked.structuredContent.status);
+// Leave nothing behind: remove the sample item (and the alert check_item recorded for it).
+const alerts = await client.callTool({ name: 'get_alerts', arguments: {} });
+for (const alert of alerts.structuredContent.alerts ?? []) {
+  await client.callTool({
+    name: 'resolve_alert',
+    arguments: { alert_id: alert.alert_id, resolution: 'dismissed' },
+  });
+}
+await client.callTool({
+  name: 'remove_item',
+  arguments: { item_id: added.structuredContent.item_id, confirm: true },
+});
 await client.close();
 if (checked.structuredContent.status !== 'recalled') process.exit(1);

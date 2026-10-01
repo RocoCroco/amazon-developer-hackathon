@@ -57,3 +57,7 @@ Template per entry: **What worked / What didn't / Suggestion**.
 - `list-foundation-models` shows models as ACTIVE even when the account cannot invoke them; the actual blocker only appears at invoke time ("Model use case details have not been submitted for this account", or "not available for this account" for newer models). A "can I invoke this model?" check in the console/CLI would save a lot of guessing.
 - Access flipped from working to failing within minutes with no change on our side (FRICTION_LOG F6).
 - Converse API is pleasant: same request shape for tool use and plain prompts; `temperature: 0` plus a JSON-only system prompt gives parseable output with a tolerant parser (we still handle fenced or chatty replies).
+
+## EventBridge + Lambda (T4.4 notes)
+- A daily `events.Rule` + `targets.LambdaFunction` is ~10 lines of CDK and deploys cleanly; the whole stack (two Lambdas, table, rule) is 150 s to deploy. Direct `aws lambda invoke --payload file://...` with `--cli-binary-format raw-in-base64-out` is the easy way to trigger a scheduled function by hand with a custom event (we use it to inject a demo recall).
+- First real run of the watcher against the live sources (last 14 days): 25 CPSC + 49 openFDA food + 11 drug + 23 NHTSA campaigns, 109 recalls, in one Lambda invocation; the NHTSA 15 MB zip is streamed, never buffered.

@@ -67,3 +67,41 @@ describe('RecallGuardianStack', () => {
     for (const forbidden of FORBIDDEN) expect(types).not.toContain(forbidden);
   });
 });
+
+describe('daily watcher', () => {
+  const template = synth();
+
+  it('is a second Lambda with a long timeout, more memory, and only the table name', () => {
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      Runtime: 'nodejs22.x',
+      Timeout: 600,
+      MemorySize: 1024,
+      Environment: { Variables: { TABLE_NAME: Match.anyValue() } },
+    });
+    const functions = Object.values(
+      template.toJSON().Resources as Record<
+        string,
+        { Type: string; Properties: { Timeout?: number } }
+      >,
+    ).filter((r) => r.Type === 'AWS::Lambda::Function' && r.Properties.Timeout !== undefined);
+    expect(functions).toHaveLength(2); // the MCP function and the watcher
+  });
+
+  it('runs once a day through EventBridge', () => {
+    template.hasResourceProperties('AWS::Events::Rule', {
+      ScheduleExpression: 'cron(0 7 * * ? *)',
+      State: 'ENABLED',
+    });
+    template.resourceCountIs('AWS::Events::Rule', 1);
+  });
+
+  it('is not reachable from the internet (no Function URL on the watcher)', () => {
+    template.resourceCountIs('AWS::Lambda::Url', 1); // only the MCP function has one
+  });
+
+  it('can use the demo key parameter only from the MCP function', () => {
+    const json = JSON.stringify(template.toJSON());
+    // The SSM read permission appears in exactly one policy.
+    expect(json.split('ssm:GetParameter').length - 1).toBe(1);
+  });
+});
