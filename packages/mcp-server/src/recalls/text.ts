@@ -49,3 +49,55 @@ export function quotedBrands(text: string): string[] {
   }
   return [...found];
 }
+
+const MONTHS = [
+  'january',
+  'february',
+  'march',
+  'april',
+  'may',
+  'june',
+  'july',
+  'august',
+  'september',
+  'october',
+  'november',
+  'december',
+];
+const MONTH =
+  '(january|february|march|april|may|june|july|august|september|october|november|december)';
+const DATE = String.raw`${MONTH}\.?\s+(?:(\d{1,2}),?\s+)?(\d{4})`;
+const RANGE = new RegExp(
+  String.raw`\b(?:between|from)\s+${DATE}\s*,?\s*(?:and|through|to|-)\s+${DATE}`,
+  'i',
+);
+
+function iso(year: number, month: number, day: number): string {
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+function lastDayOf(year: number, month: number): number {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+/**
+ * Manufacturing/sale window from recall prose, e.g. "manufactured between July 2010 and May 2013" or
+ * "built from November 24, 2009, through April 9, 2010". Month-only dates cover the whole month.
+ */
+export function extractDateRange(text: string): { from: string; to: string } | undefined {
+  const m = RANGE.exec(text);
+  if (!m) return undefined;
+  const month = (name: string | undefined) => MONTHS.indexOf((name ?? '').toLowerCase()) + 1;
+  const [m1, d1, y1, m2, d2, y2] = [
+    month(m[1]),
+    m[2],
+    Number(m[3]),
+    month(m[4]),
+    m[5],
+    Number(m[6]),
+  ];
+  return {
+    from: iso(y1, m1, d1 ? Number(d1) : 1),
+    to: iso(y2, m2, d2 ? Number(d2) : lastDayOf(y2, m2)),
+  };
+}

@@ -3,15 +3,15 @@
 _Last updated: 2026-10-01_
 
 ## Current task
-T2.1 - NHTSA adapter (vehicles via recallsByVehicle + car seats/equipment/tires via the bulk flat file) + VIN decode (vPIC). Car seat recall must be findable from brand + model.
+T2.2 - openFDA adapter (food + drug enforcement reports) -> Recall schema; unit tests on fixtures (test/fixtures/openfda-food-enforcement.json, openfda-drug-enforcement.json).
 
 ## Done
-- Phase 0; Phase 1 (thin slice) T1.1-T1.8 complete: deployed MCP server (Lambda URL + DynamoDB), simulator backend + text UI with real-browser tests. T1.7 is `[!]` only for the live Bedrock verification (BLOCKERS B1; retry `npm run test:live` later).
-- 65 tests green. Local run instructions in README.
+- Phase 0; Phase 1 (thin slice, T1.7 only blocked for live Bedrock = B1); T2.1 (src/recalls/nhtsa.ts vehicle API + flat file parsing/grouping; vpic.ts VIN decode; text.ts extractDateRange). 81 tests green.
+- NOTE for T3.1: matcher currently checks `recall.years` (union); switch to per-product `years` (RecalledProduct.years) so a campaign covering "2018-2020 Camry, 2017-2020 Tacoma" does not match a 2017 Camry.
+- LESSON: never generate regex-bearing code via shell heredoc/node -e; use Write/Edit tools (FRICTION F7).
 
-## Left (Phase 2+)
-- T2.1 NHTSA adapter; T2.2 openFDA adapter; T2.3 cache/incremental; Phase 3 matcher quality (>=50 pairs), LLM confirm (B1), clarifying questions; Phase 4 remaining tools + watcher + costs; Phase 5 voice/Polly, demo mode, deploy simulator; Phase 6 docs; Phase 7 release.
-- Ideas noted: tool responses should carry `spoken` (model codes spaced for TTS) separate from the display `summary` (transcript currently shows "H 7 1 3 1") -> do in T4.3. Mock brain has no update_item yet -> revisit in T4.1. Retry Bedrock periodically (B1).
+## Left
+- openFDA adapter (category food/drug; fields: recall_number, product_description, recalling_firm, reason_for_recall, classification I/II/III, status, report_date YYYYMMDD, recall_initiation_date, distribution_pattern, code_info, product_quantity). Brands: recalling_firm (+ brand names found in product_description?). Hazard = reason_for_recall; remedy: standard "Do not eat/use; return or discard" text by classification. Fetch with search=report_date:[A+TO+B]&sort=report_date:desc&limit=100&skip (paging, limit 1000/request max).
 
 ## Next step
-Write packages/mcp-server/src/recalls/nhtsa.ts: (1) `fromNhtsaVehicle(raw)` for recallsByVehicle JSON (fixture test/fixtures/nhtsa-recalls-by-vehicle-camry-2020.json; dates MM/DD/YYYY; fields Manufacturer, NHTSACampaignNumber, Component, Summary, Consequence, Remedy, Make, Model, ModelYear); (2) `parseFlatFile(lines)` -> Recall[] for RCL.txt rows (tab-delimited, fields in docs/data-sources.md; fixture test/fixtures/nhtsa-flat-sample.txt; category C=car_seat, E=equipment, T=tire, V=vehicle; YEARTXT 9999 = unknown); (3) `decodeVin()` via vPIC DecodeVinValues with fetch injection. Then tests.
+Create packages/mcp-server/src/recalls/openfda.ts with `fromOpenFda(raw, kind: 'food'|'drug')`, `fetchOpenFdaRecalls(kind, sinceYYYYMMDD, fetchFn)` with paging, and openfda.test.ts.

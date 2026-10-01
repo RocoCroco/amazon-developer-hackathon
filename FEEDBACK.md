@@ -48,3 +48,6 @@ Template per entry: **What worked / What didn't / Suggestion**.
 ## Playwright (T1.8 notes)
 - `playwright-core` + `npx playwright-core install chromium-headless-shell` works on this locked-down Windows machine (no Chrome/Edge installed, Application Control active); headless Chromium launches fine.
 - Playwright's `expect` matchers (`toBeVisible`, `toContainText`...) live in `@playwright/test`; with Vitest use `expect.poll(() => locator.textContent())`.
+
+## NHTSA flat file (T2.1 notes)
+- One row per make x model, with the campaign's prose repeated on every row; grouping by campaign number is required. Manufacturing windows are in BGMAN/ENDMAN only for some rows; otherwise only in prose. When both exist they can differ by a day (column 2010-04-10 vs prose "April 9"); we trust the column.

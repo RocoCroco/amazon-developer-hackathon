@@ -38,3 +38,9 @@ Format: what I tried / what I expected / what happened / how I solved it.
 - Expected: same result.
 - Happened: `ResourceNotFoundException: Model use case details have not been submitted for this account ... try again in 15 minutes.` for every Anthropic model. Sonnet 5.5 earlier said "not available for this account" (AccessDenied) - a different, less actionable message. `list-foundation-models` shows models as ACTIVE regardless of whether the account can invoke them.
 - Solved: not solved from our side (account/console action). Tests use a scripted LLM; live test is opt-in (`npm run test:live`). Logged in BLOCKERS B1.
+
+## F7 - Backslashes lost when generating source through shell snippets (2026-10-01)
+- Tried: patching a regex-heavy TypeScript file with `node` scripts written via bash heredocs/`node -e` (first as a JS template literal, then as String.raw).
+- Expected: regex source preserved byte for byte.
+- Happened: `\b` became a literal backspace character (code 8) and `\s`, `\.`, `\d` lost their backslash, so a regex silently matched nothing (no error, invisible in the editor). Edit-tool matching against the displayed text failed for the same reason.
+- Solved: write regex-bearing code only with the file Write/Edit tools; to repair, rebuilt the line with `String.fromCharCode(92)` and verified by char codes. Added a unit test per regex (extractDateRange) so this class of bug fails loudly.

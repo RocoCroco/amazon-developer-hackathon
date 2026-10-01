@@ -10,6 +10,8 @@ export interface RecalledProduct {
   name: string;
   /** Model numbers/names found in structured fields or extracted from text. */
   models: string[];
+  /** Model years this product line covers, when the source states them per product. */
+  years?: number[];
 }
 
 /** Normalized recall shared by all source adapters. */
