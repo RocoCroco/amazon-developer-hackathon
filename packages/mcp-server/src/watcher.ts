@@ -155,6 +155,7 @@ export async function backfillCpsc(
   fetchFn?: FetchLike,
   wait: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms)),
   now: () => Date = () => new Date(),
+  until?: string,
 ): Promise<BackfillResult & { skippedDays: string[] }> {
   const total = { fetched: 0, added: 0, updated: 0, unchanged: 0, skippedDays: [] as string[] };
 
@@ -174,9 +175,10 @@ export async function backfillCpsc(
     return [...(await fetchWindow(from, middle)), ...(await fetchWindow(nextDay(middle), to))];
   };
 
-  const today = isoDay(now());
-  for (let from = since; from <= today; from = nextQuarter(from)) {
-    const chunk = await fetchWindow(from, minDay(dayBefore(nextQuarter(from)), today));
+  // `until` lets a long history be loaded in several runs (one Lambda run has 10 minutes).
+  const last = minDay(until ?? isoDay(now()), isoDay(now()));
+  for (let from = since; from <= last; from = nextQuarter(from)) {
+    const chunk = await fetchWindow(from, minDay(dayBefore(nextQuarter(from)), last));
     const r = await recalls.upsert(chunk, { reindex: true });
     total.fetched += chunk.length;
     total.added += r.added.length;

@@ -71,6 +71,11 @@ describe('simulator web UI (real browser, real MCP server)', () => {
     await page.goto(appUrl);
     await page.waitForTimeout(500);
     await hasCount(page.locator('#transcript .bubble'), 0);
+    // ...but a first-time visitor is told what to say, until the first message.
+    expect(await page.locator('#hint').isVisible()).toBe(true);
+    await hasText(page.locator('#hint'), 'we got a second-hand Graco car seat');
+    await talk(page, 'We got a Govee space heater.');
+    expect(await page.locator('#hint').isVisible()).toBe(false);
     await page.close();
   }, 60_000);
 

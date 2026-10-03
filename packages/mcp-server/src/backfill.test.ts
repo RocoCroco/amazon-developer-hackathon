@@ -63,15 +63,34 @@ describe('a CPSC outage when the cache holds a copy of CPSC', () => {
     },
   };
 
-  it('is no gap: the cache answers', async () => {
+  const copy = [{ source: 'CPSC', feed: 'cpsc' as const }];
+  const clock = () => Date.parse('2026-10-03T12:00:00Z');
+
+  it('is no gap while the copy is fresh: the cache answers', async () => {
     const store = new InMemoryRecallStore();
     await backfillCpsc(store, '2026-01-01', cpscWithBadDay(undefined).fetchFn, noWait, now);
+    await store.setCursor('cpsc', '2026-10-01'); // synced two days ago
     const res = await new CompositeRecallProvider([
       cpscDown,
-      new StoreRecallProvider(store, ['CPSC']),
+      new StoreRecallProvider(store, copy, clock),
     ]).search({ name: 'space heater', brand: 'Govee' });
     expect(res.unavailable).toEqual([]);
     expect(res.recalls.length).toBeGreaterThan(0);
+  });
+
+  it('is reported again when the daily sync has not worked for over a week (new recalls may be missing)', async () => {
+    const store = new InMemoryRecallStore();
+    await store.setCursor('cpsc', '2026-09-20');
+    const stale = await new CompositeRecallProvider([
+      cpscDown,
+      new StoreRecallProvider(store, copy, clock),
+    ]).search({ name: 'space heater', brand: 'Govee' });
+    expect(stale.unavailable).toEqual(['CPSC']);
+    const never = await new CompositeRecallProvider([
+      cpscDown,
+      new StoreRecallProvider(new InMemoryRecallStore(), copy, clock),
+    ]).search({ name: 'space heater', brand: 'Govee' });
+    expect(never.unavailable).toEqual(['CPSC']);
   });
 
   it('is still reported when the cache does not cover CPSC', async () => {
@@ -79,5 +98,21 @@ describe('a CPSC outage when the cache holds a copy of CPSC', () => {
       name: 'space heater',
     });
     expect(res.unavailable).toEqual(['CPSC']);
+  });
+});
+
+describe('CPSC backfill in several runs', () => {
+  it('stops at `until`, so a long history fits in several 10-minute runs', async () => {
+    const cpsc = cpscWithBadDay(undefined);
+    await backfillCpsc(
+      new InMemoryRecallStore(),
+      '2026-01-01',
+      cpsc.fetchFn,
+      noWait,
+      now,
+      '2026-05-15',
+    );
+    expect(cpsc.urls).toHaveLength(2);
+    expect(cpsc.urls[1]).toContain('RecallDateStart=2026-04-01&RecallDateEnd=2026-05-15');
   });
 });

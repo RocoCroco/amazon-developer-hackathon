@@ -8,7 +8,9 @@ Built for the Amazon "Build, Ship, Shape" hackathon, Alexa+ track.
 ![The Alexa+ simulator: a recalled space heater, and an unprompted warning about a car seat](docs/images/simulator.png)
 
 **Live demo:** https://6aqlg4s33zg7tgjhoqsetxjqyi0pctry.lambda-url.us-east-1.on.aws/
-(open the chevron menu next to the logo and click **Load sample family**, ask *"Is anything we own recalled?"*, then **Simulate new recall** from the same menu; voice works in Chrome and Edge, typing everywhere.)
+In Chrome or Edge, allow the microphone once and just say *"Alexa, we got a second-hand Govee space heater, model
+H7131"* (hands-free, like a real Echo), or type it. For the full story open the settings behind the chevron next to
+the logo: **Load sample family**, ask *"Is anything we own recalled?"*, then **Simulate new recall**.
 
 ## The problem
 
@@ -24,14 +26,17 @@ food and medicine. The bottleneck is that nobody knows who owns what, because no
 
 ## What it does
 
-1. **Register by voice**: "We got a hand-me-down Graco car seat." Alexa asks only what is needed (brand, model, roughly when it was made).
-2. **Check instantly**: "Is anything we own recalled?" Official CPSC, NHTSA and openFDA data, matched carefully.
-3. **Watch continuously**: a daily job pulls new recalls and matches them against every household.
-4. **Alert proactively**: "Heads up: your car seat has a recall for a harness defect."
-5. **Guide the fix**: stop-using advice first, then the free repair/replacement/refund and who to call. Track it to done.
+1. **Register by voice**: "Alexa, we got a hand-me-down Graco car seat." Alexa asks only what is needed (brand, model, roughly when it was made), and checks recalls the moment it knows enough.
+2. **Hear brands right**: speech recognition writes "Aitjunz" as "iTunes" or "8th June". The server compares what it heard **by sound** with the brands in the recall data and asks *"Do you mean Aitjunz, A-I-T-J-U-N-Z?"*; the owner can spell it letter by letter.
+3. **Check instantly**: "Is anything we own recalled?" Official CPSC, NHTSA and openFDA data, matched carefully.
+4. **Know the family's allergies**: "Leo is allergic to peanuts." A food recall for undeclared peanuts says so and jumps to the top; *"any recent peanut recalls?"* is answered from openFDA.
+5. **Watch continuously**: a daily job pulls new recalls and matches them against every household.
+6. **Alert proactively**: "Heads up: your car seat has a recall for a harness defect."
+7. **Guide the fix**: stop-using advice first, then the free repair/replacement/refund and who to call. Track it to done.
 
 Alexa never claims a recall it is not sure about: when a detail is missing it asks one short question
-(the model sticker, the month it was made, the lot code) instead of guessing.
+(the model sticker, the month it was made, the lot code) instead of guessing. And when a recall database is down
+(CPSC was, for hours, while we built this), it says it could not check instead of "no recalls".
 
 ## Architecture
 
@@ -44,6 +49,7 @@ flowchart LR
   mcp --> ddb[("DynamoDB<br/>inventory, alerts,<br/>recall cache")]
   mcp -- "live lookup" --> cpsc["CPSC<br/>consumer products"]
   mcp -- "live lookup" --> nhtsaapi["NHTSA API<br/>vehicles"]
+  mcp -- "live lookup" --> fdalive["openFDA<br/>food, drugs, allergens"]
   eb["EventBridge<br/>daily"] --> watcher["Daily watcher<br/>(Lambda)"]
   watcher --> ddb
   watcher --> cpsc
@@ -60,7 +66,7 @@ flowchart LR
   to the server as a **real MCP client**; Web Speech API for the microphone, Amazon Polly for the voice.
 - **Infrastructure** (`infra`): AWS CDK, us-east-1, serverless only, everything tagged `Project=recall-guardian`.
 
-### The nine MCP tools
+### The eleven MCP tools
 
 | Tool | What it does |
 |---|---|
@@ -72,18 +78,21 @@ flowchart LR
 | `get_alerts` | Open alerts, most severe first |
 | `get_remedy` | Step-by-step fix: safety action, free repair/replacement/refund, phone (digits spelled for speech) |
 | `resolve_alert` | Close an alert (fixed, stopped using, not affected, dismissed) |
+| `update_allergies` | Save who in the family is allergic to what; food recalls for an undeclared allergen are flagged for that person |
+| `recent_allergen_recalls` | "Any recent peanut recalls?" from openFDA, newest first |
 
 Every response leads with one short spoken sentence and puts details in structured fields; a test drives all
-nine tools and enforces the voice-first rules (short, no URLs, no markup, no internal ids).
+eleven tools and enforces the voice-first rules (short, no URLs, no markup, no internal ids). `add_item` and
+`update_item` check recalls as soon as brand and model are known, so a recalled item is reported in the same turn.
 
 ## Data sources (official, free, no keys)
 
 | Source | Covers | How we use it |
 |---|---|---|
-| CPSC SaferProducts.gov Recalls API | consumer products | live lookup, plus daily incremental sync |
+| CPSC SaferProducts.gov Recalls API | consumer products | live lookup, plus a full copy in DynamoDB (backfill since 2008 + daily sync) that answers when the API is down |
 | NHTSA recalls API + vPIC | vehicles, VIN decoding | live lookup by make, model and year |
 | NHTSA bulk recall file | child car seats, tires, equipment | streamed daily (15 MB zip, never fully in memory); seats backfilled once |
-| openFDA enforcement reports | food, drugs | daily incremental sync |
+| openFDA enforcement reports | food, drugs, undeclared allergens | live lookup by brand (5 years) and daily incremental sync |
 
 Details, limits and quirks we hit: [docs/data-sources.md](docs/data-sources.md).
 
@@ -104,7 +113,7 @@ Prerequisites: Node 22+ (developed on 24), npm 10+. No AWS needed for tests or t
 
 ```bash
 npm install
-npm test            # ~340 tests: matcher on real data, MCP over HTTP, infra assertions, real-browser UI
+npm test            # ~410 tests: matcher on real data, MCP over HTTP, infra assertions, real-browser UI
 npm run lint
 npm run build
 ```
@@ -126,8 +135,11 @@ cd infra && npx cdk bootstrap --tags Project=recall-guardian
 aws ssm put-parameter --region us-east-1 --name /recall-guardian/demo-key --type SecureString \
     --value "$(node -e "process.stdout.write(require('crypto').randomBytes(24).toString('base64url'))")"
 npm run deploy                      # MCP Lambda, watcher Lambda + daily rule, simulator Lambda, DynamoDB
-# one-time: load every historical child-seat recall into the cache
-aws lambda invoke --function-name <WatcherFunctionName output> --payload '{"backfill":true}' \
+# one-time: load history into the recall cache (child seats; CPSC in runs of a few years each)
+aws lambda invoke --function-name <WatcherFunctionName output> --payload '{"backfill":"child-seats"}' \
+    --cli-binary-format raw-in-base64-out out.json
+aws lambda invoke --function-name <WatcherFunctionName output> --invocation-type Event \
+    --payload '{"backfill":"cpsc","since":"2020-01-01","until":"2022-12-31"}' \
     --cli-binary-format raw-in-base64-out out.json
 ```
 Needs Bedrock model access for Claude Haiku 4.5 in us-east-1. `npx cdk destroy` removes everything the stack created.
@@ -145,7 +157,7 @@ automated test that runs three times in a row: `packages/simulator/src/demo-stor
 
 ## Cost and safety
 
-About **$8 a month at demo usage** (almost all of it Claude Haiku and Polly; everything else is inside free tiers):
+About **$9 a month at demo usage** (almost all of it Claude Haiku and Polly; everything else is inside free tiers):
 [docs/costs.md](docs/costs.md). Spending guards: a per-session turn limit, a daily cap on model turns and spoken
 characters shared by all containers, the demo key on the MCP endpoint, unguessable household ids, no resource with an
 hourly price.
@@ -161,11 +173,30 @@ docs                  data sources, matcher results, costs, sources for claims, 
 SPEC.md TASKS.md      the plan this was built from; FRICTION_LOG.md and FEEDBACK.md for the hackathon
 ```
 
+## From simulator to Alexa+
+
+What is real and would stay the same: the **MCP server** (eleven tools over Streamable HTTP, spec 2025-11-25), the
+recall data, the matcher, the daily watcher and the alert store. What the simulator stands in for:
+
+- **The assistant.** Claude on Bedrock plays Alexa+ and calls the server as an ordinary MCP client. The system
+  prompt in `packages/simulator/src/agent.ts` is the only Alexa-specific glue; the tool descriptions carry the
+  rest (ask before claiming, read the spoken summary, spell phone numbers).
+- **Speech.** The browser's speech recognition and Amazon Polly. Brand mishearing is handled in the server, so it
+  helps any voice front end.
+- **Proactive delivery.** The watcher writes alerts; the simulator polls for new ones and speaks them. On a real
+  device the assistant's own notification channel would deliver them.
+
+Missing before a real launch: per-household OAuth instead of the shared demo key plus unguessable household ids
+(stretch S1), and a faster way to fill the inventory than voice alone (order history, receipts or a label photo;
+stretch S2). Hands-free mode uses the browser's speech recognition, which sends audio to the browser vendor's
+speech service; it can be switched off in the settings.
+
 ## Limits (what is not done)
 
 - The simulator stands in for the real Alexa+ integration; the MCP server itself is independent of it.
-- Food, drug, tire and equipment recalls older than the daily watcher's history are not searchable yet; consumer
-  products, vehicles and child seats are covered end to end ([details](docs/data-sources.md)).
+- Tire and equipment recalls older than the daily watcher's history are not searchable yet; consumer products
+  (CPSC copy since 2008), vehicles, child seats, and five years of food and drug reports are
+  ([details](docs/data-sources.md)).
 - US recall databases only; non-US sources are future work. Accounts are a household id, not OAuth.
 
 ## License

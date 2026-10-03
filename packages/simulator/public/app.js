@@ -15,6 +15,7 @@ const settings = $('#settings');
 const inventory = $('#inventory');
 const notice = $('#notice');
 const statusLine = $('#status');
+const hint = $('#hint');
 
 const POLL_MS = 4000;
 const jsonHeaders = { 'content-type': 'application/json' };
@@ -92,6 +93,23 @@ function setSpeaking(on) {
 
 // ---- transcript: floating bubbles; older ones fade at the top edge and stay reachable by scrolling ----------------
 
+const EXAMPLE = 'we got a second-hand Graco car seat';
+
+/**
+ * Alexa never speaks first, so an empty page needs one line telling a first-time visitor what to say.
+ * It disappears with the first message.
+ */
+function updateHint() {
+  const empty = transcript.children.length === 0;
+  hint.hidden = !empty;
+  if (!empty) return;
+  hint.textContent = !Recognition
+    ? `Type something like “${EXAMPLE[0].toUpperCase()}${EXAMPLE.slice(1)}.”`
+    : wake.running
+      ? `Say “Alexa, ${EXAMPLE}.”`
+      : `Tap the microphone and say “${EXAMPLE}”, or type it.`;
+}
+
 function bubble(kind, text, toolCalls = []) {
   const li = document.createElement('li');
   li.className = `bubble ${kind}`;
@@ -110,6 +128,7 @@ function bubble(kind, text, toolCalls = []) {
   }
   transcript.append(li);
   transcript.scrollTo({ top: transcript.scrollHeight, behavior: 'smooth' });
+  updateHint();
   return li;
 }
 
@@ -524,6 +543,7 @@ const wake = {
     const armed = this.running && !listening;
     micButton.dataset.armed = String(armed);
     micButton.title = armed ? 'Hands-free: say “Alexa”, or tap to talk' : 'Talk to Alexa';
+    updateHint();
   },
 };
 
@@ -660,6 +680,7 @@ resetButton.addEventListener('click', async () => {
   rows.clear();
   setStatus('');
   transcript.replaceChildren(); // a real Alexa never speaks first: the page starts silent
+  updateHint();
   input.focus();
 });
 
@@ -709,6 +730,8 @@ demoButton.addEventListener('click', async () => {
 });
 
 // ---- start --------------------------------------------------------------------------------------------------------------
+
+updateHint();
 
 fetch('/api/config')
   .then((res) => res.json())

@@ -128,7 +128,6 @@ describe('food allergies through MCP (real openFDA recalls)', () => {
     const added = await call('add_item', {
       name: 'ice cream sandwiches',
       brand: "Mercer's",
-      year: 2026,
     });
     expect(added.data.status).toBe('need_info'); // food: only the lot code can confirm
     expect(added.data.allergy_alert).toBe(true);
@@ -145,7 +144,7 @@ describe('food allergies through MCP (real openFDA recalls)', () => {
     const household = 'aLlErGyaLlErGyaLlErGy003';
     const call = await connect(household);
     await call('update_allergies', { add: [{ allergen: 'peanut', person: 'Leo' }] });
-    await items.addItem(household, { name: 'ice cream sandwiches', brand: "Mercer's", year: 2026 });
+    await items.addItem(household, { name: 'ice cream sandwiches', brand: "Mercer's" });
     const result = await runWatcher(
       { recalls: new InMemoryRecallStore(), households: items, alerts, feeds: [] },
       { seed: [mercers] },

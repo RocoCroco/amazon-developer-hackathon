@@ -139,11 +139,22 @@ async function check(item: Item, ctx: ToolContext, saved?: StoredItem) {
  * A saved item with brand and model (or year) is checked right away, so a recalled product is reported, and
  * raises its alert, in the same turn it is registered. Without those details we keep asking for them.
  */
-async function checkOnSave(saved: StoredItem, ctx: ToolContext) {
+type Checked = { summary: string; status: string } & Record<string, unknown>;
+
+async function checkOnSave(saved: StoredItem, ctx: ToolContext): Promise<Checked | undefined> {
   if (!saved.brand) return undefined;
-  if (!(saved.model || saved.year)) return brandHeardRight(saved, ctx);
-  const result = await check(saved, ctx, saved);
-  return result.structuredContent as { summary: string; status: string } & Record<string, unknown>;
+  if (saved.model || saved.year) {
+    return (await check(saved, ctx, saved)).structuredContent as Checked;
+  }
+  // Brand and product only. Food and medicine have no model: the lot code decides, so a matching food or
+  // drug recall (and an allergy warning) is reported right away. A first look records nothing; only a
+  // food or drug match is checked again for real, so other brand-only items do not raise open questions.
+  const peek = (await check(saved, ctx)).structuredContent as Checked;
+  const matches = (peek.matches ?? []) as { recall_id: string }[];
+  if (peek.status === 'need_info' && matches.some((m) => m.recall_id.startsWith('fda:'))) {
+    return (await check(saved, ctx, saved)).structuredContent as Checked;
+  }
+  return brandHeardRight(saved, ctx);
 }
 
 /**

@@ -89,6 +89,10 @@ export class RecallGuardianStack extends cdk.Stack {
       reservedConcurrentExecutions: 1,
       memorySize: 1024,
       timeout: cdk.Duration.minutes(10),
+      // A failed run is not retried by Lambda (the daily rule retries once, and the next day catches up);
+      // stale queued events are dropped, so a failing backfill cannot keep hitting a struggling API.
+      retryAttempts: 0,
+      maxEventAge: cdk.Duration.hours(1),
       logGroup: new logs.LogGroup(this, 'WatcherLogs', {
         retention: logs.RetentionDays.ONE_WEEK,
         removalPolicy: cdk.RemovalPolicy.DESTROY,

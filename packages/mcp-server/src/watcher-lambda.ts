@@ -25,6 +25,8 @@ export interface WatcherEvent {
    */
   backfill?: boolean | 'child-seats' | 'cpsc';
   since?: string;
+  /** With "cpsc": last day to load (default today), to split a long history over several runs. */
+  until?: string;
 }
 
 export async function handler(event: WatcherEvent = {}): Promise<WatcherResult | BackfillResult> {
@@ -37,7 +39,7 @@ export async function handler(event: WatcherEvent = {}): Promise<WatcherResult |
     const store = new DynamoRecallStore(db, table);
     const done =
       event.backfill === 'cpsc'
-        ? await backfillCpsc(store, event.since)
+        ? await backfillCpsc(store, event.since, undefined, undefined, undefined, event.until)
         : await backfillChildSeats(store);
     console.log(JSON.stringify({ backfill: done }));
     return done;

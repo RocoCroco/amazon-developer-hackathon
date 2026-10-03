@@ -113,3 +113,9 @@ Format: what I tried / what I expected / what happened / how I solved it.
 - Expected: the full list (it worked for the daily sync until this morning).
 - Happened: HTTP 503 "Page Unavailable" every time, in 0.3 s, while `ProductName=` and `RecallDateStart/End` queries answered 200 at the same moment. Every `LastPublishDate` query fails, with or without an end date; this also broke this morning's daily CPSC sync ("feed cpsc: ERROR").
 - Solved: the feed and the backfill query by recall date (`RecallDateStart`/`RecallDateEnd`), the backfill one quarter at a time with retries. Cost: revisions of old recalls are no longer picked up by the daily sync; new recalls are.
+
+## F19 - CPSC refuses requests from AWS while answering at home (2026-10-03)
+- Tried: the CPSC backfill on the deployed watcher Lambda, in recall-date quarters with retries and window splitting.
+- Expected: the windows that work from a laptop to work from Lambda.
+- Happened: from Lambda, almost every CPSC request answered HTTP 503, including the small `ProductName=dresser` lookup of the MCP server, while the same URLs answered 200 from a home connection at the same minute (with Node's fetch and with curl, any User-Agent). The first run timed out at 10 minutes and Lambda's async retries would have kept hammering CPSC for hours.
+- Solved: (1) watcher async retries off and stale events dropped after an hour (CDK `retryAttempts: 0`, `maxEventAge`), so a failing backfill cannot hammer a struggling API; (2) the backfill runs from a laptop with the same code (`scripts/backfill-cpsc-local.mjs`, writing to the project table with the CLI profile) and marks the copy fresh; (3) the cache covers CPSC outages only while its copy is less than a week old, otherwise Alexa says it could not reach CPSC. Open: the daily CPSC sync from Lambda can still fail; if it keeps failing, the copy goes stale and the honest answer comes back.

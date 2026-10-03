@@ -1,6 +1,6 @@
 # Cost estimate (T4.5)
 
-**Bottom line: about $8 per month at the demo usage defined below; the Bedrock language model is the only
+**Bottom line: about $9 per month at the demo usage defined below (about $8 at first, see "Changes since this estimate"); the Bedrock language model is the only
 cost that is not effectively zero.** Everything else (Lambda, DynamoDB, EventBridge, SSM, CloudWatch, S3,
 CloudFront) stays inside free tiers or costs cents. The hard budget is the $130 credit budget the human
 created in AWS Budgets ("creditos hackathon").
@@ -48,6 +48,17 @@ One month that includes the judging period, with real traffic from judges and a 
 
 Calculation: Bedrock 4.50 + 0.90 = 5.40; Polly 2.69; the rest about 0.05 -> **$8.14**, under the $10 target.
 If the Polly free tier applies, about $5.5.
+
+## Changes since this estimate (2026-10-03, Phase 9)
+
+| Change | Effect | Monthly |
+|---|---|---|
+| Eleven tools instead of nine, longer prompt (persona, brands, allergies) | about +500 input tokens per model call: 1,800 x 500 = 0.9M tokens | +$0.90 |
+| CPSC copy in the recall cache (backfill since 2008) | about 7,000 recalls, each written once with about 8 index rows: about 70,000 writes, **one time** | $0.09 once |
+| Storage of that copy | about 50 MB (DynamoDB free tier: 25 GB) | $0.00 |
+| The daily watcher scans the whole table for household items, now including the cache | about 50 MB read per run, eventually consistent: about 6,000 read units x 30 | +$0.05 |
+| Live openFDA lookups and allergen questions | free API, cached 6 h | $0.00 |
+| **New total** | | **about $9.1** |
 
 ## What would blow the estimate, and the guards
 

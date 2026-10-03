@@ -1,5 +1,5 @@
 import type { Item } from '../matcher/match.js';
-import type { RecallStore } from './cache.js';
+import type { RecallStore, SourceId } from './cache.js';
 import type { FetchLike } from './cpsc.js';
 import { fetchVehicleRecalls } from './nhtsa.js';
 import { fromOpenFda, type OpenFdaRecord } from './openfda.js';
@@ -7,17 +7,44 @@ import type { RecallProvider, RecallSearch } from './provider.js';
 import type { Recall } from './types.js';
 
 /** Candidates from the recall cache the daily watcher keeps (child seats, equipment, tires, food, drugs...). */
+/** A live source the cache keeps a copy of, and the feed whose sync cursor says how fresh that copy is. */
+export interface CachedCopy {
+  source: string;
+  feed: SourceId;
+}
+
+const MAX_COPY_AGE_DAYS = 7;
+
 export class StoreRecallProvider implements RecallProvider {
   readonly source = 'our recall cache';
+  /** Live sources whose outage this cache covers right now (refreshed on every lookup). */
+  covers: string[] = [];
 
-  /** `covers`: live sources this cache holds a full copy of (CPSC after the backfill). */
+  /**
+   * `copies`: live sources this cache holds a full copy of (CPSC after the backfill). A copy only counts
+   * while its daily sync is recent: a stale copy would silently miss new recalls.
+   */
   constructor(
     private readonly store: RecallStore,
-    readonly covers: string[] = [],
+    private readonly copies: CachedCopy[] = [],
+    private readonly now: () => number = Date.now,
   ) {}
 
-  candidates(item: Item): Promise<Recall[]> {
-    return this.store.candidates(item);
+  async candidates(item: Item): Promise<Recall[]> {
+    const [recalls, fresh] = await Promise.all([
+      this.store.candidates(item),
+      Promise.all(this.copies.map(async (c) => ((await this.isFresh(c.feed)) ? c.source : ''))),
+    ]);
+    this.covers = fresh.filter(Boolean);
+    return recalls;
+  }
+
+  private async isFresh(feed: SourceId): Promise<boolean> {
+    const cursor = await this.store.getCursor(feed);
+    if (!cursor) return false;
+    return (
+      this.now() - Date.parse(`${cursor}T00:00:00Z`) <= MAX_COPY_AGE_DAYS * 24 * 60 * 60 * 1000
+    );
   }
 }
 

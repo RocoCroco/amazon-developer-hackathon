@@ -115,11 +115,14 @@
           </fieldset>
           <p class="fineprint">
             A simulation of Alexa+ for the Recall Guardian MCP server. Recalls come from CPSC, NHTSA
-            and openFDA.
+            and openFDA. Voice input uses your browser's speech recognition (Chrome and Edge send
+            the audio to their speech service); hands-free listens only after you allow the
+            microphone.
           </p>
         </form>
       </dialog>
 
+      <p id="hint" class="hint"></p>
       <p id="notice" class="notice" role="status" hidden></p>
       <p id="status" class="status" aria-live="polite"></p>
 

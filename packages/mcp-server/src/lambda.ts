@@ -95,8 +95,10 @@ function getHandler(): Promise<McpHandler> {
           new CpscRecallProvider(),
           new NhtsaVehicleProvider(),
           new OpenFdaProvider(),
-          // The cache holds a copy of CPSC (daily sync + backfill), so a CPSC outage is covered.
-          new StoreRecallProvider(new DynamoRecallStore(db, table), ['CPSC']),
+          // The cache holds a copy of CPSC (backfill + daily sync); while that copy is fresh, a CPSC outage is covered.
+          new StoreRecallProvider(new DynamoRecallStore(db, table), [
+            { source: 'CPSC', feed: 'cpsc' },
+          ]),
         ],
         (error) =>
           console.warn('recall source failed:', error instanceof Error ? error.message : error),

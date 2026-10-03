@@ -7,7 +7,7 @@
 
 **Links**
 - Demo video: _(YouTube/Vimeo link, filled in by the human)_
-- Live simulator: https://6aqlg4s33zg7tgjhoqsetxjqyi0pctry.lambda-url.us-east-1.on.aws/ (click "Load sample family", ask "Is anything we own recalled?", then "Simulate new recall"; Chrome for voice)
+- Live simulator: https://6aqlg4s33zg7tgjhoqsetxjqyi0pctry.lambda-url.us-east-1.on.aws/ (in Chrome or Edge allow the microphone once and say "Alexa, we got a second-hand Govee space heater, model H7131", or type it; the settings behind the chevron have "Load sample family" and "Simulate new recall")
 - Code: _(GitHub URL; MIT license)_
 
 ---
@@ -28,7 +28,9 @@ a sentence, and the assistant did the watching?
 
 Recall Guardian is an MCP server that turns Alexa+ into a recall guardian for the whole home.
 
-- **Register by voice:** "We got a hand-me-down Chicco car seat and a second-hand Govee space heater." Alexa asks only what it needs: brand, model, roughly when it was made.
+- **Register by voice, hands-free:** "Alexa, we were gifted a dresser and a Chicco car seat." Alexa asks only what it needs (brand, model, roughly when it was made) and checks the moment it knows enough.
+- **Hear brands right:** speech recognition writes the dresser brand "Aitjunz" as "iTunes" or "8th June". The server compares what it heard by sound with the brands in the official recall data and asks "Do you mean Aitjunz, A-I-T-J-U-N-Z?"; the owner can also spell it.
+- **Know the family:** "Leo is allergic to peanuts." A food recall for undeclared peanuts says it matters for Leo and goes to the top; "any recent peanut recalls?" is answered from openFDA.
 - **Check instantly:** "Is anything we own recalled?" The server matches the household against official CPSC (consumer products), NHTSA (vehicles, child seats) and openFDA (food, drugs) data.
 - **Watch continuously:** a daily job pulls new recalls and matches them against every household.
 - **Alert proactively:** "Heads up: your car seat has a recall for a harness defect." No one asked.
@@ -40,11 +42,12 @@ tools ("Where is the sticker? Do you know roughly which month it was made?") ins
 
 ## How we built it
 
-- **A real MCP server:** TypeScript, the official `@modelcontextprotocol/sdk`, MCP spec **2025-11-25**, **Streamable HTTP** (stateless, JSON responses), on AWS Lambda behind a public HTTPS URL, with nine tools (`add_item`, `list_items`, `update_item`, `remove_item` with confirmation, `check_item`, `check_household`, `get_alerts`, `get_remedy`, `resolve_alert`). Every response leads with one short spoken sentence; a test drives all nine tools and enforces voice-first rules.
-- **The matcher is the technical core:** deterministic normalization (brand aliases, model codes, per-product model years, production windows with month precision) plus a Claude second opinion on Amazon Bedrock that can only make an answer *more* careful. Evaluated on **1,313 real recalls**, 77 hand-labeled and 478 generated items (about 730,000 item-recall pairs): **100% strong-match precision and recall on both sets**. The evaluation is honest about itself: it found four real bugs and several of our own wrong labels along the way (docs/matcher-results.md).
+- **A real MCP server:** TypeScript, the official `@modelcontextprotocol/sdk`, MCP spec **2025-11-25**, **Streamable HTTP** (stateless, JSON responses), on AWS Lambda behind a public HTTPS URL, with eleven tools (`add_item`, `list_items`, `update_item`, `remove_item` with confirmation, `check_item`, `check_household`, `get_alerts`, `get_remedy`, `resolve_alert`, `update_allergies`, `recent_allergen_recalls`). Every response leads with one short spoken sentence; a test drives all eleven tools and enforces voice-first rules. Brand mishearing is solved in the server (sound-alike matching against recall brands), so it helps any voice front end, not just ours.
+- **The matcher is the technical core:** deterministic normalization (brand aliases, model codes, per-product model years, production windows with month precision) plus a Claude second opinion on Amazon Bedrock that can only make an answer *more* careful. Evaluated on **1,313 real recalls**: 77 hand-labeled and 478 generated items score 100%, but those labels were partly reconciled with the matcher, so we added a **blind challenge set of 40 messy descriptions** (misheard brands, partial model codes, "stove" for "range", no brand, 14 hard negatives). Blind first run: **0 false alarms, 21 of 26 recalled items handled safely**; after two general fixes 26 of 26. All of it, including what is still not ideal, is in docs/matcher-results.md.
+- **Outage-proof data:** CPSC's API went down for hours while we built this (and still often refuses requests from AWS). A naive design said "no recalls" during the outage, the worst possible answer. Now every source reports when it is down, the server keeps a copy of CPSC since 2008 in DynamoDB, and if no source can answer, Alexa says it could not check.
 - **Daily watcher:** EventBridge -> Lambda. Incremental sync of four official feeds (including streaming the 15 MB NHTSA zip without buffering it), matching only new or revised recalls, deduplicated alerts that never resurrect a closed one.
-- **Alexa+ simulator (the demo surface):** the real Alexa+ MCP toolkit may not be available to us, so a web app simulates it: Claude on Bedrock is the "Alexa+ brain" and is a **real MCP client** of our server; Web Speech API for the microphone; **Amazon Polly** neural voice, with model codes spelled out through SSML. It is stateless on Lambda (conversations and daily spending caps live in DynamoDB), with a "Simulate new recall" button that really invokes the deployed watcher.
-- **Serverless on AWS, in CDK:** Lambda, DynamoDB on-demand, EventBridge, Bedrock, Polly. About **$8 a month** at demo usage (docs/costs.md), with a CDK test that fails if a resource with an hourly price appears.
+- **Alexa+ simulator (the demo surface):** the real Alexa+ MCP toolkit may not be available to us, so a web app simulates it: Claude on Bedrock is the "Alexa+ brain" and is a **real MCP client** of our server; Web Speech API for the microphone with a wake word ("Alexa"), silence detection and pause-while-speaking, like a real Echo; **Amazon Polly** neural voice, with model codes spelled out through SSML. It is stateless on Lambda (conversations and daily spending caps live in DynamoDB), with a "Simulate new recall" button that really invokes the deployed watcher.
+- **Serverless on AWS, in CDK:** Lambda, DynamoDB on-demand, EventBridge, Bedrock, Polly. About **$9 a month** at demo usage (docs/costs.md), with a CDK test that fails if a resource with an hourly price appears.
 
 ## Challenges we ran into
 
@@ -64,7 +67,7 @@ The MCP Streamable HTTP transport fits serverless well, because the web-standard
 
 ## What's next
 
-Real Alexa+ integration when the MCP toolkit is available; OAuth 2.1 for households; photo of the product label to read the model number; live openFDA lookup and a larger tire/equipment backfill; non-US recall databases.
+Real Alexa+ integration when the MCP toolkit is available (the server stays as is); OAuth 2.1 for households; filling the inventory faster (order history, receipts, a photo of the label); a larger tire/equipment backfill; non-US recall databases.
 
 ## Built with
 
@@ -72,4 +75,4 @@ TypeScript, Model Context Protocol (official SDK, Streamable HTTP), AWS Lambda, 
 
 ## Product feedback and friction log
 
-Per-tool feedback for every SDK, API and service used: FEEDBACK.md. Friction log (what we tried, what we expected, what happened, how we solved it): FRICTION_LOG.md (12 entries).
+Per-tool feedback for every SDK, API and service used: FEEDBACK.md. Friction log (what we tried, what we expected, what happened, how we solved it): FRICTION_LOG.md (19 entries).
