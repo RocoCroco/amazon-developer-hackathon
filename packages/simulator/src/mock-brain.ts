@@ -340,6 +340,21 @@ export class RuleBasedLlm implements Llm {
       }
     }
 
+    // Off topic: a normal Alexa, but limited. Say so politely and steer back.
+    const offTopic =
+      /\b(weather|time is it|music|play|song|timer|alarm|lights?|joke|news|order|buy me|shopping list)\b/.exec(
+        lower,
+      );
+    if (offTopic) {
+      return text(
+        "Sorry, I can't do that here: this is a simulation of Alexa for trying Recall Guardian. Tell me about something your family owns and I'll watch it for recalls.",
+      );
+    }
+    if (/^\s*(hi|hello|hey|good (morning|afternoon|evening)|thanks?|thank you)\b/.test(lower)) {
+      return text(
+        "Hi! In this simulation I'm your recall guardian. Tell me about something your family owns and I'll watch it for recalls.",
+      );
+    }
     return text('I can keep track of what you own and watch for recalls. What did you get?');
   }
 }

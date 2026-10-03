@@ -297,8 +297,26 @@ describe('removing asks first', () => {
 
 describe('everything else', () => {
   it('falls back to a helpful prompt', async () => {
-    const r = await ask([user('what is the weather')]);
+    const r = await ask([user('how are things going')]);
     expect(toolUses(r)).toEqual([]);
     expect(spoken(r)).toMatch(/What did you get/);
+  });
+});
+
+describe('off topic (a normal Alexa, but limited)', () => {
+  it.each([
+    "What's the weather tomorrow?",
+    'Play some jazz',
+    'Set a timer for ten minutes',
+    'Tell me a joke',
+  ])('"%s": a polite no and a reminder that this is a Recall Guardian simulation', async (said) => {
+    const r = await ask([user(said)]);
+    expect(toolUses(r)).toHaveLength(0);
+    expect(spoken(r)).toMatch(/simulation of Alexa for trying Recall Guardian/);
+  });
+
+  it('answers a greeting like a normal Alexa', async () => {
+    const r = await ask([user('Hello Alexa')]);
+    expect(spoken(r)).toMatch(/^Hi!/);
   });
 });

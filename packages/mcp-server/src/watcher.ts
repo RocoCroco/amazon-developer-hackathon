@@ -2,6 +2,7 @@ import type { AlertStore } from './alerts.js';
 import { checkItems, recordAlerts } from './household-check.js';
 import type { Confirmer } from './matcher/confirm.js';
 import type { RecallStore } from './recalls/cache.js';
+import { fetchCpscRecalls, type FetchLike } from './recalls/cpsc.js';
 import { nhtsaFlatFeed, type OpenZip } from './recalls/flatfile.js';
 import { StaticRecallProvider } from './recalls/provider.js';
 import { isoDay, syncFeed, type Feed, type SyncResult } from './recalls/sync.js';
@@ -142,6 +143,35 @@ export interface BackfillResult {
 }
 
 /**
+ * One-time load of CPSC recalls published since `since` into the cache, so consumer-product checks keep
+ * working when the CPSC API is down (it answered HTTP 503 for hours on 2026-10-03). The API flaps, so a
+ * failed download is retried a few times. Like the child-seat backfill: no cursors, no alerts.
+ */
+export async function backfillCpsc(
+  recalls: RecallStore,
+  since = '2008-01-01',
+  fetchFn?: FetchLike,
+  wait: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms)),
+): Promise<BackfillResult> {
+  let all: Recall[] | undefined;
+  for (let attempt = 1; !all; attempt++) {
+    try {
+      all = await fetchCpscRecalls(since, fetchFn);
+    } catch (error) {
+      if (attempt >= 4) throw error;
+      await wait(attempt * 15_000);
+    }
+  }
+  const r = await recalls.upsert(all, { reindex: true });
+  return {
+    fetched: all.length,
+    added: r.added.length,
+    updated: r.updated.length,
+    unchanged: r.unchanged,
+  };
+}
+
+/**
  * One-time load of EVERY child-seat recall into the cache (about 150 recalls since 1967). The daily sync
  * only brings what is new, but an owner may register a seat recalled years ago. Does not touch the sync
  * cursors and raises no alerts: these recalls are history, check_item reports them on request.
@@ -152,7 +182,8 @@ export async function backfillChildSeats(
   now: () => Date = () => new Date(),
 ): Promise<BackfillResult> {
   const all = await nhtsaFlatFeed(open, ['C']).fetchSince('1900-01-01', isoDay(now()));
-  const r = await recalls.upsert(all);
+  // reindex: entries cached before the product-word index existed get it too
+  const r = await recalls.upsert(all, { reindex: true });
   return {
     fetched: all.length,
     added: r.added.length,

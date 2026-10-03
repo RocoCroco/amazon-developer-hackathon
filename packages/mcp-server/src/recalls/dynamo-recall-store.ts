@@ -1,4 +1,6 @@
 import {
+  BatchGetCommand,
+  type BatchGetCommandOutput,
   DynamoDBDocumentClient,
   GetCommand,
   PutCommand,
@@ -9,6 +11,8 @@ import { normalizeBrand } from '../matcher/normalize.js';
 import {
   brandKeys,
   fingerprint,
+  nameWords,
+  productWords,
   type RecallStore,
   type SourceId,
   type UpsertResult,
@@ -22,6 +26,9 @@ const MIN_WORD = 3;
 
 const recallKey = (id: string) => `RCL#${id}`;
 const brandPartition = (word: string) => `BRAND#${word}`;
+const productPartition = (word: string) => `PRODUCT#${word}`;
+const BATCH_GET_LIMIT = 100;
+const UPSERT_CONCURRENCY = 8;
 
 interface RecallRecord {
   PK: string;
@@ -46,6 +53,7 @@ export function brandWords(recall: Recall): string[] {
  * Recall cache in the same single table as the inventory.
  *   PK=RCL#<id>      SK=DATA        the recall, with a content hash to tell revisions from re-fetches
  *   PK=BRAND#<word>  SK=RCL#<id>    index: which recalls name a brand containing this word
+ *   PK=PRODUCT#<word> SK=RCL#<id>   index: which recalls are about this kind of product ("dresser")
  *   PK=CURSOR        SK=<source>    date up to which a feed has been synced
  */
 export class DynamoRecallStore implements RecallStore {
@@ -71,71 +79,110 @@ export class DynamoRecallStore implements RecallStore {
     );
   }
 
-  async upsert(recalls: Recall[]): Promise<UpsertResult> {
+  async upsert(recalls: Recall[], options: { reindex?: boolean } = {}): Promise<UpsertResult> {
     const result: UpsertResult = { added: [], updated: [], unchanged: 0 };
     const expiresAt = Math.floor(this.now() / 1000) + RECALL_TTL_SECONDS;
-    for (const recall of recalls) {
-      const hash = fingerprint(recall);
-      const known = await this.db.send(
-        new GetCommand({
-          TableName: this.tableName,
-          Key: { PK: recallKey(recall.id), SK: 'DATA' },
-        }),
+    // A few recalls at a time: a backfill writes thousands, one by one would take many minutes.
+    for (let i = 0; i < recalls.length; i += UPSERT_CONCURRENCY) {
+      await Promise.all(
+        recalls
+          .slice(i, i + UPSERT_CONCURRENCY)
+          .map((recall) => this.upsertOne(recall, expiresAt, result, options)),
       );
-      const knownHash = (known.Item as RecallRecord | undefined)?.hash;
-      if (knownHash === hash) {
-        result.unchanged += 1;
-        continue;
-      }
-      if (knownHash === undefined) result.added.push(recall);
-      else result.updated.push(recall);
-
-      const record: RecallRecord = {
-        PK: recallKey(recall.id),
-        SK: 'DATA',
-        hash,
-        recall,
-        expiresAt,
-      };
-      await this.db.send(new PutCommand({ TableName: this.tableName, Item: record }));
-      if (knownHash === undefined) {
-        for (const word of brandWords(recall)) {
-          await this.db.send(
-            new PutCommand({
-              TableName: this.tableName,
-              Item: { PK: brandPartition(word), SK: recallKey(recall.id), expiresAt },
-            }),
-          );
-        }
-      }
     }
     return result;
   }
 
+  private async upsertOne(
+    recall: Recall,
+    expiresAt: number,
+    result: UpsertResult,
+    options: { reindex?: boolean },
+  ): Promise<void> {
+    const hash = fingerprint(recall);
+    const known = await this.db.send(
+      new GetCommand({
+        TableName: this.tableName,
+        Key: { PK: recallKey(recall.id), SK: 'DATA' },
+      }),
+    );
+    const knownHash = (known.Item as RecallRecord | undefined)?.hash;
+    if (knownHash === hash) {
+      result.unchanged += 1;
+      if (options.reindex) await this.index(recall, expiresAt);
+      return;
+    }
+    if (knownHash === undefined) result.added.push(recall);
+    else result.updated.push(recall);
+
+    const record: RecallRecord = {
+      PK: recallKey(recall.id),
+      SK: 'DATA',
+      hash,
+      recall,
+      expiresAt,
+    };
+    await this.db.send(new PutCommand({ TableName: this.tableName, Item: record }));
+    if (knownHash === undefined || options.reindex) await this.index(recall, expiresAt);
+  }
+
+  private async index(recall: Recall, expiresAt: number): Promise<void> {
+    const partitions = [
+      ...brandWords(recall).map(brandPartition),
+      ...productWords(recall).map(productPartition),
+    ];
+    for (const pk of partitions) {
+      await this.db.send(
+        new PutCommand({
+          TableName: this.tableName,
+          Item: { PK: pk, SK: recallKey(recall.id), expiresAt },
+        }),
+      );
+    }
+  }
+
   async candidates(item: Item): Promise<Recall[]> {
     const brand = item.brand ? normalizeBrand(item.brand) : '';
-    const words = [...new Set(brand.split(' ').filter((w) => w.length >= MIN_WORD))];
-    if (words.length === 0) return [];
+    const partitions = [...new Set(brand.split(' ').filter((w) => w.length >= MIN_WORD))].map(
+      brandPartition,
+    );
+    partitions.push(...[...new Set(nameWords(item.name ?? ''))].map(productPartition));
+    if (partitions.length === 0) return [];
 
+    // Brand hits first: they are the ones the matcher can confirm.
     const ids = new Set<string>();
-    for (const word of words) {
+    for (const pk of partitions) {
       const res = await this.db.send(
         new QueryCommand({
           TableName: this.tableName,
           KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
-          ExpressionAttributeValues: { ':pk': brandPartition(word), ':sk': 'RCL#' },
+          ExpressionAttributeValues: { ':pk': pk, ':sk': 'RCL#' },
           Limit: MAX_CANDIDATES,
         }),
       );
       for (const row of res.Items ?? []) ids.add(String(row.SK));
     }
 
+    const keys = [...ids].slice(0, MAX_CANDIDATES).map((sk) => ({ PK: sk, SK: 'DATA' }));
     const recalls: Recall[] = [];
-    for (const sk of [...ids].slice(0, MAX_CANDIDATES)) {
-      const res = await this.db.send(
-        new GetCommand({ TableName: this.tableName, Key: { PK: sk, SK: 'DATA' } }),
-      );
-      if (res.Item) recalls.push((res.Item as RecallRecord).recall);
+    for (let i = 0; i < keys.length; i += BATCH_GET_LIMIT) {
+      let request: Record<string, { Keys: Record<string, string>[] }> | undefined = {
+        [this.tableName]: { Keys: keys.slice(i, i + BATCH_GET_LIMIT) },
+      };
+      // DynamoDB may return part of a batch as UnprocessedKeys: ask again for those (a few times at most).
+      for (let attempt = 0; request && attempt < 4; attempt++) {
+        const res: BatchGetCommandOutput = await this.db.send(
+          new BatchGetCommand({ RequestItems: request }),
+        );
+        for (const row of res.Responses?.[this.tableName] ?? []) {
+          recalls.push((row as RecallRecord).recall);
+        }
+        const rest: Record<string, unknown>[] | undefined =
+          res.UnprocessedKeys?.[this.tableName]?.Keys;
+        request = rest?.length
+          ? { [this.tableName]: { Keys: rest as Record<string, string>[] } }
+          : undefined;
+      }
     }
     return recalls;
   }

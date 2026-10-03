@@ -85,6 +85,9 @@ function setSpeaking(on) {
   speaking = on;
   if (!on) stopPulse();
   updateRing();
+  // Hands-free must not hear Alexa's own voice.
+  if (on) wake.pause();
+  else wake.resume();
 }
 
 // ---- transcript: floating bubbles; older ones fade at the top edge and stay reachable by scrolling ----------------
@@ -277,6 +280,8 @@ setInterval(() => void refreshState({ announce: true }), POLL_MS);
 // ---- speaking ----------------------------------------------------------------------------------------------
 
 let speakToken = 0;
+/** True from the moment a reply is sent to the voice until it has been played (or failed). */
+let speakPending = false;
 let currentAudio = null;
 
 function stopSpeaking() {
@@ -286,6 +291,7 @@ function stopSpeaking() {
     currentAudio = null;
   }
   if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+  speakPending = false;
   setSpeaking(false);
 }
 
@@ -293,6 +299,7 @@ function stopSpeaking() {
 async function speak(text) {
   if (!speakToggle.checked || !text) return;
   const token = ++speakToken;
+  speakPending = true;
   try {
     if (config.speech) {
       try {
@@ -330,7 +337,10 @@ async function speak(text) {
       });
     }
   } finally {
-    if (token === speakToken) setSpeaking(false);
+    if (token === speakToken) {
+      speakPending = false;
+      setSpeaking(false);
+    }
   }
 }
 
@@ -338,9 +348,10 @@ speakToggle.addEventListener('change', () => {
   if (!speakToggle.checked) stopSpeaking();
 });
 
-// ---- listening (push to talk, Chrome and Edge) ---------------------------------------------------------
+// ---- listening: tap to talk, or hands-free with the wake word "Alexa" (Chrome and Edge) ---------------------
 
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const handsFreeToggle = $('#hands-free');
 let recognizer = null;
 
 function setListening(on) {
@@ -351,6 +362,8 @@ function setListening(on) {
 }
 
 function startListening() {
+  setListening(true); // first, so nothing restarts the wake-word listener meanwhile
+  wake.pause();
   stopSpeaking();
   let finalText = '';
   recognizer = new Recognition();
@@ -380,18 +393,174 @@ function startListening() {
     if (wasListening && said) {
       input.value = '';
       void send(said);
+    } else {
+      wake.resume();
     }
   };
   recognizer.start();
-  setListening(true);
+  // The browser granted the microphone: from now on hands-free can listen for the wake word.
+  wake.allowed = true;
+}
+
+/** "Alexa, we got a dresser" -> "We got a dresser". */
+function afterWakeWord(text) {
+  const parts = text.split(/\balexa\b[,.!?]?/i);
+  const rest = (parts.at(-1) ?? '').trim();
+  return rest.charAt(0).toUpperCase() + rest.slice(1);
+}
+
+/**
+ * Hands-free: one continuous recognizer waits for "Alexa", then records the request until the user stops
+ * talking (no new words for SILENCE_MS) and sends it. It is paused while Alexa thinks or speaks, so it never
+ * hears itself, and restarted whenever the browser ends recognition on its own (Chrome does every minute or so).
+ */
+const SILENCE_MS = 1300;
+const WAKE_TIMEOUT_MS = 7000;
+
+const wake = {
+  allowed: false,
+  running: false,
+  capturing: false,
+  rec: null,
+  silenceTimer: 0,
+  restartTimer: 0,
+  /** Errors in a row (network, no microphone...): restart more slowly instead of spinning. */
+  failures: 0,
+
+  enabled() {
+    return Boolean(Recognition) && handsFreeToggle.checked && this.allowed;
+  },
+
+  /** Listen for the wake word, if hands-free is on and Alexa is idle. */
+  resume() {
+    clearTimeout(this.restartTimer);
+    if (!this.enabled() || this.running || busy || speaking || speakPending || listening) {
+      this.showArmed();
+      return;
+    }
+    const rec = new Recognition();
+    rec.lang = 'en-US';
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.maxAlternatives = 1;
+    rec.onresult = (event) => this.heard(event);
+    rec.onerror = (event) => {
+      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+        this.allowed = false;
+        setStatus('The microphone is blocked, so hands-free is off. You can still type.');
+      } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
+        this.failures += 1;
+      }
+    };
+    rec.onend = () => {
+      if (this.rec !== rec) return; // paused on purpose
+      this.rec = null;
+      this.running = false;
+      this.capturing = false;
+      clearTimeout(this.silenceTimer);
+      if (listening) setListening(false);
+      // Chrome stops continuous recognition after a while or on silence: start again.
+      this.restartTimer = setTimeout(() => this.resume(), this.failures > 2 ? 5000 : 300);
+    };
+    this.rec = rec;
+    this.running = true;
+    this.capturing = false;
+    try {
+      rec.start();
+    } catch {
+      this.running = false;
+      this.rec = null;
+    }
+    this.showArmed();
+  },
+
+  /** Stop listening now (Alexa is about to think or speak, or the user tapped the mic). */
+  pause() {
+    clearTimeout(this.restartTimer);
+    clearTimeout(this.silenceTimer);
+    const rec = this.rec;
+    this.rec = null;
+    this.running = false;
+    this.capturing = false;
+    if (rec) rec.abort();
+    this.showArmed();
+  },
+
+  heard(event) {
+    this.failures = 0;
+    const text = Array.from(event.results)
+      .map((r) => r[0].transcript)
+      .join(' ');
+    if (!this.capturing) {
+      if (!/\balexa\b/i.test(text)) return; // not for us
+      this.capturing = true;
+      setListening(true);
+      setStatus('Listening…', 0);
+    }
+    const request = afterWakeWord(text);
+    input.value = request;
+    // Send once the user has been quiet for a moment; "Alexa" alone waits a bit longer for the request.
+    clearTimeout(this.silenceTimer);
+    this.silenceTimer = setTimeout(() => this.finish(), request ? SILENCE_MS : WAKE_TIMEOUT_MS);
+  },
+
+  finish() {
+    const request = input.value.trim();
+    this.pause();
+    setListening(false);
+    input.value = '';
+    if (request) void send(request);
+    else this.resume();
+  },
+
+  showArmed() {
+    const armed = this.running && !listening;
+    micButton.dataset.armed = String(armed);
+    micButton.title = armed ? 'Hands-free: say “Alexa”, or tap to talk' : 'Talk to Alexa';
+  },
+};
+
+function loadHandsFreeSetting() {
+  try {
+    const saved = window.localStorage.getItem('handsFree');
+    if (saved !== null) handsFreeToggle.checked = saved === 'on';
+  } catch {
+    // storage unavailable: keep the default (on)
+  }
 }
 
 if (Recognition) {
+  $('#hands-free-row').hidden = false;
+  loadHandsFreeSetting();
+  handsFreeToggle.addEventListener('change', () => {
+    try {
+      window.localStorage.setItem('handsFree', handsFreeToggle.checked ? 'on' : 'off');
+    } catch {
+      // not remembered, that's fine
+    }
+    if (handsFreeToggle.checked) {
+      if (!wake.allowed) setStatus('Tap the microphone once to allow it; then just say “Alexa”.');
+      wake.resume();
+    } else {
+      wake.pause();
+    }
+  });
   micButton.addEventListener('click', () => {
     if (busy) return;
-    if (listening) recognizer.stop();
+    if (wake.capturing) wake.finish();
+    else if (listening) recognizer.stop();
     else startListening();
   });
+  // If the microphone was already allowed for this page, hands-free can start right away.
+  navigator.permissions
+    ?.query({ name: 'microphone' })
+    .then((status) => {
+      if (status.state === 'granted') {
+        wake.allowed = true;
+        wake.resume();
+      }
+    })
+    .catch(() => undefined);
 } else {
   micButton.disabled = true;
   micButton.title = 'Voice input needs Chrome or Edge.';
@@ -407,6 +576,7 @@ function setBusy(on) {
   input.disabled = on;
   if (Recognition) micButton.disabled = on;
   updateRing();
+  if (on) wake.pause();
   if (!on) input.focus();
 }
 
@@ -434,6 +604,7 @@ async function send(message) {
     bubble('error', 'I could not reach the server. Please try again.');
   } finally {
     if (busy) setBusy(false);
+    wake.resume(); // waits by itself while the reply is still being spoken
   }
 }
 

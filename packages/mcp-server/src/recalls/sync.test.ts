@@ -58,7 +58,13 @@ describe('InMemoryRecallStore', () => {
       name: 'smart glasses',
       brand: 'Inmo International Technology',
     });
-    expect(inmo.map((r) => r.title)).toEqual([expect.stringMatching(/^INMO/)]);
+    // The brand hit comes first; other glasses recalls follow (they feed "do you mean ...?").
+    expect(inmo[0]?.title).toMatch(/^INMO/);
+    const byBrandOnly = await store.candidates({
+      name: 'x',
+      brand: 'Inmo International Technology',
+    });
+    expect(byBrandOnly.map((r) => r.title)).toEqual([expect.stringMatching(/^INMO/)]);
     expect(await store.candidates({ name: 'x' })).toEqual([]);
     expect(await store.candidates({ name: 'x', brand: 'Nonexistent Brand' })).toEqual([]);
   });

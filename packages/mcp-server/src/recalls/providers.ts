@@ -8,7 +8,12 @@ import type { Recall } from './types.js';
 /** Candidates from the recall cache the daily watcher keeps (child seats, equipment, tires, food, drugs...). */
 export class StoreRecallProvider implements RecallProvider {
   readonly source = 'our recall cache';
-  constructor(private readonly store: RecallStore) {}
+
+  /** `covers`: live sources this cache holds a full copy of (CPSC after the backfill). */
+  constructor(
+    private readonly store: RecallStore,
+    readonly covers: string[] = [],
+  ) {}
 
   candidates(item: Item): Promise<Recall[]> {
     return this.store.candidates(item);
@@ -31,16 +36,25 @@ export class CompositeRecallProvider implements RecallProvider {
   }
 
   async search(item: Item): Promise<RecallSearch> {
-    const unavailable: string[] = [];
+    const failed: string[] = [];
+    const covered = new Set<string>();
     const lists = await Promise.all(
       this.providers.map((p) =>
-        p.candidates(item).catch((error: unknown) => {
-          this.onError(error);
-          unavailable.push(p.source ?? 'one recall source');
-          return [] as Recall[];
-        }),
+        p.candidates(item).then(
+          (recalls) => {
+            for (const source of p.covers ?? []) covered.add(source);
+            return recalls;
+          },
+          (error: unknown) => {
+            this.onError(error);
+            failed.push(p.source ?? 'one recall source');
+            return [] as Recall[];
+          },
+        ),
       ),
     );
+    // A live source that is down is no gap when a working cache holds a copy of it.
+    const unavailable = failed.filter((s) => !covered.has(s));
     return { recalls: [...new Map(lists.flat().map((r) => [r.id, r])).values()], unavailable };
   }
 }

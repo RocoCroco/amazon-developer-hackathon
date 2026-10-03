@@ -6,6 +6,7 @@ import { DynamoRecallStore } from './recalls/dynamo-recall-store.js';
 import type { Recall } from './recalls/types.js';
 import {
   backfillChildSeats,
+  backfillCpsc,
   runWatcher,
   type BackfillResult,
   type WatcherResult,
@@ -18,8 +19,12 @@ import {
 export interface WatcherEvent {
   seed?: Recall[];
   initialSinceDays?: number;
-  /** Load every historical child-seat recall into the cache, instead of the daily run. */
-  backfill?: boolean;
+  /**
+   * Instead of the daily run, load history into the cache: `true` or "child-seats" = every child-seat recall,
+   * "cpsc" = CPSC recalls published since `since` (default 2008-01-01).
+   */
+  backfill?: boolean | 'child-seats' | 'cpsc';
+  since?: string;
 }
 
 export async function handler(event: WatcherEvent = {}): Promise<WatcherResult | BackfillResult> {
@@ -29,7 +34,11 @@ export async function handler(event: WatcherEvent = {}): Promise<WatcherResult |
   const items = new DynamoItemStore(db, table);
 
   if (event.backfill) {
-    const done = await backfillChildSeats(new DynamoRecallStore(db, table));
+    const store = new DynamoRecallStore(db, table);
+    const done =
+      event.backfill === 'cpsc'
+        ? await backfillCpsc(store, event.since)
+        : await backfillChildSeats(store);
     console.log(JSON.stringify({ backfill: done }));
     return done;
   }

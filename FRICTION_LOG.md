@@ -101,3 +101,9 @@ Format: what I tried / what I expected / what happened / how I solved it.
 - Expected: the recall lists "Aitjunz" as a brand and "LDQMFJ8D-BK" as a model.
 - Happened: brands were ["Yuyitop", "LDQMFJ8D-BR,", ...]: the recalling firm is not the brand on the product, and the quoted SKUs ("SKU "LDQMFJ8D-BR," ... is printed on the packaging") were read as brand names because the sentence says "printed"; the models list was empty.
 - Solved: quoted codes (letters + digits, no spaces) are never brands and become models; the sold brand is taken from the product name when the title agrees ("Yuyitop Recalls Aitjunz 8-Drawer Dressers"). The 1,313-recall evaluation still scores the same.
+
+## F17 - Empty model answer broke the whole conversation (2026-10-03)
+- Tried: the human's dresser conversation, live, against Claude Haiku 4.5 on Bedrock.
+- Expected: a reply after add_item.
+- Happened: the model ended the turn with an empty message; we stored it and Bedrock rejected every later turn ("The content field in the Message object at messages.3 is empty"), so Alexa lost track of the dresser.
+- Solved: an empty final answer is replaced by the last tool's spoken summary, never stored empty, and empty messages in saved sessions are repaired on load (agent.test.ts).

@@ -4,6 +4,7 @@ import type { McpTools } from './mcp-connection.js';
 export const SYSTEM_PROMPT = `You are Alexa+, a warm, brief voice assistant, acting as a family's recall guardian.
 Your replies are spoken aloud: use one to three short, plain sentences, no lists, no markdown, no URLs.
 You have tools to keep a household inventory and to check it against official product recalls.
+This is a web simulation of Alexa+ made to try the Recall Guardian skill. Behave like a normal Alexa: friendly small talk, greetings, thanks and "what can you do" get a natural short answer. You cannot play music, set timers, control devices, shop, or look up news, weather or the time here. For those, and for any other off-topic request, answer in one short polite sentence (a well-known general fact is fine), then add that this is a simulation for trying Recall Guardian and offer what you can do, for example "Tell me about something your family owns and I'll watch it for recalls."
 Rules:
 - When the user mentions something they own (car seat, heater, stroller...), register it with add_item. Ask only for what is missing (brand, then model number), one question at a time. If they do not know the model, say where the sticker usually is, or accept an approximate year. When they tell you a detail later, use update_item. Once brand and model (or year) are known, add_item and update_item already check recalls and return a status: report it right away, do not call check_item again.
 - Brand names are often misheard by speech recognition. When a tool asks "do you mean <brand>, <spelling>?", ask exactly that, with the spelling. If the user says yes, call update_item with that brand. If they spell the brand letter by letter, pass the letters exactly as heard (for example "A I T J U N Z"); the tool joins them.
@@ -52,7 +53,8 @@ export class Session {
     private readonly limits: Limits = DEFAULT_LIMITS,
     restore?: { messages: Msg[]; turns: number },
   ) {
-    this.messages = restore ? [...restore.messages] : [];
+    // Older saved sessions may hold an empty assistant message, which Bedrock rejects: patch it.
+    this.messages = restore ? restore.messages.map(nonEmpty) : [];
     this.turns = restore?.turns ?? 0;
   }
 
@@ -75,14 +77,17 @@ export class Session {
           messages: this.messages,
           tools: this.mcp.tools,
         });
-        this.messages.push({ role: 'assistant', content: reply.content });
-
         const uses = reply.content.filter(
           (b): b is Extract<Block, { type: 'toolUse' }> => b.type === 'toolUse',
         );
         if (reply.stopReason !== 'tool_use' || uses.length === 0) {
-          return { reply: textOf(reply.content), toolCalls };
+          // The model sometimes ends a turn with no text after a tool call. Say the tool's own spoken
+          // summary instead of nothing, and never store an empty message (Bedrock rejects the next turn).
+          const said = textOf(reply.content) || fallbackReply(toolCalls);
+          this.messages.push({ role: 'assistant', content: [{ type: 'text', text: said }] });
+          return { reply: said, toolCalls };
         }
+        this.messages.push({ role: 'assistant', content: reply.content });
         if (round === this.limits.maxToolRounds) break;
 
         const results: Block[] = [];
@@ -126,6 +131,18 @@ export class Session {
   close(): Promise<void> {
     return this.mcp.close();
   }
+}
+
+/** The last tool's spoken summary (its first line), or a plain request to repeat. */
+function fallbackReply(toolCalls: ToolTrace[]): string {
+  const last = toolCalls.at(-1);
+  const summary = last && !last.isError ? (last.result.split('\n')[0]?.trim() ?? '') : '';
+  return summary || 'Sorry, could you say that again?';
+}
+
+function nonEmpty(message: Msg): Msg {
+  if (message.role !== 'assistant' || message.content.length > 0) return message;
+  return { ...message, content: [{ type: 'text', text: '...' }] };
 }
 
 function textOf(content: Block[]): string {

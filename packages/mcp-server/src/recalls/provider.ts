@@ -9,6 +9,8 @@ export interface RecallProvider {
   search?(item: Item): Promise<RecallSearch>;
   /** Human name of the source, said aloud when it is down ("CPSC"). */
   readonly source?: string;
+  /** Other sources this provider holds a full copy of, so their outage is covered (the recall cache). */
+  readonly covers?: string[];
 }
 
 export interface RecallSearch {

@@ -162,3 +162,35 @@ describe('agent limits and failure handling', () => {
     expect(session.messages).toHaveLength(0);
   });
 });
+
+describe('an empty answer from the model (seen live on Bedrock after add_item)', () => {
+  const fakeMcp: McpTools = {
+    tools: [],
+    call: async () => ({
+      text: 'Okay, I saved your dresser. Who makes it?\n{"summary":"Okay, I saved your dresser. Who makes it?"}',
+      isError: false,
+    }),
+    close: async () => {},
+  };
+  const empty: LlmReply = { content: [], stopReason: 'end_turn' };
+
+  it('says the tool summary instead of nothing, and keeps the history valid for the next turn', async () => {
+    const llm = new ScriptedLlm([use('t1', 'add_item', { name: 'dresser' }), empty, say('Noted.')]);
+    const session = new Session(llm, fakeMcp);
+    const first = await session.say('We got a dresser.');
+    expect(first.reply).toBe('Okay, I saved your dresser. Who makes it?');
+    expect(session.messages.every((m) => m.content.length > 0)).toBe(true);
+    expect((await session.say('The brand is Aitjunz.')).reply).toBe('Noted.');
+  });
+
+  it('repairs an empty message saved by an older version', () => {
+    const session = new Session(new ScriptedLlm([]), fakeMcp, undefined, {
+      messages: [
+        { role: 'user', content: [{ type: 'text', text: 'hi' }] },
+        { role: 'assistant', content: [] },
+      ],
+      turns: 1,
+    });
+    expect(session.messages[1]?.content.length).toBe(1);
+  });
+});

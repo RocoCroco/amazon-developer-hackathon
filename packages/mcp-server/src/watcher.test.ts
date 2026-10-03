@@ -1,5 +1,6 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
+  BatchGetCommand,
   DynamoDBDocumentClient,
   GetCommand,
   PutCommand,
@@ -13,6 +14,7 @@ import { InMemoryAlertStore } from './alerts.js';
 import { DynamoItemStore } from './dynamo-store.js';
 import { InMemoryRecallStore, type RecallStore } from './recalls/cache.js';
 import { brandWords, DynamoRecallStore } from './recalls/dynamo-recall-store.js';
+import { productWords } from './recalls/cache.js';
 import type { Feed } from './recalls/sync.js';
 import type { Recall } from './recalls/types.js';
 import { InMemoryItemStore } from './store.js';
@@ -229,6 +231,12 @@ function wireFakeTable(): void {
     return {};
   });
   ddb.on(GetCommand).callsFake((input) => ({ Item: table.get(keyOf(input.Key)) }));
+  ddb.on(BatchGetCommand).callsFake((input) => {
+    const [name, { Keys }] = Object.entries(
+      input.RequestItems as Record<string, { Keys: { PK: string; SK: string }[] }>,
+    )[0]!;
+    return { Responses: { [name]: Keys.map((k) => table.get(keyOf(k))).filter(Boolean) } };
+  });
   ddb.on(QueryCommand).callsFake((input) => ({
     Items: [...table.values()].filter(
       (r) =>
@@ -284,6 +292,12 @@ for (const [name, make] of recallStores) {
       expect(await store.candidates({ name: 'x', brand: 'Nobody' })).toEqual([]);
       expect(await store.candidates({ name: 'x' })).toEqual([]);
     });
+
+    it('also finds candidates by the kind of product, so a misheard brand can be compared', async () => {
+      await store.upsert([goveeRecall, seatRecall, camryRecall]);
+      const byProduct = await store.candidates({ name: 'space heaters', brand: 'iTunes' });
+      expect(byProduct.map((r) => r.id)).toEqual(['cpsc:10086']);
+    });
   });
 }
 
@@ -294,10 +308,16 @@ describe('DynamoRecallStore storage details', () => {
     const store = new DynamoRecallStore(dynamoClient(), 't');
     await store.upsert([seatRecall]);
     const writesAfterFirst = puts;
-    expect(writesAfterFirst).toBe(1 + brandWords(seatRecall).length);
+    expect(writesAfterFirst).toBe(
+      1 + brandWords(seatRecall).length + productWords(seatRecall).length,
+    );
     expect(brandWords(seatRecall)).toEqual(expect.arrayContaining(['graco']));
     await store.upsert([seatRecall]);
     expect(puts).toBe(writesAfterFirst); // nothing rewritten
+    await store.upsert([seatRecall], { reindex: true }); // the index only, e.g. after it gained product words
+    expect(puts).toBe(
+      writesAfterFirst + brandWords(seatRecall).length + productWords(seatRecall).length,
+    );
   });
 
   it('expires recalls with a TTL', async () => {

@@ -38,13 +38,48 @@ describe.skipIf(!process.env.LIVE)('live simulator conversation', () => {
       'We got a second-hand Govee space heater, model number H7131. Please register it.',
     );
     console.log('ASSISTANT 1:', first.reply);
-    expect(first.toolCalls.map((t) => t.name)).toContain('add_item');
+    // add_item checks recalls right away once brand and model are known.
+    const added = first.toolCalls.find((t) => t.name === 'add_item');
+    expect(added?.result).toMatch(/"status":"recalled"/);
+    expect(first.reply).toMatch(/recall|stop using|overheat/i);
 
-    const second = await session.say('Is it recalled?');
+    const second = await session.say('What should I do?');
     console.log('ASSISTANT 2:', second.reply);
-    const check = second.toolCalls.find((t) => t.name === 'check_item');
-    expect(check?.result).toMatch(/"status":"recalled"/);
-    expect(second.reply).toMatch(/recall|stop using|overheat/i);
+    expect(second.reply).toMatch(/stop using|refund|replace|contact|Govee/i);
+    await session.close();
+  }, 120_000);
+
+  it('stays a normal but limited Alexa when asked something off topic', async () => {
+    const mcp = await connectMcp(
+      {
+        url: aws(
+          'cloudformation',
+          'describe-stacks',
+          '--stack-name',
+          'RecallGuardianStack',
+          '--query',
+          "Stacks[0].Outputs[?OutputKey=='McpUrl'].OutputValue",
+        ),
+        demoKey: aws(
+          'ssm',
+          'get-parameter',
+          '--name',
+          '/recall-guardian/demo-key',
+          '--with-decryption',
+          '--query',
+          'Parameter.Value',
+        ),
+      },
+      randomBytes(16).toString('base64url'),
+    );
+    const session = new Session(new BedrockLlm(), mcp);
+    for (const said of ["Alexa, what's the weather like tomorrow?", 'Play some jazz music.']) {
+      const turn = await session.say(said);
+      console.log('OFF TOPIC:', said, '->', turn.reply);
+      expect(turn.toolCalls).toHaveLength(0);
+      expect(turn.reply).toMatch(/simulation/i);
+      expect(turn.reply).toMatch(/recall/i);
+    }
     await session.close();
   }, 120_000);
 });
