@@ -10,6 +10,7 @@ import {
   type StoredSession,
 } from './session-store.js';
 import { clipForSpeech, type Speaker } from './speech.js';
+import type { Transcriber } from './transcribe.js';
 
 /** Demo-mode controls: what the "simulate new recall" button does. */
 export interface DemoControls {
@@ -40,6 +41,10 @@ export interface SimulatorHandlerOptions {
   speechCap?: DailyCap;
   /** Conversation turns (model calls) all sessions together may use per day. */
   turnCap?: DailyCap;
+  /** Amazon Transcribe streaming for the microphone. Without one, the page uses the browser's recognizer. */
+  transcriber?: Transcriber;
+  /** Transcription streams all visitors together may open per day (each is at most ~45 s, page-enforced). */
+  streamCap?: DailyCap;
   limits?: Limits;
   demo?: DemoControls;
   /** Max request body size in bytes. */
@@ -100,6 +105,7 @@ export function createSimulatorHandler(
   const sessionSpeechChars = options.sessionSpeechChars ?? 6_000;
   const speechCap = options.speechCap ?? new InMemoryDailyCap(120_000);
   const turnCap = options.turnCap ?? new InMemoryDailyCap(600);
+  const streamCap = options.streamCap ?? new InMemoryDailyCap(400);
 
   /** Runs `work` with the session, an open MCP connection, and saves the conversation afterwards. */
   async function withSession<T>(
@@ -152,7 +158,22 @@ export function createSimulatorHandler(
     }
 
     if (req.method === 'GET' && pathname === '/api/config') {
-      return json(200, { speech: !!options.speaker, demo: !!options.demo });
+      return json(200, {
+        speech: !!options.speaker,
+        demo: !!options.demo,
+        transcribe: !!options.transcriber,
+      });
+    }
+
+    // A short-lived presigned URL: the page streams the microphone straight to Amazon Transcribe.
+    if (req.method === 'POST' && pathname === '/api/transcribe') {
+      if (!options.transcriber) return json(501, { error: 'Transcribe is not configured' });
+      if (!(await streamCap.tryUse(1))) {
+        return json(429, {
+          error: 'Speech budget used up for today; the browser recognizer takes over.',
+        });
+      }
+      return json(200, await options.transcriber.presign());
     }
 
     // Inventory and alerts for the side panels, read straight from the MCP tools.

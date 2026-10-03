@@ -160,6 +160,32 @@ function knownBrands(recalls: Recall[]): Map<string, { display: string; count: n
   return brands;
 }
 
+const BABY_GEAR =
+  /\b(car ?seats?|booster|strollers?|cribs?|bassinets?|high ?chairs?|carriers?|play ?yards?|playpens?|swings?|bouncers?|baby|infant|monitors?)\b/i;
+/** Brands families name most for baby gear (the same list leads the speech vocabulary). */
+const BABY_GEAR_BRANDS = [
+  'Chicco',
+  'Graco',
+  'Evenflo',
+  'Britax',
+  'Nuna',
+  'Maxi-Cosi',
+  'UPPAbaby',
+  'Cybex',
+  'Diono',
+  'Clek',
+  'Doona',
+  'Cosco',
+  'Safety 1st',
+  'Fisher-Price',
+  'Baby Jogger',
+  'Bugaboo',
+  'Babybjorn',
+  'Ergobaby',
+  'Summer Infant',
+  'Delta Children',
+];
+
 /** Recalls about the same kind of product ("8-drawer dresser" -> recalls that mention dressers). */
 function sameKindOfProduct(productName: string, recalls: Recall[]): Recall[] {
   const words = productTokens(productName).filter((w) => w.length >= 3 && !/\d/.test(w));
@@ -194,6 +220,13 @@ export function suggestBrands(
   const allowed = wanted.length >= 8 ? 2 : 1;
 
   const known = knownBrands(productName ? sameKindOfProduct(productName, recalls) : recalls);
+  // Well-known baby-gear brands count too, even without a recall in our data: "Kiko car seat" is a Chicco.
+  if (productName && BABY_GEAR.test(productName)) {
+    for (const display of BABY_GEAR_BRANDS) {
+      const key = normalizeBrand(display);
+      if (!known.has(key)) known.set(key, { display, count: 0 });
+    }
+  }
   if (known.has(normalizeBrand(brand))) return undefined; // the brand exists: the product just is not recalled
   const ranked = [...known.entries()]
     .map(([key, info]) => {

@@ -27,12 +27,13 @@ food and medicine. The bottleneck is that nobody knows who owns what, because no
 ## What it does
 
 1. **Register by voice**: "Alexa, we got a hand-me-down Graco car seat." Alexa asks only what is needed (brand, model, roughly when it was made), and checks recalls the moment it knows enough.
-2. **Hear brands right**: speech recognition writes "Aitjunz" as "iTunes" or "8th June". The server compares what it heard **by sound** with the brands in the recall data and asks *"Do you mean Aitjunz, A-I-T-J-U-N-Z?"*; the owner can spell it letter by letter.
-3. **Check instantly**: "Is anything we own recalled?" Official CPSC, NHTSA and openFDA data, matched carefully.
-4. **Know the family's allergies**: "Leo is allergic to peanuts." A food recall for undeclared peanuts says so and jumps to the top; *"any recent peanut recalls?"* is answered from openFDA.
-5. **Watch continuously**: a daily job pulls new recalls and matches them against every household.
-6. **Alert proactively**: "Heads up: your car seat has a recall for a harness defect."
-7. **Guide the fix**: stop-using advice first, then the free repair/replacement/refund and who to call. Track it to done.
+2. **Talk like to an Echo**: "Alexa" starts a conversation; after each reply it keeps listening for a few seconds, so follow-ups need no wake word; "thanks" or silence ends it. Speech is US English through **Amazon Transcribe streaming** (better with accents, custom vocabulary of recall brands), with the browser's recognizer as a free fallback.
+3. **Hear brands right**: speech recognition writes "Aitjunz" as "iTunes" or "8th June". The server compares what it heard **by sound** with the brands in the recall data and asks *"Do you mean Aitjunz, A-I-T-J-U-N-Z?"*; the owner can spell it letter by letter.
+4. **Check instantly**: "Is anything we own recalled?" Official CPSC, NHTSA and openFDA data, matched carefully.
+5. **Know the family's allergies**: "Leo is allergic to peanuts." A food recall for undeclared peanuts says so and jumps to the top; *"any recent peanut recalls?"* is answered from openFDA.
+6. **Watch continuously**: a daily job pulls new recalls and matches them against every household.
+7. **Alert proactively**: "Heads up: your car seat has a recall for a harness defect."
+8. **Guide the fix**: stop-using advice first, then the free repair/replacement/refund and who to call. Track it to done.
 
 Alexa never claims a recall it is not sure about: when a detail is missing it asks one short question
 (the model sticker, the month it was made, the lot code) instead of guessing. And when a recall database is down
@@ -45,6 +46,7 @@ flowchart LR
   family((Family)) -- "voice or text" --> sim["Alexa+ simulator<br/>web app + Lambda"]
   sim -- "Converse API, tool use" --> bedrock[("Claude on<br/>Amazon Bedrock")]
   sim -- "SSML" --> polly[("Amazon Polly<br/>neural voice")]
+  family -- "microphone, presigned WebSocket" --> transcribe[("Amazon Transcribe<br/>streaming, en-US")]
   sim -- "MCP 2025-11-25<br/>Streamable HTTP" --> mcp["Recall Guardian<br/>MCP server (Lambda)"]
   mcp --> ddb[("DynamoDB<br/>inventory, alerts,<br/>recall cache")]
   mcp -- "live lookup" --> cpsc["CPSC<br/>consumer products"]
@@ -157,7 +159,7 @@ automated test that runs three times in a row: `packages/simulator/src/demo-stor
 
 ## Cost and safety
 
-About **$9 a month at demo usage** (almost all of it Claude Haiku and Polly; everything else is inside free tiers):
+About **$12 a month at demo usage** (almost all of it Claude Haiku, Polly and Transcribe; everything else is inside free tiers):
 [docs/costs.md](docs/costs.md). Spending guards: a per-session turn limit, a daily cap on model turns and spoken
 characters shared by all containers, the demo key on the MCP endpoint, unguessable household ids, no resource with an
 hourly price.
@@ -181,8 +183,9 @@ recall data, the matcher, the daily watcher and the alert store. What the simula
 - **The assistant.** Claude on Bedrock plays Alexa+ and calls the server as an ordinary MCP client. The system
   prompt in `packages/simulator/src/agent.ts` is the only Alexa-specific glue; the tool descriptions carry the
   rest (ask before claiming, read the spoken summary, spell phone numbers).
-- **Speech.** The browser's speech recognition and Amazon Polly. Brand mishearing is handled in the server, so it
-  helps any voice front end.
+- **Speech.** Amazon Transcribe streaming (the page streams the microphone straight to Transcribe with a URL the
+  simulator signs; no audio passes through our servers) or the browser's recognizer, and Amazon Polly. Brand
+  mishearing is handled in the server, so it helps any voice front end.
 - **Proactive delivery.** The watcher writes alerts; the simulator polls for new ones and speaks them. On a real
   device the assistant's own notification channel would deliver them.
 

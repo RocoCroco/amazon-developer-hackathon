@@ -3,17 +3,24 @@
 // A test (packages/simulator/src/ui-assets.test.ts) fails when the generated file is stale.
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 
-const FILES = {
-  '/index.html': ['index.html', 'text/html; charset=utf-8'],
-  '/app.js': ['app.js', 'text/javascript; charset=utf-8'],
-  '/styles.css': ['styles.css', 'text/css; charset=utf-8'],
+// Every page file: index.html, styles.css and the ES modules (app.js imports voice.js, eventstream.js...).
+const TYPES = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
 };
 
 const assets = Object.fromEntries(
-  Object.entries(FILES).map(([route, [file, contentType]]) => [
-    route,
-    { contentType, body: readFileSync(`packages/simulator/public/${file}`, 'utf8') },
-  ]),
+  readdirSync('packages/simulator/public')
+    .filter((name) => TYPES[name.slice(name.lastIndexOf('.'))])
+    .sort()
+    .map((name) => [
+      `/${name}`,
+      {
+        contentType: TYPES[name.slice(name.lastIndexOf('.'))],
+        body: readFileSync(`packages/simulator/public/${name}`, 'utf8'),
+      },
+    ]),
 );
 
 // Photos are embedded as base64 text (flagged "base64") and decoded when the Lambda starts.

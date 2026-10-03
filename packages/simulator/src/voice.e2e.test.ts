@@ -228,6 +228,41 @@ describe('household panel and proactive messages', () => {
     await page.close();
   }, 60_000);
 
+  it('keeps a recall found while Alexa is still speaking, and announces it when she is done', async () => {
+    // A long reply: the voice plays for 6 seconds, longer than one poll of the page.
+    const page = await newPage(
+      BROWSER_STUBS.replace(
+        'this.onended && this.onended(), 10',
+        'this.onended && this.onended(), 6000',
+      ),
+    );
+    await type(page, 'We got a Qwyxx space heater, model number QX-200.');
+    await expect
+      .poll(() => page.locator('#scene').getAttribute('data-ring'), poll)
+      .toBe('speaking');
+    const result = await runWatcher(
+      { recalls: new InMemoryRecallStore(), households: items, alerts, feeds: [] },
+      {
+        seed: [
+          {
+            ...heaters[0]!,
+            id: 'demo:qwyxx-1',
+            title: 'Qwyxx Space Heaters Recalled Due to Fire Hazard (demo)',
+            brands: ['Qwyxx'],
+            products: [{ name: 'Qwyxx Space Heaters', models: ['QX-200'] }],
+            hazard: 'The heaters can overheat, posing a fire hazard.',
+          },
+        ],
+      },
+    );
+    expect(result.alertsCreated).toBe(1);
+    const proactive = page.locator('#transcript .bubble.proactive');
+    await page.waitForTimeout(4500); // a poll happens while she speaks: nothing is announced over her
+    expect(await proactive.count()).toBe(0);
+    await hasText(proactive, 'Heads up: your Qwyxx space heater has a recall.');
+    await page.close();
+  }, 60_000);
+
   it('does not announce a second time the alerts that this turn already explained', async () => {
     const page = await newPage();
     await type(page, 'We got a Govee space heater, model number H7131.');

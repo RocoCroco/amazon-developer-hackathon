@@ -9,11 +9,13 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 
 describe('embedded page', () => {
   it('is in sync with packages/simulator/public (run: node scripts/embed-ui.mjs)', () => {
-    for (const [route, file] of [
-      ['/index.html', 'index.html'],
-      ['/app.js', 'app.js'],
-      ['/styles.css', 'styles.css'],
-    ] as const) {
+    const pageFiles = readdirSync(path.resolve(here, '../public')).filter((f) =>
+      /\.(html|js|css)$/.test(f),
+    );
+    expect(pageFiles).toEqual(
+      expect.arrayContaining(['index.html', 'app.js', 'voice.js', 'eventstream.js']),
+    );
+    for (const [route, file] of pageFiles.map((f) => [`/${f}`, f] as const)) {
       const onDisk = readFileSync(path.resolve(here, '../public', file), 'utf8');
       expect(UI_ASSETS[route]?.body, `${file} changed: re-run scripts/embed-ui.mjs`).toBe(onDisk);
     }

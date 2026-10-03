@@ -90,3 +90,17 @@ describe('"do you mean" for a misheard brand, against real recalls', () => {
     expect(suggestBrands('Sauder', dressers)?.options ?? []).not.toContain('Aitjunz');
   });
 });
+
+describe('well-known baby-gear brands without a recall in our data', () => {
+  it('"Kiko car seat" is offered as Chicco even when no Chicco recall is known', () => {
+    const seats = corpus.filter(
+      (r) => r.category === 'car_seat' && !r.brands.some((b) => /chicco/i.test(b)),
+    );
+    const s = suggestBrands('Kiko', seats, 'car seat');
+    expect(s?.options?.[0]).toBe('Chicco');
+  });
+
+  it('is only used for baby gear', () => {
+    expect(suggestBrands('Kiko', [], 'lawn mower')).toBeUndefined();
+  });
+});

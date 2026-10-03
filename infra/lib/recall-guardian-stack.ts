@@ -9,6 +9,7 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import * as s3 from 'aws-cdk-lib/aws-s3';
 import type { Construct } from 'constructs';
 
 /** SSM SecureString holding the shared demo key. Created by hand, never by CDK or committed. */
@@ -134,6 +135,10 @@ export class RecallGuardianStack extends cdk.Stack {
         WATCHER_FUNCTION: watcherFunction.functionName,
         DAILY_TURNS: '600',
         DAILY_SPEECH_CHARS: '120000',
+        // Microphone streams to Amazon Transcribe per day (at most ~45 s each; docs/costs.md).
+        DAILY_STREAMS: '400',
+        // Custom vocabulary of recall brands, created by scripts/build-vocabulary.mjs.
+        TRANSCRIBE_VOCABULARY: 'recall-guardian-brands',
       },
       bundling: { minify: true, sourceMap: false },
     });
@@ -168,6 +173,13 @@ export class RecallGuardianStack extends cdk.Stack {
     simulatorFunction.addToRolePolicy(
       new iam.PolicyStatement({ actions: ['polly:SynthesizeSpeech'], resources: ['*'] }),
     );
+    // Signs the short-lived WebSocket URL the page uses to stream the microphone to Transcribe.
+    simulatorFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['transcribe:StartStreamTranscriptionWebSocket'],
+        resources: ['*'],
+      }),
+    );
     const simulatorUrl = simulatorFunction.addFunctionUrl({
       authType: lambda.FunctionUrlAuthType.NONE,
     });
@@ -175,5 +187,16 @@ export class RecallGuardianStack extends cdk.Stack {
 
     new cdk.CfnOutput(this, 'McpUrl', { value: `${url.url}mcp` });
     new cdk.CfnOutput(this, 'TableName', { value: table.tableName });
+
+    // Holds the Amazon Transcribe custom vocabulary file (recall brand names) for the few seconds Transcribe
+    // needs to read it: scripts/build-vocabulary.mjs uploads it, creates the vocabulary, then deletes it, so the
+    // bucket stays empty and is removed with the stack (no auto-delete helper function needed).
+    const vocabularyBucket = new s3.Bucket(this, 'VocabularyBucket', {
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      enforceSSL: true,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+    new cdk.CfnOutput(this, 'VocabularyBucketName', { value: vocabularyBucket.bucketName });
   }
 }

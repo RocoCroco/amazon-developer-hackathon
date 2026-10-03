@@ -1,8 +1,10 @@
 # Demo video script (target 2:50, hard limit under 3:00, English)
 
 Show a Chrome window with the simulator full screen. Voice-over is you; **Alexa's lines are spoken by the
-simulator** (Amazon Polly). Talk to it **hands-free**: say "Alexa, ..." like to a real Echo; the light ring shows
-it listening, thinking (a soft blue breathing) and speaking. Typing the same text works as a fallback.
+simulator** (Amazon Polly). Talk to it **hands-free** like to a real Echo: say "Alexa, ..." once to start; after each
+reply it keeps listening for a few seconds (ring lit), so the next sentence needs no wake word. Silence or "thanks"
+ends the conversation. The light ring shows listening, thinking (a soft blue breathing) and speaking; your words
+appear live in your bubble and Alexa's words appear as she speaks them. Typing the same text works as a fallback.
 
 Everything in the story is real data except the recall published at 1:35 (say so). The phrases were dry-run
 against the deployed system with real Claude on Bedrock; Alexa's wording varies a little each time, so the "Alexa
@@ -25,8 +27,8 @@ says" column is what to expect, not a script to match word for word.
 | 0:55-1:05 | Zoom on the red item | "Speech recognition never gets that brand right. The server compares what it heard, by sound, with the brands in the official recall data and asks, spelling it. That's a real CPSC recall." | none |
 | 1:05-1:35 | Household panel, amber then red food item | "Food matters too." | **YOU:** "Alexa, my son Leo is allergic to peanuts. And we have Mercer's ice cream sandwiches in the freezer."  **Alexa:** "Got it, I'll watch for undeclared peanuts. Your Mercer's ice cream sandwiches may be part of a food recall: it has undeclared peanuts, and Leo is allergic to peanuts. Can you read me the lot code on the box?" *(a real FDA recall from September 2026)* |
 | 1:35-2:00 | Settings: **Simulate new recall**; then the ring speaks on its own | "Time passes. A daily watcher pulls new recalls from CPSC, NHTSA and openFDA. Here I publish a pretend recall for the car seat and run it now." | Wait 5-10 s: an amber **"Alexa noticed something"** message is **spoken without being asked**: "Heads up: your Chicco car seat has a recall... Want me to walk you through the fix?" |
-| 2:00-2:20 | Transcript | "It warned the family; nobody asked." | **YOU:** "Alexa, yes, walk me through it."  **Alexa:** "Stop using the car seat now. Call Chicco at 8 0 0... for a free replacement kit."  **YOU:** "Alexa, I got the kit, it's fixed."  **Alexa:** "Great, I've closed that alert." The dot turns green. |
-| 2:20-2:45 | README architecture diagram, then `docs/matcher-results.md` challenge table, then `npm test` output | "Under the hood: eleven MCP tools on a stateless Streamable HTTP server, spec 2025-11-25, on Lambda. It never says 'no recalls' when a government database is down: CPSC went down while I built this, so the server keeps its own copy. And I tested it against forty messy, blind-labeled descriptions: zero false alarms. Everything is serverless, about nine dollars a month." | none |
+| 2:00-2:20 | Transcript | "It warned the family; nobody asked." | **YOU:** "Yes, walk me through it." *(no wake word: Alexa is still listening after her question)*  **Alexa:** "Stop using the car seat now. Call Chicco at 8 0 0... for a free replacement kit."  **YOU:** "I got the kit, it's fixed."  **Alexa:** "Great, I've closed that alert." The dot turns green. |
+| 2:20-2:45 | README architecture diagram, then `docs/matcher-results.md` challenge table, then `npm test` output | "Under the hood: eleven MCP tools on a stateless Streamable HTTP server, spec 2025-11-25, on Lambda. It never says 'no recalls' when a government database is down: CPSC went down while I built this, so the server keeps its own copy. And I tested it against forty messy, blind-labeled descriptions: zero false alarms. Everything is serverless, about twelve dollars a month." | none |
 | 2:45-2:55 | Final card: URL + repo | "Recall Guardian: Amazon protects what you buy on Amazon. We protect everything else in your home." | none |
 
 ## If something goes wrong while recording

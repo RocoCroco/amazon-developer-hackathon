@@ -12,6 +12,7 @@
   --photo-ratio: 1.7768;
   --scene-w: min(1672px, 100vw, 100vh * var(--photo-ratio));
   --scene-x: -50%;
+  --photo-edge: #8a7864;
   color-scheme: light;
 }
 
@@ -23,7 +24,8 @@ html,
 body {
   height: 100%;
   margin: 0;
-  background: #2a2017;
+  /* the mean colour of the photo's left and right edges (scripts/build-images.mjs prints it) */
+  background: var(--photo-edge);
   font-family: var(--font);
   -webkit-font-smoothing: antialiased;
 }
@@ -61,13 +63,6 @@ button {
   color: #fff;
 }
 
-.backdrop {
-  position: absolute;
-  inset: -40px;
-  background: url('/img/echo-backdrop-480.webp') center / cover no-repeat;
-  filter: blur(28px) brightness(0.92);
-}
-
 .scene {
   position: absolute;
   left: 50%;
@@ -76,14 +71,15 @@ button {
   aspect-ratio: 1672 / 941;
   transform: translate(var(--scene-x), -50%);
   --pulse: 0.6;
-  /* feathered edges, so on very wide screens the photo melts into its blurred copy */
+  /* Feathered edges: the photo fades softly into the page colour, which is sampled from the photo itself,
+     so it blends at any window shape without zooming, upscaling or a blurred copy. */
   -webkit-mask-image:
-    linear-gradient(to right, transparent, #000 4%, #000 96%, transparent),
-    linear-gradient(to bottom, transparent, #000 4%, #000 96%, transparent);
+    linear-gradient(to right, transparent, #000 9%, #000 91%, transparent),
+    linear-gradient(to bottom, transparent, #000 11%, #000 89%, transparent);
   -webkit-mask-composite: source-in;
   mask-image:
-    linear-gradient(to right, transparent, #000 4%, #000 96%, transparent),
-    linear-gradient(to bottom, transparent, #000 4%, #000 96%, transparent);
+    linear-gradient(to right, transparent, #000 9%, #000 91%, transparent),
+    linear-gradient(to bottom, transparent, #000 11%, #000 89%, transparent);
   mask-composite: intersect;
 }
 
@@ -223,30 +219,134 @@ button {
   margin-top: auto;
 }
 
+/* Messaging-app bubbles: rounded, with a small curved tail on the speaker's side, and a soft spring entrance
+   (slight scale, slide and fade) from that corner. */
 .bubble {
+  position: relative;
   max-width: 76%;
   padding: 10px 16px;
-  border-radius: 14px;
+  border-radius: 18px;
   font-size: 0.97rem;
   line-height: 1.38;
   color: #fff;
-  animation: rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: pop 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
   overflow-wrap: anywhere;
 }
 
-.bubble.alexa {
+.bubble::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  width: 12px;
+  height: 12px;
+  background: inherit;
+}
+
+.bubble.alexa,
+.bubble.error {
   align-self: flex-start;
-  background: rgba(10, 26, 61, 0.95);
+  border-bottom-left-radius: 6px;
+  transform-origin: 0 100%;
+}
+
+.bubble.alexa::after,
+.bubble.error::after {
+  left: -6px;
+  clip-path: path('M12 0 C12 7 7 12 0 12 L12 12 Z');
+}
+
+.bubble.alexa {
+  background: rgb(10, 26, 61);
 }
 
 .bubble.user {
   align-self: flex-end;
+  border-bottom-right-radius: 6px;
   background: var(--blue);
+  transform-origin: 100% 100%;
+}
+
+.bubble.user::after {
+  right: -6px;
+  clip-path: path('M0 0 C0 7 5 12 12 12 L0 12 Z');
 }
 
 .bubble.error {
+  background: rgb(120, 22, 38);
+}
+
+/* Alexa's words appear one by one, in step with her voice (app.js revealWords). */
+.bubble .w {
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+
+.bubble .w.on {
+  opacity: 1;
+}
+
+/* The user's words while they are still talking. */
+.bubble.user.live {
+  background: rgba(26, 102, 255, 0.8);
+}
+
+.bubble.user.live .text::after {
+  content: '';
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 3px;
+  vertical-align: -0.15em;
+  background: rgba(255, 255, 255, 0.85);
+  animation: caret 1s steps(1) infinite;
+}
+
+@keyframes caret {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* "Alexa is thinking": three dots that bounce gently. */
+.typing {
   align-self: flex-start;
-  background: rgba(120, 22, 38, 0.95);
+  display: flex;
+  gap: 5px;
+  padding: 13px 16px;
+  border-radius: 18px;
+  border-bottom-left-radius: 6px;
+  background: rgb(10, 26, 61);
+  transform-origin: 0 100%;
+  animation: pop 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.typing span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.75);
+  animation: dot 1.2s ease-in-out infinite;
+}
+
+.typing span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.typing span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes dot {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
 }
 
 .bubble.proactive {
@@ -290,6 +390,21 @@ button {
   }
 }
 
+@keyframes pop {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.92);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-1px) scale(1.01);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* ---- Recall Guardian panel: brand header on the photo, items in one glass card ------------------------------------ */
 
 .panel {
@@ -326,7 +441,7 @@ button {
   color: var(--navy);
 }
 
-.chevron {
+.gear {
   width: 40px;
   height: 40px;
   display: grid;
@@ -339,12 +454,12 @@ button {
     background 0.2s;
 }
 
-.chevron:hover {
+.gear:hover {
   background: rgba(255, 255, 255, 0.4);
 }
 
-.chevron[aria-expanded='true'] {
-  transform: rotate(180deg);
+.gear[aria-expanded='true'] {
+  transform: rotate(60deg);
 }
 
 .household {
@@ -610,6 +725,24 @@ button {
 .actions button:disabled {
   opacity: 0.5;
   cursor: progress;
+}
+
+.select {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.select select {
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(10, 26, 61, 0.2);
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 500;
 }
 
 .switch {

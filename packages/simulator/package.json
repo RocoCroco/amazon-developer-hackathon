@@ -13,7 +13,10 @@
     "@aws-sdk/client-lambda": "^3.1144.0",
     "@aws-sdk/client-polly": "^3.1144.0",
     "@aws-sdk/client-ssm": "^3.1144.0",
-    "@modelcontextprotocol/sdk": "^1.31.0"
+    "@aws-sdk/credential-provider-node": "^3.972.84",
+    "@modelcontextprotocol/sdk": "^1.31.0",
+    "@smithy/hash-node": "^4.5.2",
+    "@smithy/signature-v4": "^5.7.4"
   },
   "devDependencies": {
     "@smithy/util-stream": "^4.8.2",

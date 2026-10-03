@@ -102,3 +102,17 @@ names are overridden (F11).
 **What didn't**: generating regex-heavy source through shell snippets silently dropped backslashes (F7); a stale cached PDF
 reader and no PDF renderer meant primary sources needed a small pure-JS extractor (F12).
 **Suggestion**: an Edit-style tool for "append this file region" would avoid most shell-escaping workarounds.
+
+## Amazon Transcribe (streaming over WebSocket, custom vocabulary)
+**What worked**: a presigned WebSocket URL lets the browser stream the microphone straight to Transcribe while the
+credentials stay on the server; SigV4 presigning with `@smithy/signature-v4` was a few lines. US English is forced per
+request (`language-code=en-US`), independent of the user's browser or Windows language. A first live test (Polly speech
+as 16 kHz PCM, our own event-stream framing) worked on the first try. Partial-result stabilization keeps the live
+caption from flickering.
+**What didn't**: the developer guide's base64 audio-event example is garbled (bad header bytes and message CRC; F20),
+so it cannot be used to verify an encoder. There is no JavaScript example of the WebSocket protocol without the SDK's
+HTTP/2 client, which does not run in browsers. The custom vocabulary's `SoundsLike` and `IPA` columns are no longer
+supported, so a brand whose spelling does not match its sound ("Chicco" said "kiko", "Evenflo" heard "even flow")
+cannot be taught; on our ten synthetic test sentences the 1,959-brand vocabulary made no measurable difference.
+**Suggestion**: bring back pronunciation hints for custom vocabularies (brand names are exactly where they are needed),
+and publish a minimal browser WebSocket example with a verifiable event-stream frame.

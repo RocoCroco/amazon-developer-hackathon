@@ -6,6 +6,8 @@ const out = process.argv[3] ?? 'docs/images';
 const browser = await chromium.launch();
 for (const [name, viewport] of [
   ['wide', { width: 1892, height: 890 }],
+  ['ultrawide', { width: 2560, height: 1080 }],
+  ['tall', { width: 1280, height: 1000 }],
   ['desktop', { width: 1440, height: 810 }],
   ['phone', { width: 390, height: 780 }],
 ]) {

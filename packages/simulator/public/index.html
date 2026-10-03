@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#2a2017" />
+    <meta name="theme-color" content="#8a7864" />
     <title>Recall Guardian · Alexa+ simulator</title>
     <link rel="icon" href="/img/logo.svg" type="image/svg+xml" />
     <link
@@ -17,8 +17,6 @@
   </head>
   <body>
     <main class="stage" id="stage">
-      <!-- Wide screens: a blurred copy fills the space around the photo, which is never upscaled. -->
-      <div class="backdrop" aria-hidden="true"></div>
       <!-- The Echo photos share one aspect-locked box, so the glow can sit exactly on the light ring. -->
       <div class="scene" id="scene" data-ring="idle" aria-hidden="true">
         <img
@@ -51,7 +49,7 @@
           <h1>Recall Guardian</h1>
           <button
             id="menu-button"
-            class="chevron"
+            class="gear"
             type="button"
             aria-haspopup="dialog"
             aria-expanded="false"
@@ -59,15 +57,22 @@
             aria-label="Settings and demo controls"
             title="Settings"
           >
-            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+            <!-- "settings" icon from Lucide (ISC license) -->
+            <svg
+              viewBox="0 0 24 24"
+              width="24"
+              height="24"
+              aria-hidden="true"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
               <path
-                d="m6 9 6 6 6-6"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.4"
-                stroke-linecap="round"
-                stroke-linejoin="round"
+                d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
               />
+              <circle cx="12" cy="12" r="3" />
             </svg>
           </button>
         </header>
@@ -102,6 +107,13 @@
               <input id="hands-free" type="checkbox" checked />
               <span class="track" aria-hidden="true"></span>
               <span>Hands-free: say “Alexa” to talk</span>
+            </label>
+            <label class="select" id="engine-row" hidden>
+              <span>Speech recognition (US English)</span>
+              <select id="engine">
+                <option value="transcribe">Amazon Transcribe (best with accents)</option>
+                <option value="browser">Browser (free)</option>
+              </select>
             </label>
           </fieldset>
 

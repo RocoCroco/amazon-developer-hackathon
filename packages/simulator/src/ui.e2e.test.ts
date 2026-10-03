@@ -154,11 +154,38 @@ describe('simulator web UI (real browser, real MCP server)', () => {
     expect(await animation('#scene .l-lit')).toBe('breathe-ring');
     expect(await animation('#scene .glow')).toBe('breathe-glow');
     expect(await page.locator('#scene img').count()).toBe(2);
+    // Meanwhile a typing indicator (three dots) sits where Alexa's answer will appear.
+    expect(await page.locator('#transcript .typing span').count()).toBe(3);
     await expect.poll(ring, poll).toBe('idle');
+    expect(await page.locator('#transcript .typing').count()).toBe(0);
+    // The answer's words appear one by one, then all are shown.
+    const words = page.locator('#transcript .bubble.alexa .w');
+    expect(await words.count()).toBeGreaterThan(3);
+    await expect
+      .poll(() => page.locator('#transcript .bubble.alexa .w:not(.on)').count(), poll)
+      .toBe(0);
     await page.close();
   }, 60_000);
 
-  it('opens the settings pop-up from the chevron; demo controls hide when there are none', async () => {
+  it('draws bubbles like a messaging app: a tail on the speaker side and a spring entrance', async () => {
+    const page = await browser.newPage();
+    await page.goto(appUrl);
+    await talk(page, 'We got a Govee space heater.');
+    const style = (sel: string, pseudo: string | null, prop: string) =>
+      page
+        .locator(sel)
+        .first()
+        .evaluate((el, [p, s]) => getComputedStyle(el, s).getPropertyValue(p), [
+          prop,
+          pseudo,
+        ] as const);
+    expect(await style('#transcript .bubble.alexa', '::after', 'clip-path')).toMatch(/^path/);
+    expect(await style('#transcript .bubble.user', '::after', 'right')).toBe('-6px');
+    expect(await style('#transcript .bubble.alexa', null, 'animation-name')).toBe('pop');
+    await page.close();
+  }, 60_000);
+
+  it('opens the settings pop-up from the gear; demo controls hide when there are none', async () => {
     const page = await browser.newPage();
     await page.goto(appUrl);
     expect(await page.locator('#settings').isVisible()).toBe(false);

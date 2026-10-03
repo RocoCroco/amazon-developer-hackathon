@@ -1,3 +1,5 @@
+import { BrowserEngine, Microphone, TranscribeEngine } from './voice.js';
+
 const $ = (selector) => document.querySelector(selector);
 
 const scene = $('#scene');
@@ -10,6 +12,8 @@ const resetButton = $('#reset');
 const seedButton = $('#demo-seed');
 const demoButton = $('#demo-recall');
 const speakToggle = $('#speak-toggle');
+const handsFreeToggle = $('#hands-free');
+const engineSelect = $('#engine');
 const menuButton = $('#menu-button');
 const settings = $('#settings');
 const inventory = $('#inventory');
@@ -21,7 +25,7 @@ const POLL_MS = 4000;
 const jsonHeaders = { 'content-type': 'application/json' };
 
 let sessionId = '';
-let config = { speech: false, demo: false };
+let config = { speech: false, demo: false, transcribe: false };
 let busy = false;
 let listening = false;
 let speaking = false;
@@ -86,12 +90,9 @@ function setSpeaking(on) {
   speaking = on;
   if (!on) stopPulse();
   updateRing();
-  // Hands-free must not hear Alexa's own voice.
-  if (on) wake.pause();
-  else wake.resume();
 }
 
-// ---- transcript: floating bubbles; older ones fade at the top edge and stay reachable by scrolling ----------------
+// ---- transcript: message bubbles; older ones fade at the top edge and stay reachable by scrolling ----------------
 
 const EXAMPLE = 'we got a second-hand Graco car seat';
 
@@ -100,36 +101,116 @@ const EXAMPLE = 'we got a second-hand Graco car seat';
  * It disappears with the first message.
  */
 function updateHint() {
-  const empty = transcript.children.length === 0;
+  const empty = transcript.querySelector('.bubble') === null;
   hint.hidden = !empty;
   if (!empty) return;
-  hint.textContent = !Recognition
+  hint.textContent = !voice.available()
     ? `Type something like “${EXAMPLE[0].toUpperCase()}${EXAMPLE.slice(1)}.”`
-    : wake.running
+    : voice.mode === 'wake'
       ? `Say “Alexa, ${EXAMPLE}.”`
       : `Tap the microphone and say “${EXAMPLE}”, or type it.`;
 }
 
+function scrollToEnd() {
+  transcript.scrollTo({ top: transcript.scrollHeight, behavior: 'smooth' });
+}
+
+function toolChips(toolCalls) {
+  const tools = document.createElement('div');
+  tools.className = 'tools';
+  for (const call of toolCalls) {
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.textContent = `MCP · ${call.name}`;
+    chip.title = call.result.split('\n')[0];
+    tools.append(chip);
+  }
+  return tools;
+}
+
+/**
+ * Appends a message. Alexa's words are separate spans, hidden until revealed in step with her voice
+ * (revealWords); the full text is in the page from the start, for screen readers and copying.
+ */
 function bubble(kind, text, toolCalls = []) {
   const li = document.createElement('li');
   li.className = `bubble ${kind}`;
-  li.append(document.createTextNode(text));
-  if (toolCalls.length) {
-    const tools = document.createElement('div');
-    tools.className = 'tools';
-    for (const call of toolCalls) {
-      const chip = document.createElement('span');
-      chip.className = 'chip';
-      chip.textContent = `MCP · ${call.name}`;
-      chip.title = call.result.split('\n')[0];
-      tools.append(chip);
+  const body = document.createElement('span');
+  body.className = 'text';
+  if (kind.startsWith('alexa')) {
+    for (const [i, word] of text.split(/\s+/).filter(Boolean).entries()) {
+      const span = document.createElement('span');
+      span.className = 'w';
+      span.textContent = i === 0 ? word : ` ${word}`;
+      body.append(span);
     }
-    li.append(tools);
+    li.dataset.reveal = 'pending';
+  } else {
+    body.textContent = text;
   }
+  li.append(body);
+  if (toolCalls.length) li.append(toolChips(toolCalls));
+  removeTyping();
   transcript.append(li);
-  transcript.scrollTo({ top: transcript.scrollHeight, behavior: 'smooth' });
+  scrollToEnd();
   updateHint();
   return li;
+}
+
+/** "Alexa is thinking": three dots in a bubble while the answer is on its way. */
+function showTyping() {
+  if (transcript.querySelector('.typing')) return;
+  const li = document.createElement('li');
+  li.className = 'typing';
+  li.setAttribute('aria-label', 'Alexa is thinking');
+  li.innerHTML = '<span></span><span></span><span></span>';
+  transcript.append(li);
+  scrollToEnd();
+}
+
+function removeTyping() {
+  transcript.querySelector('.typing')?.remove();
+}
+
+/**
+ * Reveals Alexa's words one by one. `progress()` says how far the voice is (0..1); words are weighted by
+ * their length, so long words take longer, like speech does. Everything shows when the voice ends.
+ */
+function revealWords(li, progress) {
+  const words = [...li.querySelectorAll('.w')];
+  const weights = words.map((w) => w.textContent.length + 2);
+  const total = weights.reduce((a, b) => a + b, 0);
+  let shown = 0;
+  let frame = 0;
+  li.dataset.reveal = 'running';
+  const step = () => {
+    const target = Math.min(1, progress()) * total;
+    let acc = 0;
+    let count = 0;
+    for (const weight of weights) {
+      if (acc + weight / 2 > target) break;
+      acc += weight;
+      count++;
+    }
+    for (; shown < count; shown++) words[shown].classList.add('on');
+    if (shown < words.length && li.dataset.reveal === 'running')
+      frame = requestAnimationFrame(step);
+  };
+  step();
+  return () => {
+    cancelAnimationFrame(frame);
+    for (const w of words) w.classList.add('on');
+    li.dataset.reveal = 'done';
+  };
+}
+
+/** Without a voice the words still flow in quickly, at reading speed. */
+function revealAtReadingSpeed(li) {
+  const count = li.querySelectorAll('.w').length;
+  const started = performance.now();
+  const duration = Math.min(2500, count * 45);
+  const finish = revealWords(li, () => (performance.now() - started) / duration);
+  setTimeout(finish, duration + 50);
 }
 
 // ---- household panel ---------------------------------------------------------------------------------------
@@ -286,6 +367,8 @@ async function refreshState({ announce }) {
     const state = await res.json();
     renderHousehold(state.items, state.alerts);
     const fresh = state.alerts.filter((a) => urgent(a) && !knownAlerts.has(a.alert_id));
+    // While Alexa is talking or listening, a new alert waits for the next poll instead of being dropped.
+    if (announce && fresh.length && (busy || speaking || listening)) return;
     for (const alert of state.alerts) knownAlerts.add(alert.alert_id);
     if (announce && fresh.length) {
       const top = fresh[0];
@@ -293,8 +376,10 @@ async function refreshState({ announce }) {
         top.kind === 'recalled'
           ? `Heads up: your ${top.item} has a recall. ${top.allergy_note ?? firstSentence(top.hazard || top.title)} Want me to walk you through the fix?`
           : `Heads up: your ${top.item} may be part of a food recall. ${top.allergy_note} Can you check the lot code on the package with me?`;
-      bubble('alexa proactive', text);
-      void speak(text);
+      const li = bubble('alexa proactive', text);
+      // A question was asked: like any reply, keep listening for the answer afterwards.
+      await speak(text, li);
+      voice.afterReply(true);
     }
   } catch {
     // The next poll tries again.
@@ -306,8 +391,6 @@ setInterval(() => void refreshState({ announce: true }), POLL_MS);
 // ---- speaking ----------------------------------------------------------------------------------------------
 
 let speakToken = 0;
-/** True from the moment a reply is sent to the voice until it has been played (or failed). */
-let speakPending = false;
 let currentAudio = null;
 
 function stopSpeaking() {
@@ -317,15 +400,23 @@ function stopSpeaking() {
     currentAudio = null;
   }
   if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-  speakPending = false;
+  for (const li of transcript.querySelectorAll('.bubble[data-reveal="running"] .w')) {
+    li.classList.add('on');
+  }
   setSpeaking(false);
 }
 
-/** Plays Polly audio from the server; if that is unavailable or refused, the browser's own voice. */
-async function speak(text) {
-  if (!speakToggle.checked || !text) return;
+/**
+ * Speaks a reply with Polly (or the browser's voice if Polly is unavailable) and reveals the words of its
+ * bubble in step with the audio. Resolves when the voice has finished.
+ */
+async function speak(text, li) {
+  if (!speakToggle.checked || !text) {
+    if (li) revealAtReadingSpeed(li);
+    return;
+  }
   const token = ++speakToken;
-  speakPending = true;
+  let finish = () => undefined;
   try {
     if (config.speech) {
       try {
@@ -341,6 +432,13 @@ async function speak(text) {
           currentAudio = audio;
           setSpeaking(true);
           startPulse(audio);
+          if (li) {
+            finish = revealWords(li, () =>
+              audio.duration > 0 && Number.isFinite(audio.duration)
+                ? audio.currentTime / audio.duration
+                : 0,
+            );
+          }
           await new Promise((resolve) => {
             audio.onended = resolve;
             audio.onerror = resolve;
@@ -355,18 +453,22 @@ async function speak(text) {
     if (token === speakToken && 'speechSynthesis' in window) {
       setSpeaking(true);
       scene.classList.add('fallback-pulse');
+      let spokenChars = 0;
+      if (li) finish = revealWords(li, () => spokenChars / Math.max(1, text.length));
       await new Promise((resolve) => {
         const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-US';
+        utterance.onboundary = (event) => (spokenChars = event.charIndex + (event.charLength ?? 1));
         utterance.onend = resolve;
         utterance.onerror = resolve;
         window.speechSynthesis.speak(utterance);
       });
+    } else if (li) {
+      revealAtReadingSpeed(li);
     }
   } finally {
-    if (token === speakToken) {
-      speakPending = false;
-      setSpeaking(false);
-    }
+    finish();
+    if (token === speakToken) setSpeaking(false);
   }
 }
 
@@ -374,226 +476,353 @@ speakToggle.addEventListener('change', () => {
   if (!speakToggle.checked) stopSpeaking();
 });
 
-// ---- listening: tap to talk, or hands-free with the wake word "Alexa" (Chrome and Edge) ---------------------
+// ---- listening: a conversation like a real Echo ------------------------------------------------------------------
+//
+//  wake      waiting for "Alexa" (browser recognizer, free; only with hands-free on)
+//  request   recording what the user says; it ends after a moment of silence and is sent
+//  busy      Alexa thinks and speaks; nothing listens, so she never hears herself
+//  followup  after each reply, listening again for a few seconds without the wake word; silence or
+//            "thanks" / "that's all" / "stop" ends the conversation and goes back to waiting for "Alexa"
 
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-const handsFreeToggle = $('#hands-free');
-let recognizer = null;
-
-function setListening(on) {
-  listening = on;
-  micButton.setAttribute('aria-pressed', String(on));
-  setStatus(on ? 'Listening… tap the microphone again when you are done.' : '', 0);
-  updateRing();
-}
-
-function startListening() {
-  setListening(true); // first, so nothing restarts the wake-word listener meanwhile
-  wake.pause();
-  stopSpeaking();
-  let finalText = '';
-  recognizer = new Recognition();
-  recognizer.lang = 'en-US';
-  recognizer.interimResults = true;
-  recognizer.maxAlternatives = 1;
-  recognizer.onresult = (event) => {
-    let interim = '';
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      const result = event.results[i];
-      if (result.isFinal) finalText += result[0].transcript;
-      else interim += result[0].transcript;
-    }
-    input.value = `${finalText}${interim}`.trim();
-  };
-  recognizer.onerror = (event) => {
-    setStatus(
-      event.error === 'not-allowed'
-        ? 'The microphone is blocked. Allow it in the browser, or type instead.'
-        : 'I did not catch that. Try again, or type.',
-    );
-  };
-  recognizer.onend = () => {
-    const wasListening = listening;
-    setListening(false);
-    const said = (finalText || input.value).trim();
-    if (wasListening && said) {
-      input.value = '';
-      void send(said);
-    } else {
-      wake.resume();
-    }
-  };
-  recognizer.start();
-  // The browser granted the microphone: from now on hands-free can listen for the wake word.
-  wake.allowed = true;
-}
+const SILENCE_MS = 1300;
+const WAKE_ONLY_MS = 7000;
+const FOLLOW_UP_MS = 8000;
+const WAKE_WORD = /\b(alexa|alexia|alexis|elexa|alecsa)\b[,.!?]?/i;
+const END_PHRASES =
+  /^(thanks|thank you|thank you alexa|that's all|that is all|that's it|stop|cancel|never ?mind|no thanks|no thank you|nothing|bye|goodbye|good bye)[.!]?$/i;
 
 /** "Alexa, we got a dresser" -> "We got a dresser". */
 function afterWakeWord(text) {
-  const parts = text.split(/\balexa\b[,.!?]?/i);
+  const parts = text.split(new RegExp(WAKE_WORD.source, 'gi'));
   const rest = (parts.at(-1) ?? '').trim();
   return rest.charAt(0).toUpperCase() + rest.slice(1);
 }
 
-/**
- * Hands-free: one continuous recognizer waits for "Alexa", then records the request until the user stops
- * talking (no new words for SILENCE_MS) and sends it. It is paused while Alexa thinks or speaks, so it never
- * hears itself, and restarted whenever the browser ends recognition on its own (Chrome does every minute or so).
- */
-const SILENCE_MS = 1300;
-const WAKE_TIMEOUT_MS = 7000;
+const microphone = new Microphone();
 
-const wake = {
+async function presignTranscribe() {
+  const res = await fetch('/api/transcribe', {
+    method: 'POST',
+    headers: jsonHeaders,
+    body: JSON.stringify({ sessionId }),
+  });
+  if (!res.ok)
+    throw new Error((await res.json().catch(() => ({}))).error ?? 'Transcribe unavailable');
+  return res.json();
+}
+
+const voice = {
+  mode: 'off', // off | wake | request | followup | busy
   allowed: false,
-  running: false,
-  capturing: false,
-  rec: null,
+  wakeEngine: null,
+  engine: null,
+  liveBubble: null,
+  text: '',
+  fromWake: false,
   silenceTimer: 0,
+  followTimer: 0,
   restartTimer: 0,
-  /** Errors in a row (network, no microphone...): restart more slowly instead of spinning. */
   failures: 0,
 
-  enabled() {
+  /** Some way to listen exists in this browser. */
+  available() {
+    return Boolean(Recognition) || this.transcribeReady();
+  },
+
+  transcribeReady() {
+    return (
+      config.transcribe && Boolean(navigator.mediaDevices?.getUserMedia && window.AudioWorkletNode)
+    );
+  },
+
+  /** Which engine records requests: Amazon Transcribe when chosen and possible, else the browser's. */
+  requestEngine() {
+    if (this.transcribeReady() && (engineSelect.value === 'transcribe' || !Recognition)) {
+      return new TranscribeEngine(microphone, presignTranscribe);
+    }
+    return Recognition ? new BrowserEngine(Recognition) : null;
+  },
+
+  handsFree() {
     return Boolean(Recognition) && handsFreeToggle.checked && this.allowed;
   },
 
-  /** Listen for the wake word, if hands-free is on and Alexa is idle. */
-  resume() {
+  setMode(mode) {
+    this.mode = mode;
+    listening = mode === 'request' || mode === 'followup';
+    micButton.setAttribute('aria-pressed', String(listening));
+    micButton.dataset.armed = String(mode === 'wake');
+    micButton.title =
+      mode === 'wake'
+        ? 'Hands-free: say “Alexa”, or tap to talk'
+        : listening
+          ? 'Tap when you are done'
+          : 'Talk to Alexa';
+    scene.dataset.listen = mode;
+    updateRing();
+    updateHint();
+  },
+
+  // -- waiting for the wake word -------------------------------------------------------------------------
+
+  /** Back to waiting for "Alexa" (or to nothing, when hands-free is off). */
+  async idle() {
     clearTimeout(this.restartTimer);
-    if (!this.enabled() || this.running || busy || speaking || speakPending || listening) {
-      this.showArmed();
+    this.setMode('off');
+    if (!this.handsFree() || busy || speaking) return;
+    this.setMode('wake');
+    // Keep the microphone open so the request said in the same breath as "Alexa" can be sent to Transcribe.
+    if (this.transcribeReady() && engineSelect.value === 'transcribe') {
+      await microphone.openMic().catch(() => undefined);
+    }
+    if (this.mode !== 'wake') return;
+    const engine = new BrowserEngine(Recognition);
+    this.wakeEngine = engine;
+    engine
+      .start({
+        onText: (text) => {
+          this.failures = 0;
+          if (this.mode === 'wake' && WAKE_WORD.test(text))
+            void this.beginRequest({ fromWake: true, text });
+          else if (this.mode === 'request' && this.engine === engine)
+            this.heard(afterWakeWord(text));
+        },
+        onError: (error) => {
+          if (error === 'not-allowed' || error === 'service-not-allowed') {
+            this.allowed = false;
+            setStatus('The microphone is blocked, so hands-free is off. You can still type.');
+          } else {
+            this.failures += 1;
+          }
+        },
+        onEnd: () => {
+          if (this.wakeEngine !== engine) return;
+          this.wakeEngine = null;
+          // Chrome stops continuous recognition after a while or on silence: start again.
+          if (this.mode === 'wake') {
+            this.restartTimer = setTimeout(() => void this.idle(), this.failures > 2 ? 5000 : 300);
+          } else if (this.mode === 'request' && this.engine === engine) {
+            this.finish();
+          }
+        },
+      })
+      .catch(() => undefined);
+  },
+
+  stopWake() {
+    const engine = this.wakeEngine;
+    this.wakeEngine = null;
+    engine?.abort();
+  },
+
+  // -- recording a request ---------------------------------------------------------------------------------
+
+  /** Starts recording: after the wake word, after a tap on the mic, or (followup) after Alexa's reply. */
+  async beginRequest({ fromWake = false, text = '', followUp = false } = {}) {
+    clearTimeout(this.followTimer);
+    this.text = '';
+    this.fromWake = fromWake;
+    stopSpeaking();
+    this.setMode(followUp ? 'followup' : 'request');
+    const useTranscribe =
+      this.transcribeReady() && (engineSelect.value === 'transcribe' || !Recognition);
+    if (fromWake && !useTranscribe) {
+      // The browser recognizer that heard "Alexa" keeps listening for the rest of the sentence.
+      this.engine = this.wakeEngine;
+      this.wakeEngine = null;
+      this.heard(afterWakeWord(text));
       return;
     }
-    const rec = new Recognition();
-    rec.lang = 'en-US';
-    rec.continuous = true;
-    rec.interimResults = true;
-    rec.maxAlternatives = 1;
-    rec.onresult = (event) => this.heard(event);
-    rec.onerror = (event) => {
-      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-        this.allowed = false;
-        setStatus('The microphone is blocked, so hands-free is off. You can still type.');
-      } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
-        this.failures += 1;
-      }
-    };
-    rec.onend = () => {
-      if (this.rec !== rec) return; // paused on purpose
-      this.rec = null;
-      this.running = false;
-      this.capturing = false;
-      clearTimeout(this.silenceTimer);
-      if (listening) setListening(false);
-      // Chrome stops continuous recognition after a while or on silence: start again.
-      this.restartTimer = setTimeout(() => this.resume(), this.failures > 2 ? 5000 : 300);
-    };
-    this.rec = rec;
-    this.running = true;
-    this.capturing = false;
+    this.stopWake();
+    const engine = this.requestEngine();
+    if (!engine) return this.idle();
+    this.engine = engine;
+    if (fromWake) this.heard(afterWakeWord(text)); // shown at once; Transcribe's version replaces it
+    if (followUp) this.followTimer = setTimeout(() => this.endConversation(), FOLLOW_UP_MS);
     try {
-      rec.start();
-    } catch {
-      this.running = false;
-      this.rec = null;
+      await engine.start({
+        preroll: fromWake,
+        onText: (t) => this.engine === engine && this.heard(fromWake ? afterWakeWord(t) : t),
+        onError: (message) => {
+          if (this.engine !== engine) return;
+          setStatus(
+            message === 'not-allowed'
+              ? 'The microphone is blocked. Allow it in the browser, or type instead.'
+              : 'I could not hear you clearly. Try again, or type.',
+          );
+        },
+        onEnd: () => this.engine === engine && this.finish(),
+      });
+      this.allowed = true; // the browser granted the microphone: hands-free can wait for "Alexa" from now on
+    } catch (error) {
+      if (this.engine !== engine) return;
+      this.engine = null;
+      // Transcribe unavailable (budget, network): the browser recognizer takes over for this request.
+      if (engine instanceof TranscribeEngine && Recognition) {
+        setStatus('Using the browser’s speech recognition for now.');
+        engineSelect.value = 'browser';
+        return this.beginRequest({ fromWake: false, followUp });
+      }
+      setStatus(String(error.message ?? error));
+      this.idle();
     }
-    this.showArmed();
   },
 
-  /** Stop listening now (Alexa is about to think or speak, or the user tapped the mic). */
-  pause() {
-    clearTimeout(this.restartTimer);
-    clearTimeout(this.silenceTimer);
-    const rec = this.rec;
-    this.rec = null;
-    this.running = false;
-    this.capturing = false;
-    if (rec) rec.abort();
-    this.showArmed();
-  },
-
-  heard(event) {
-    this.failures = 0;
-    const text = Array.from(event.results)
-      .map((r) => r[0].transcript)
-      .join(' ');
-    if (!this.capturing) {
-      if (!/\balexa\b/i.test(text)) return; // not for us
-      this.capturing = true;
-      setListening(true);
-      setStatus('Listening…', 0);
+  /** New words: shown live in the user's bubble; a moment of silence ends the request. */
+  heard(text) {
+    if (this.mode !== 'request' && this.mode !== 'followup') return;
+    if (text && this.mode === 'followup') {
+      clearTimeout(this.followTimer);
+      this.setMode('request');
     }
-    const request = afterWakeWord(text);
-    input.value = request;
-    // Send once the user has been quiet for a moment; "Alexa" alone waits a bit longer for the request.
+    this.text = text;
+    if (text) {
+      if (!this.liveBubble) this.liveBubble = bubble('user live', '');
+      this.liveBubble.querySelector('.text').textContent = text;
+      scrollToEnd();
+    }
     clearTimeout(this.silenceTimer);
-    this.silenceTimer = setTimeout(() => this.finish(), request ? SILENCE_MS : WAKE_TIMEOUT_MS);
+    this.silenceTimer = setTimeout(() => this.finish(), text ? SILENCE_MS : WAKE_ONLY_MS);
   },
 
+  /** The user stopped talking (or tapped the mic): send it, or end the conversation on "thanks". */
   finish() {
-    const request = input.value.trim();
-    this.pause();
-    setListening(false);
-    input.value = '';
-    if (request) void send(request);
-    else this.resume();
+    if (this.mode !== 'request' && this.mode !== 'followup') return;
+    clearTimeout(this.silenceTimer);
+    clearTimeout(this.followTimer);
+    const engine = this.engine;
+    this.engine = null;
+    engine?.abort();
+    const text = this.text.trim();
+    const live = this.liveBubble;
+    this.liveBubble = null;
+    live?.classList.remove('live');
+    if (!text) {
+      live?.remove();
+      return this.endConversation();
+    }
+    if (END_PHRASES.test(text.replace(/,/g, ''))) {
+      setStatus('Okay. Say “Alexa” when you need me.', 4000);
+      return this.endConversation();
+    }
+    this.setMode('busy');
+    void send(text, live, { voice: true });
   },
 
-  showArmed() {
-    const armed = this.running && !listening;
-    micButton.dataset.armed = String(armed);
-    micButton.title = armed ? 'Hands-free: say “Alexa”, or tap to talk' : 'Talk to Alexa';
-    updateHint();
+  /** After a reply has been spoken: listen for a follow-up without the wake word, if we were talking. */
+  afterReply(byVoice) {
+    if (this.mode !== 'busy' && this.mode !== 'off' && this.mode !== 'wake') return;
+    // Only for someone who already talked to Alexa: never open the microphone out of the blue.
+    if (byVoice && this.available() && this.allowed) {
+      void this.beginRequest({ followUp: true });
+    } else {
+      this.idle();
+    }
+  },
+
+  endConversation() {
+    clearTimeout(this.silenceTimer);
+    clearTimeout(this.followTimer);
+    const engine = this.engine;
+    this.engine = null;
+    engine?.abort();
+    this.liveBubble?.remove();
+    this.liveBubble = null;
+    this.idle();
+  },
+
+  /** Everything off (typing, reset, settings changes). */
+  halt() {
+    clearTimeout(this.silenceTimer);
+    clearTimeout(this.followTimer);
+    clearTimeout(this.restartTimer);
+    this.engine?.abort();
+    this.engine = null;
+    this.stopWake();
+    this.liveBubble?.remove();
+    this.liveBubble = null;
+    this.setMode('off');
   },
 };
 
-function loadHandsFreeSetting() {
+function loadSetting(key, apply) {
   try {
-    const saved = window.localStorage.getItem('handsFree');
-    if (saved !== null) handsFreeToggle.checked = saved === 'on';
+    const saved = window.localStorage.getItem(key);
+    if (saved !== null) apply(saved);
   } catch {
-    // storage unavailable: keep the default (on)
+    // storage unavailable: keep the default
   }
 }
 
-if (Recognition) {
-  $('#hands-free-row').hidden = false;
-  loadHandsFreeSetting();
-  handsFreeToggle.addEventListener('change', () => {
-    try {
-      window.localStorage.setItem('handsFree', handsFreeToggle.checked ? 'on' : 'off');
-    } catch {
-      // not remembered, that's fine
-    }
-    if (handsFreeToggle.checked) {
-      if (!wake.allowed) setStatus('Tap the microphone once to allow it; then just say “Alexa”.');
-      wake.resume();
-    } else {
-      wake.pause();
-    }
+function saveSetting(key, value) {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // not remembered, that's fine
+  }
+}
+
+function setUpVoice() {
+  if (!voice.available()) {
+    micButton.disabled = true;
+    micButton.title = 'Voice input needs Chrome or Edge.';
+    notice.textContent = 'Voice input needs Chrome or Edge. You can still type to Alexa below.';
+    notice.hidden = false;
+    updateHint();
+    return;
+  }
+  micButton.disabled = false;
+  notice.hidden = true;
+  $('#hands-free-row').hidden = !Recognition;
+  $('#engine-row').hidden = !(Recognition && voice.transcribeReady());
+  engineSelect.value = voice.transcribeReady() ? 'transcribe' : 'browser';
+  loadSetting('engine', (v) => {
+    if (v === 'browser' || voice.transcribeReady()) engineSelect.value = v;
   });
-  micButton.addEventListener('click', () => {
-    if (busy) return;
-    if (wake.capturing) wake.finish();
-    else if (listening) recognizer.stop();
-    else startListening();
+  if (!Recognition) {
+    notice.textContent = 'Hands-free “Alexa” needs Chrome or Edge; tap the microphone to talk.';
+    notice.hidden = false;
+  }
+  updateHint();
+}
+
+if (Recognition) {
+  loadSetting('handsFree', (v) => (handsFreeToggle.checked = v === 'on'));
+  handsFreeToggle.addEventListener('change', () => {
+    saveSetting('handsFree', handsFreeToggle.checked ? 'on' : 'off');
+    if (handsFreeToggle.checked) {
+      if (!voice.allowed) setStatus('Tap the microphone once to allow it; then just say “Alexa”.');
+      if (voice.mode === 'off') void voice.idle();
+    } else if (voice.mode === 'wake') {
+      voice.halt();
+    }
   });
   // If the microphone was already allowed for this page, hands-free can start right away.
   navigator.permissions
     ?.query({ name: 'microphone' })
     .then((status) => {
       if (status.state === 'granted') {
-        wake.allowed = true;
-        wake.resume();
+        voice.allowed = true;
+        if (voice.mode === 'off' && !busy) void voice.idle();
       }
     })
     .catch(() => undefined);
-} else {
-  micButton.disabled = true;
-  micButton.title = 'Voice input needs Chrome or Edge.';
-  notice.textContent = 'Voice input needs Chrome or Edge. You can still type to Alexa below.';
-  notice.hidden = false;
 }
+
+engineSelect.addEventListener('change', () => {
+  saveSetting('engine', engineSelect.value);
+  if (engineSelect.value === 'browser') microphone.close();
+  if (voice.mode === 'wake') void voice.idle();
+});
+
+micButton.addEventListener('click', () => {
+  if (busy) return;
+  if (voice.mode === 'request' || voice.mode === 'followup') voice.finish();
+  else void voice.beginRequest();
+});
+
+setUpVoice();
 
 // ---- conversation --------------------------------------------------------------------------------------------
 
@@ -601,15 +830,22 @@ function setBusy(on) {
   busy = on;
   sendButton.disabled = on;
   input.disabled = on;
-  if (Recognition) micButton.disabled = on;
+  micButton.disabled = on || !voice.available();
   updateRing();
-  if (on) wake.pause();
+  if (on) showTyping();
+  else removeTyping();
   if (!on) input.focus();
 }
 
-async function send(message) {
-  bubble('user', message);
+/**
+ * Sends a message and speaks the reply. `userBubble` is the live bubble the words appeared in while the
+ * user talked; typed messages get a new one. After a spoken exchange, Alexa keeps listening for a follow-up.
+ */
+async function send(message, userBubble = null, { voice: byVoice = false } = {}) {
+  if (!userBubble) bubble('user', message);
   setBusy(true);
+  let replyBubble = null;
+  let reply = '';
   try {
     const res = await fetch('/api/chat', {
       method: 'POST',
@@ -622,17 +858,17 @@ async function send(message) {
       return;
     }
     sessionId = data.sessionId;
-    bubble('alexa', data.reply, data.toolCalls);
+    reply = data.reply;
+    replyBubble = bubble('alexa', data.reply, data.toolCalls);
     // Alerts raised by this very turn are already in the reply: do not announce them a second time.
     await refreshState({ announce: false });
-    setBusy(false);
-    void speak(data.reply);
   } catch {
     bubble('error', 'I could not reach the server. Please try again.');
   } finally {
     if (busy) setBusy(false);
-    wake.resume(); // waits by itself while the reply is still being spoken
   }
+  if (replyBubble) await speak(reply, replyBubble);
+  voice.afterReply(byVoice && Boolean(replyBubble));
 }
 
 form.addEventListener('submit', (event) => {
@@ -641,10 +877,11 @@ form.addEventListener('submit', (event) => {
   if (!message || busy) return;
   input.value = '';
   stopSpeaking();
+  voice.halt(); // typing ends a spoken conversation
   void send(message);
 });
 
-// ---- settings: a pop-up dialog behind the chevron (voice options and the demo controls) ---------------------------
+// ---- settings: a pop-up dialog behind the gear (voice options and the demo controls) ---------------------------
 
 function setMenu(open) {
   if (open && !settings.open) settings.showModal();
@@ -668,7 +905,7 @@ settings.addEventListener('click', (event) => {
 resetButton.addEventListener('click', async () => {
   setMenu(false);
   stopSpeaking();
-  if (listening && recognizer) recognizer.abort();
+  voice.halt();
   await fetch('/api/reset', {
     method: 'POST',
     headers: jsonHeaders,
@@ -680,6 +917,7 @@ resetButton.addEventListener('click', async () => {
   rows.clear();
   setStatus('');
   transcript.replaceChildren(); // a real Alexa never speaks first: the page starts silent
+  void voice.idle();
   updateHint();
   input.focus();
 });
@@ -739,5 +977,6 @@ fetch('/api/config')
     config = c;
     seedButton.hidden = !c.demo;
     demoButton.hidden = !c.demo;
+    setUpVoice(); // Transcribe may be available now
   })
   .catch(() => undefined);

@@ -52,6 +52,13 @@ Target: thin end-to-end slice (Phase 1) working by ~day 7 (Oct 8), then widen.
 - [x] T6.6 Write `docs/devpost-submission.md`: project description ready to paste.
 - [x] T6.7 Finish `docs/manual-checklist.md` (everything only the human can verify: MCP Inspector, voice in Chrome, Bedrock access, video recording, Devpost form).
 
+## Phase 10 — Second test feedback (do before T7.2 and the stretch items)
+- [x] T10.1 Speech accuracy: recognition explicitly en-US (never the browser/Windows language); Amazon Transcribe streaming (presigned WebSocket from the simulator Lambda, custom vocabulary built from recall brand names, spending caps) as the main engine, browser engine as fallback; Alexa reads noisy transcripts charitably and asks a short clarifying question instead of guessing; cost in docs/costs.md. **Done when:** event-stream codec and presign unit-tested, browser test with a stubbed Transcribe socket passes, live check against Transcribe passes.
+- [x] T10.2 Follow-up mode: the wake word only starts a conversation; after each reply the page keeps listening (ring lit) for ~8 s; the conversation ends on silence or "thanks / that's all / stop", then back to waiting for "Alexa". **Done when:** browser tests cover follow-up, silence end and "thanks" end.
+- [x] T10.3 Photo: no zoom, no upscaling, no blurred copy; edges feathered (CSS mask) into a solid background color sampled from the photo. **Done when:** screenshots reviewed at several sizes.
+- [x] T10.4 Gear icon instead of the chevron next to the logo.
+- [x] T10.5 Messaging-app bubbles: rounded with a small tail, subtle spring entrance, typing indicator while Alexa thinks, Alexa's words revealed in sync with the voice, the user's words appearing live while talking. **Done when:** browser tests updated; deploy and give the human the URL.
+
 ## Phase 7 — Release
 - [x] T7.1 Final secret scan of the whole repo and git history (e.g. gitleaks or a manual regex scan); fix anything found. **Done when:** scan is clean.
 - [ ] T7.2 Make the repo public (or share with the judging team: rules allow private-shared; see docs/rules.md) — **only after T7.1 and only right before submission.** Needs human go-ahead: write in BLOCKERS.md and leave `[!]` for the human to flip.

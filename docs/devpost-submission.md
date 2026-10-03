@@ -47,7 +47,7 @@ tools ("Where is the sticker? Do you know roughly which month it was made?") ins
 - **Outage-proof data:** CPSC's API went down for hours while we built this (and still often refuses requests from AWS). A naive design said "no recalls" during the outage, the worst possible answer. Now every source reports when it is down, the server keeps a copy of CPSC since 2008 in DynamoDB, and if no source can answer, Alexa says it could not check.
 - **Daily watcher:** EventBridge -> Lambda. Incremental sync of four official feeds (including streaming the 15 MB NHTSA zip without buffering it), matching only new or revised recalls, deduplicated alerts that never resurrect a closed one.
 - **Alexa+ simulator (the demo surface):** the real Alexa+ MCP toolkit may not be available to us, so a web app simulates it: Claude on Bedrock is the "Alexa+ brain" and is a **real MCP client** of our server; Web Speech API for the microphone with a wake word ("Alexa"), silence detection and pause-while-speaking, like a real Echo; **Amazon Polly** neural voice, with model codes spelled out through SSML. It is stateless on Lambda (conversations and daily spending caps live in DynamoDB), with a "Simulate new recall" button that really invokes the deployed watcher.
-- **Serverless on AWS, in CDK:** Lambda, DynamoDB on-demand, EventBridge, Bedrock, Polly. About **$9 a month** at demo usage (docs/costs.md), with a CDK test that fails if a resource with an hourly price appears.
+- **Serverless on AWS, in CDK:** Lambda, DynamoDB on-demand, EventBridge, Bedrock, Polly, Transcribe. About **$12 a month** at demo usage (docs/costs.md), with a CDK test that fails if a resource with an hourly price appears.
 
 ## Challenges we ran into
 

@@ -1,7 +1,7 @@
 # Cost estimate (T4.5)
 
-**Bottom line: about $9 per month at the demo usage defined below (about $8 at first, see "Changes since this estimate"); the Bedrock language model is the only
-cost that is not effectively zero.** Everything else (Lambda, DynamoDB, EventBridge, SSM, CloudWatch, S3,
+**Bottom line: about $12 per month at the demo usage defined below (about $8 at first; see "Changes since this estimate" and the Transcribe section); Bedrock, Polly and Transcribe are the only costs
+that are not effectively zero.** Everything else (Lambda, DynamoDB, EventBridge, SSM, CloudWatch, S3,
 CloudFront) stays inside free tiers or costs cents. The hard budget is the $130 credit budget the human
 created in AWS Budgets ("creditos hackathon").
 
@@ -59,6 +59,28 @@ If the Polly free tier applies, about $5.5.
 | The daily watcher scans the whole table for household items, now including the cache | about 50 MB read per run, eventually consistent: about 6,000 read units x 30 | +$0.05 |
 | Live openFDA lookups and allergen questions | free API, cached 6 h | $0.00 |
 | **New total** | | **about $9.1** |
+
+## Amazon Transcribe for the microphone (2026-10-03, Phase 10)
+
+Price checked on the official page (https://aws.amazon.com/transcribe/pricing/) on 2026-10-03: streaming in
+US East (N. Virginia) **$0.01 per minute**, billed per second with no minimum; custom vocabularies are included at
+no extra cost; new accounts get 60 free minutes a month for 12 months. (Older third-party summaries quote $0.024 per
+minute with a 15-second minimum; the worst-case line below uses that older price to stay on the safe side.)
+
+How the page uses it: only while someone is actually talking to Alexa. Waiting for the wake word uses the
+browser's free recognizer; a stream opens after "Alexa" (with the 3 seconds before it), after a tap on the mic,
+and for the 8-second follow-up window after each reply. Every stream is closed after at most 45 seconds.
+
+| Usage | Minutes | Monthly cost |
+|---|---|---|
+| Demo usage above: 150 voice conversations x 8 requests x (about 6 s of speech + 8 s follow-up windows) | about 280 min | **$2.80** (inside the 60 free minutes at first) |
+| Worst case allowed by the daily cap: 400 streams x 45 s, every day for 30 days | 9,000 min | $90 at $0.01, $216 at $0.024 |
+
+Guards: a shared daily cap of 400 streams (DynamoDB counter, `DAILY_STREAMS`), 45 s per stream, URLs valid
+60 s, and the page falls back to the free browser recognizer when the cap is used up. If the worst case worries
+you, lower `DAILY_STREAMS` (100 streams a day is at most about $22 a month).
+
+**New total at demo usage: about $11.9 a month** ($9.1 above + $2.8 Transcribe).
 
 ## What would blow the estimate, and the guards
 

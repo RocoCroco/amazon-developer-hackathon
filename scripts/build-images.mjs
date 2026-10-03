@@ -1,6 +1,6 @@
 // Builds the optimized simulator images from design/assets (T8.1).
 // - The lit Echo photo sits 1 px higher than echo-off (measured), so it is shifted down 1 px to align.
-// - Each photo becomes WebP at two widths (desktop, phone), plus a tiny copy for the blurred backdrop.
+// - Each photo becomes WebP at two widths (desktop, phone).
 //   The page never shows them wider than their natural 1672 px (no upscaling), so quality matters more than size.
 // - The two "thinking" photos are no longer used (T9.8: the swap was visible; thinking is a glow now).
 // Usage: node scripts/build-images.mjs
@@ -41,10 +41,22 @@ for (const [state, { file, shiftY }] of Object.entries(STATES)) {
     console.log(out, Math.round(statSync(out).size / 1024) + ' KB');
   }
 }
-// Backdrop for wide screens: blurred in CSS, so 480 px is plenty.
-await sharp(`${SRC}/echo-off.png`)
-  .resize({ width: 480 })
-  .webp({ quality: 60 })
-  .toFile(`${OUT}/echo-backdrop-480.webp`);
+// The page colour around the photo: the mean of its left and right edges (12 px each), the edges a wide
+// window shows. Put the printed value into --photo-edge in styles.css.
+{
+  const { data, info } = await sharp(`${SRC}/echo-off.png`)
+    .removeAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const columns = [...Array(12).keys()].flatMap((i) => [i, info.width - 1 - i]);
+  const sum = [0, 0, 0];
+  for (let y = 0; y < info.height; y++) {
+    for (const x of columns) {
+      for (let c = 0; c < 3; c++) sum[c] += data[(y * info.width + x) * 3 + c];
+    }
+  }
+  const mean = sum.map((v) => Math.round(v / (info.height * columns.length)));
+  console.log(`--photo-edge: #${mean.map((v) => v.toString(16).padStart(2, '0')).join('')}`);
+}
 copyFileSync(`${SRC}/logo.svg`, `${OUT}/logo.svg`);
 console.log('logo.svg copied');

@@ -204,6 +204,66 @@ describe('hands-free mode (wake word "Alexa", silence detection)', () => {
   }, 60_000);
 });
 
+const mode = (page: Page) => page.locator('#scene').getAttribute('data-listen');
+
+/** Starts a conversation with the wake word and waits until Alexa's reply has been spoken. */
+async function converse(page: Page, first: string): Promise<void> {
+  await expect.poll(() => active(page), poll).toBe(true);
+  await say(page, first);
+  await expect.poll(() => page.locator('#transcript .bubble.alexa').count(), poll).toBe(1);
+  await expect.poll(() => mode(page), poll).toBe('followup');
+}
+
+describe('follow-up mode: the wake word starts a conversation, not every sentence', () => {
+  it('after a reply it keeps listening, ring lit, and takes the next sentence without "Alexa"', async () => {
+    const page = await open();
+    await converse(page, 'Alexa, we got a Govee space heater, model number H7131.');
+    expect(await page.locator('#scene').getAttribute('data-ring')).toBe('listening');
+    expect(await active(page)).toBe(true);
+    await say(page, 'what do we have');
+    await hasText(page.locator('#transcript .bubble.user').nth(1), 'what do we have');
+    await expect.poll(() => page.locator('#transcript .bubble.alexa').count(), poll).toBe(2);
+    await page.close();
+  }, 60_000);
+
+  it('ends the conversation after about 8 seconds of silence and waits for "Alexa" again', async () => {
+    const page = await open();
+    await converse(page, 'Alexa, we got a Govee space heater, model number H7131.');
+    await expect.poll(() => mode(page), { timeout: 12_000 }).toBe('wake');
+    expect(await page.locator('#scene').getAttribute('data-ring')).toBe('idle');
+    // From now on a sentence without the wake word is ignored again.
+    await say(page, 'what do we have');
+    await page.waitForTimeout(2500);
+    expect(await page.locator('#transcript .bubble.user').count()).toBe(1);
+    await page.close();
+  }, 60_000);
+
+  it('"thanks" ends the conversation at once, without another reply', async () => {
+    const page = await open();
+    await converse(page, 'Alexa, we got a Govee space heater, model number H7131.');
+    await say(page, 'Thanks!');
+    await expect.poll(() => mode(page), poll).toBe('wake');
+    await page.waitForTimeout(800);
+    expect(await page.locator('#transcript .bubble.alexa').count()).toBe(1);
+    await hasText(page.locator('#status'), 'Say “Alexa” when you need me');
+    await page.close();
+  }, 60_000);
+
+  it('shows the words live in the user bubble while the user is talking', async () => {
+    const page = await open();
+    await expect.poll(() => active(page), poll).toBe(true);
+    await say(page, 'Alexa, we got a');
+    const live = page.locator('#transcript .bubble.user.live');
+    await hasText(live, 'We got a');
+    await say(page, 'Govee space heater');
+    await hasText(live, 'We got a Govee space heater');
+    // When the user stops talking the same bubble becomes the sent message.
+    await expect.poll(() => live.count(), poll).toBe(0);
+    expect(await page.locator('#transcript .bubble.user').count()).toBe(1);
+    await page.close();
+  }, 60_000);
+});
+
 declare global {
   interface Window {
     __recs: unknown[];

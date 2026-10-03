@@ -7,7 +7,9 @@ import { BedrockLlm } from './llm.js';
 import { RuleBasedLlm } from './mock-brain.js';
 import { DynamoDailyCap, DynamoSessionStore } from './session-store.js';
 import { PollySpeaker } from './speech.js';
+import { TranscribePresigner } from './transcribe.js';
 import { UI_ASSETS } from './ui-assets.generated.js';
+import { defaultProvider } from '@aws-sdk/credential-provider-node';
 
 /** The parts of a Lambda Function URL event (payload v2) that we use. */
 export interface FunctionUrlEvent {
@@ -99,6 +101,17 @@ function getHandler(): Promise<Handler> {
       demo: WATCHER_FUNCTION
         ? createDemoControls(lambdaWatcherInvoker(WATCHER_FUNCTION))
         : undefined,
+      // The microphone streams to Amazon Transcribe with a URL signed by this function's role.
+      transcriber: new TranscribePresigner({
+        credentials: defaultProvider(),
+        vocabularyName: process.env.TRANSCRIBE_VOCABULARY || undefined,
+      }),
+      streamCap: new DynamoDailyCap(
+        db,
+        TABLE_NAME,
+        'streams',
+        Number(process.env.DAILY_STREAMS ?? 400),
+      ),
     });
   })();
   return cached;

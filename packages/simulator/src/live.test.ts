@@ -49,6 +49,43 @@ describe.skipIf(!process.env.LIVE)('live simulator conversation', () => {
     await session.close();
   }, 120_000);
 
+  it('reads a noisy, accented transcript charitably', async () => {
+    const mcp = await connectMcp(
+      {
+        url: aws(
+          'cloudformation',
+          'describe-stacks',
+          '--stack-name',
+          'RecallGuardianStack',
+          '--query',
+          "Stacks[0].Outputs[?OutputKey=='McpUrl'].OutputValue",
+        ),
+        demoKey: aws(
+          'ssm',
+          'get-parameter',
+          '--name',
+          '/recall-guardian/demo-key',
+          '--with-decryption',
+          '--query',
+          'Parameter.Value',
+        ),
+      },
+      randomBytes(16).toString('base64url'),
+    );
+    const session = new Session(new BedrockLlm(), mcp);
+    // What the browser wrote for "We got a hand-me-down Chicco car seat" said with a Spanish accent.
+    const turn = await session.say('we got a hand me down kiko car sit');
+    console.log(
+      'NOISY:',
+      turn.reply,
+      turn.toolCalls.map((t) => JSON.stringify(t.args)),
+    );
+    const add = turn.toolCalls.find((t) => t.name === 'add_item');
+    expect(add?.args.name).toMatch(/car seat/i); // "car sit" understood
+    expect(turn.reply).not.toMatch(/car sit/i);
+    await session.close();
+  }, 120_000);
+
   it('stays a normal but limited Alexa when asked something off topic', async () => {
     const mcp = await connectMcp(
       {

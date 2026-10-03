@@ -119,3 +119,21 @@ Format: what I tried / what I expected / what happened / how I solved it.
 - Expected: the windows that work from a laptop to work from Lambda.
 - Happened: from Lambda, almost every CPSC request answered HTTP 503, including the small `ProductName=dresser` lookup of the MCP server, while the same URLs answered 200 from a home connection at the same minute (with Node's fetch and with curl, any User-Agent). The first run timed out at 10 minutes and Lambda's async retries would have kept hammering CPSC for hours.
 - Solved: (1) watcher async retries off and stale events dropped after an hour (CDK `retryAttempts: 0`, `maxEventAge`), so a failing backfill cannot hammer a struggling API; (2) the backfill runs from a laptop with the same code (`scripts/backfill-cpsc-local.mjs`, writing to the project table with the CLI profile) and marks the copy fresh; (3) the cache covers CPSC outages only while its copy is less than a week old, otherwise Alexa says it could not reach CPSC. Open: the daily CPSC sync from Lambda can still fail; if it keeps failing, the copy goes stale and the honest answer comes back.
+
+## F20 - The documented Transcribe audio-event example is garbled (2026-10-03)
+- Tried: testing our event stream encoder (browser to Amazon Transcribe over WebSocket) against the base64 examples in the developer guide ("Setting up a streaming transcription").
+- Expected: decode both examples and re-encode them byte for byte.
+- Happened: the signed-frame example checks out completely (both CRC32s, timestamp and byte-array headers). The audio-event example is garbled: its length and prelude CRC are right, but its first header starts with the bytes "M7#" instead of a name length of 13 and ":", and its message CRC does not match.
+- Solved: the tests use only the valid example (`transcribe.test.ts`); the live test streams real audio to Transcribe, which is the real proof.
+
+## F21 - An invisible backspace broke a regex (2026-10-03)
+- Tried: adding a baby-gear brand pattern (`/\b(car ?seats?|...)\b/i`) through a node script in a shell heredoc.
+- Expected: "car seat" matches.
+- Happened: it never matched. The file looked right in the editor, but `od -c` showed real backspace bytes (0x08) where `\b` should be: the escape was interpreted twice on the way into the file (the same family as F7).
+- Solved: replaced the bytes, and added `infra/test/source-hygiene.test.ts`, which fails on any control character in a source file.
+
+## F22 - A proactive warning was dropped while Alexa was still speaking (2026-10-03)
+- Tried: `npm run e2e:deployed` after adding follow-up mode, which stops proactive messages from talking over Alexa.
+- Expected: the simulated car-seat recall announced within a few seconds.
+- Happened: never announced. The page marked the new alert as "seen" on the poll that arrived while Polly was still reading the previous (long) reply, so later polls skipped it. Local tests missed it because their fake audio ends after 10 ms.
+- Solved: a new alert stays pending until Alexa is quiet; a browser test with a 6-second reply covers it.
