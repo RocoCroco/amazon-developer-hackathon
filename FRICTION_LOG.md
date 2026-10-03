@@ -77,3 +77,21 @@ Format: what I tried / what I expected / what happened / how I solved it.
 - Expected: WebFetch returns the text.
 - Happened: the tool reported the PDFs as binary and saved them to disk; the PDF page renderer needs poppler, which is not installed on this machine.
 - Solved: a 20-line script with `pdfjs-dist` (pure JS) extracted the text; the quotes are in docs/sources.md. It also revealed what the summaries left out: the 6% is consumer-level only, the overall correction rate is 65%.
+
+## F13 - The panel stayed green for a recalled item (2026-10-03)
+- Tried: the human registered a recalled product by voice ("we got a ... dresser, model ...").
+- Expected: the household panel turns red in the same turn.
+- Happened: it stayed green. `add_item` / `update_item` only saved the item; an alert existed only after a separate `check_item`, which the model did not always call.
+- Solved: saving an item with brand and model (or year) now runs the same check and records the alert in the same tool call (one MCP round trip instead of two). The UI unfolds the item with photo and hazard right after the reply.
+
+## F14 - CPSC API down: an empty answer looked like "no recalls" (2026-10-03)
+- Tried: a live check of the human's dresser example against the deployed stack.
+- Expected: either the recall or an honest "I can't check right now".
+- Happened: saferproducts.gov answered HTTP 503 ("Page Unavailable") for every query; the composite provider swallowed the error by design, so Alexa said "no recalls found", a dangerous answer for a safety product.
+- Solved: providers now report which sources were unreachable; check_item / add_item / check_household answer `source_unavailable` ("I couldn't reach the CPSC recall database just now...") and never call an item clear in that case. Follow-up T9.16: backfill CPSC into the recall cache.
+
+## F15 - Mixed CRLF/LF line endings broke scripted edits (2026-10-03)
+- Tried: string replacements in node scripts after a `git stash` / `stash pop`.
+- Expected: matches.
+- Happened: with `core.autocrlf=true`, Git rewrote touched files with CRLF; search strings with `\n` no longer matched, and one edit silently did nothing (String.replace does not fail on a miss).
+- Solved: `.gitattributes` with `eol=lf`, all tracked text files normalized to LF, and the edit helper now throws when a search string is missing.

@@ -41,7 +41,10 @@ function stillNeeded(item: Item): { missing: string[]; next?: string } {
   return { missing, next };
 }
 
-export function registerInventoryTools(server: McpServer, ctx: ToolContext): void {
+export function registerInventoryTools(
+  server: McpServer, ctx: ToolContext,
+  checkOnSave: (saved: StoredItem) => Promise<({ summary: string; status: string } & Record<string, unknown>) | undefined>,
+): void {
   server.registerTool(
     'list_items',
     {
@@ -73,6 +76,14 @@ export function registerInventoryTools(server: McpServer, ctx: ToolContext): voi
       const item = await ctx.store.updateItem(ctx.householdId, item_id, patch);
       if (!item) {
         return reply("I couldn't find that item in your household.", { status: 'not_found' });
+      }
+      const checked = await checkOnSave(item);
+      if (checked) {
+        const { summary, ...details } = checked;
+        return reply(`Okay, I updated your ${spokenItem(item)}. ${summary}`, {
+          ...view(item),
+          ...details,
+        });
       }
       const { missing, next } = stillNeeded(item);
       return reply(`Okay, I updated your ${spokenItem(item)}.${next ? ` ${next}` : ''}`, {

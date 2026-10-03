@@ -17,7 +17,6 @@ const notice = $('#notice');
 const statusLine = $('#status');
 
 const POLL_MS = 4000;
-const GREETING = "Hi, I'm Alexa. Tell me about something your family owns, and I'll watch for recalls.";
 const jsonHeaders = { 'content-type': 'application/json' };
 
 let sessionId = '';
@@ -96,19 +95,7 @@ function setSpeaking(on) {
   updateRing();
 }
 
-// ---- transcript: floating bubbles that fade as the conversation grows ---------------------------------------
-
-const FADE_STEPS = [1, 1, 1, 1, 0.55, 0.3, 0.12];
-
-function updateFades() {
-  const bubbles = [...transcript.children].reverse();
-  bubbles.forEach((el, i) => {
-    const fade = FADE_STEPS[i] ?? 0;
-    el.style.setProperty('--fade', String(fade));
-    el.classList.toggle('gone', fade === 0);
-    el.setAttribute('aria-hidden', String(fade === 0));
-  });
-}
+// ---- transcript: floating bubbles; older ones fade at the top edge and stay reachable by scrolling ----------------
 
 function bubble(kind, text, toolCalls = []) {
   const li = document.createElement('li');
@@ -127,13 +114,8 @@ function bubble(kind, text, toolCalls = []) {
     li.append(tools);
   }
   transcript.append(li);
-  updateFades();
+  transcript.scrollTo({ top: transcript.scrollHeight, behavior: 'smooth' });
   return li;
-}
-
-function greet() {
-  transcript.replaceChildren();
-  bubble('alexa', GREETING);
 }
 
 // ---- household panel ---------------------------------------------------------------------------------------
@@ -150,6 +132,11 @@ function statusOf(alerts) {
   if (alerts.some((a) => a.kind === 'recalled')) return 'recalled';
   if (alerts.length) return 'question';
   return 'ok';
+}
+
+function setOpen(li, open) {
+  li.dataset.open = String(open);
+  li.querySelector('.item-row').setAttribute('aria-expanded', String(open));
 }
 
 function buildItem(item) {
@@ -177,9 +164,7 @@ function buildItem(item) {
 
   row.addEventListener('click', () => {
     if (li.dataset.status === 'ok') return;
-    const open = li.dataset.open !== 'true';
-    li.dataset.open = String(open);
-    row.setAttribute('aria-expanded', String(open));
+    setOpen(li, li.dataset.open !== 'true');
   });
   li.append(row, detail);
   return li;
@@ -226,14 +211,13 @@ function fillItem(li, item, alerts) {
     li.classList.remove('flip');
     void li.offsetWidth; // restart the animation
     li.classList.add('flip');
-    if (status === 'recalled') {
-      li.dataset.open = 'true';
-      row.setAttribute('aria-expanded', 'true');
-    }
-  } else if (!previous) {
-    li.dataset.open = String(status === 'recalled');
-    row.setAttribute('aria-expanded', String(status === 'recalled'));
   }
+  if (!previous) setOpen(li, false);
+  // A recall that just appeared (new item or new alert) unfolds smoothly to show photo and hazard.
+  if (status === 'recalled' && previous !== 'recalled') {
+    setTimeout(() => setOpen(li, true), previous ? 120 : 380);
+  }
+  if (status === 'ok') setOpen(li, false);
   return status;
 }
 
@@ -489,7 +473,7 @@ resetButton.addEventListener('click', async () => {
   for (const entry of rows.values()) entry.li.remove();
   rows.clear();
   setStatus('');
-  greet();
+  transcript.replaceChildren(); // a real Alexa never speaks first: the page starts silent
   input.focus();
 });
 
@@ -540,7 +524,6 @@ demoButton.addEventListener('click', async () => {
 
 // ---- start --------------------------------------------------------------------------------------------------------------
 
-greet();
 fetch('/api/config')
   .then((res) => res.json())
   .then((c) => {

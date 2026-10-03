@@ -2,11 +2,12 @@ import type { Item } from '../matcher/match.js';
 import type { RecallStore } from './cache.js';
 import type { FetchLike } from './cpsc.js';
 import { fetchVehicleRecalls } from './nhtsa.js';
-import type { RecallProvider } from './provider.js';
+import type { RecallProvider, RecallSearch } from './provider.js';
 import type { Recall } from './types.js';
 
 /** Candidates from the recall cache the daily watcher keeps (child seats, equipment, tires, food, drugs...). */
 export class StoreRecallProvider implements RecallProvider {
+  readonly source = 'our recall cache';
   constructor(private readonly store: RecallStore) {}
 
   candidates(item: Item): Promise<Recall[]> {
@@ -26,15 +27,21 @@ export class CompositeRecallProvider implements RecallProvider {
   ) {}
 
   async candidates(item: Item): Promise<Recall[]> {
+    return (await this.search(item)).recalls;
+  }
+
+  async search(item: Item): Promise<RecallSearch> {
+    const unavailable: string[] = [];
     const lists = await Promise.all(
       this.providers.map((p) =>
         p.candidates(item).catch((error: unknown) => {
           this.onError(error);
+          unavailable.push(p.source ?? 'one recall source');
           return [] as Recall[];
         }),
       ),
     );
-    return [...new Map(lists.flat().map((r) => [r.id, r])).values()];
+    return { recalls: [...new Map(lists.flat().map((r) => [r.id, r])).values()], unavailable };
   }
 }
 
@@ -48,6 +55,7 @@ interface CacheEntry {
  * the NHTSA API looks recalls up by exactly those; unknown models answer HTTP 400 and mean "none".
  */
 export class NhtsaVehicleProvider implements RecallProvider {
+  readonly source = 'NHTSA';
   private readonly cache = new Map<string, CacheEntry>();
 
   constructor(

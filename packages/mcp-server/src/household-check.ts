@@ -2,13 +2,15 @@ import { alertFromMatch, type Alert, type AlertStore } from './alerts.js';
 import { questionFor } from './matcher/clarify.js';
 import { confirmMatches, type ConfirmedMatch, type Confirmer } from './matcher/confirm.js';
 import { findMatches } from './matcher/match.js';
-import type { RecallProvider } from './recalls/provider.js';
+import { searchRecalls, type RecallProvider } from './recalls/provider.js';
 import type { StoredItem } from './store.js';
 
 /** The recalls that might concern one registered item, after the automatic check and second opinion. */
 export interface ItemOutcome {
   item: StoredItem;
   matches: ConfirmedMatch[];
+  /** Recall sources that could not be reached for this item (so "no match" is not a clean bill). */
+  unavailable?: string[];
 }
 
 /**
@@ -27,11 +29,12 @@ export async function checkItems(
       outcomes.push({ item, matches: [] });
       continue;
     }
-    const found = findMatches(item, await provider.candidates(item));
+    const { recalls, unavailable } = await searchRecalls(provider, item);
+    const found = findMatches(item, recalls);
     const matches: ConfirmedMatch[] = confirmer
       ? await confirmMatches(item, found, confirmer)
       : found;
-    outcomes.push({ item, matches });
+    outcomes.push({ item, matches, ...(unavailable.length ? { unavailable } : {}) });
   }
   return outcomes;
 }

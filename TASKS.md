@@ -71,9 +71,9 @@ Target: thin end-to-end slice (Phase 1) working by ~day 7 (Oct 8), then widen.
 
 ## Phase 9 — Feedback after the human's test (priority order; deploy after A, B and C and share the URL)
 ### A. Bugs
-- [ ] T9.1 Live panel update: when the user mentions a recalled item, the panel item turns red and expands smoothly (model, CPSC product photo, one-sentence hazard) right after the reply. **Done when:** a browser test registers a recalled item in one turn and sees it red and expanded with the photo.
-- [ ] T9.2 Chat scrolls: older messages stay reachable (scrollable transcript, fade only at the top edge). **Done when:** a browser test scrolls up to the first message.
-- [ ] T9.3 No greeting on load (a real Alexa never speaks first). **Done when:** the transcript is empty on load (test). Then deploy A and share the URL.
+- [x] T9.1 Live panel update: when the user mentions a recalled item, the panel item turns red and expands smoothly (model, CPSC product photo, one-sentence hazard) right after the reply. **Done when:** a browser test registers a recalled item in one turn and sees it red and expanded with the photo.
+- [x] T9.2 Chat scrolls: older messages stay reachable (scrollable transcript, fade only at the top edge). **Done when:** a browser test scrolls up to the first message.
+- [x] T9.3 No greeting on load (a real Alexa never speaks first). **Done when:** the transcript is empty on load (test). Then deploy A and share the URL.
 ### B. Visual polish (compare design/screenshots with design/mockups)
 - [ ] T9.4 Remove the cut-off bubble shadow; match the mockup bubbles.
 - [ ] T9.5 Background photo without zoom/upscaling (never wider than its natural 1672 px; letterbox filled with a blurred copy); higher-quality WebP.
@@ -89,3 +89,4 @@ Target: thin end-to-end slice (Phase 1) working by ~day 7 (Oct 8), then widen.
 - [ ] T9.13 Harder hand-checked evaluation set (hard negatives, misspellings, vague descriptions, partial model numbers); honest numbers and failure modes in docs/matcher-results.md.
 - [ ] T9.14 Clean up PROGRESS.md.
 - [ ] T9.15 Strict judge review (docs/rules.md criteria) → docs/judge-review.md, weaknesses ranked by score impact; fix the most important ones.
+- [ ] T9.16 Resilience to CPSC outages (seen 2026-10-03: the API answered HTTP 503 for hours): report "could not reach" instead of "no recalls" (done with T9.1), and backfill recent CPSC recalls into the DynamoDB recall cache so lookups keep working while CPSC is down.

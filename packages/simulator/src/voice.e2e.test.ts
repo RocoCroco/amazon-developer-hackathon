@@ -176,11 +176,11 @@ describe('voice in the simulator (real browser, stubbed microphone and speakers)
 });
 
 describe('household panel and proactive messages', () => {
-  it('turns the item red in the household panel after "is anything we own recalled?"', async () => {
+  it('turns the item red when it is registered, and "is anything we own recalled?" agrees', async () => {
     const page = await newPage();
     await type(page, 'We got a second-hand Govee space heater, model number H7131.');
     const row = page.locator('#inventory .item').first();
-    expect(await row.getAttribute('data-status')).toBe('ok');
+    await expect.poll(() => row.getAttribute('data-status'), poll).toBe('recalled');
     await type(page, 'Is anything we own recalled?');
     await hasText(
       page.locator('#transcript .bubble.alexa').last(),

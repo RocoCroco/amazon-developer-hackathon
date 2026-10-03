@@ -169,3 +169,16 @@ describe('NHTSA feed type filter and child-seat backfill', () => {
     expect(store.size).toBe(seats.length);
   });
 });
+
+describe('CompositeRecallProvider.search', () => {
+  it('names the sources that failed, so an empty answer is not taken as "no recall"', async () => {
+    const down: RecallProvider = { ...failing, source: 'CPSC' };
+    const res = await new CompositeRecallProvider([down, new StaticRecallProvider(heaters)]).search({
+      name: 'x',
+    });
+    expect(res.unavailable).toEqual(['CPSC']);
+    expect(res.recalls).toHaveLength(heaters.length);
+    const ok = await new CompositeRecallProvider([new StaticRecallProvider(heaters)]).search({ name: 'x' });
+    expect(ok.unavailable).toEqual([]);
+  });
+});

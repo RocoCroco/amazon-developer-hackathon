@@ -118,7 +118,7 @@ function readState(messages: Msg[]): State {
 
       if (use.name === 'add_item' && typeof data.item_id === 'string') {
         state.items.push({ ...compact(input), id: data.item_id, name: input.name ?? 'item' });
-      } else if (use.name === 'update_item' && data.status === 'updated') {
+      } else if (use.name === 'update_item' && typeof data.item_id === 'string') {
         const known = state.items.find((i) => i.id === data.item_id);
         if (known)
           Object.assign(

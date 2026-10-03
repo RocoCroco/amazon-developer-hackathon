@@ -10,6 +10,7 @@ import {
 import { confirmMatches, type ConfirmedMatch } from './matcher/confirm.js';
 import { findMatches, type Item } from './matcher/match.js';
 import { recordAlerts } from './household-check.js';
+import { searchRecalls } from './recalls/provider.js';
 import { registerAlertTools } from './tools-alerts.js';
 import { registerInventoryTools } from './tools-inventory.js';
 import { itemFields, reply, type ToolContext } from './tool-common.js';
@@ -20,6 +21,7 @@ import {
   spokenCheckSummary,
   spokenItem,
   spokenPeriodMiss,
+  spokenSourcesDown,
 } from './voice.js';
 
 function matchSummary(m: ConfirmedMatch) {
@@ -49,7 +51,7 @@ async function check(item: Item, ctx: ToolContext, saved?: StoredItem) {
       still_needed: ['brand'],
     });
   }
-  const candidates = await ctx.recalls.candidates(item);
+  const { recalls: candidates, unavailable } = await searchRecalls(ctx.recalls, item);
   const found = findMatches(item, candidates);
   const matches: ConfirmedMatch[] = ctx.confirmer
     ? await confirmMatches(item, found, ctx.confirmer)
@@ -94,6 +96,15 @@ async function check(item: Item, ctx: ToolContext, saved?: StoredItem) {
     }
   }
 
+  // Never call an item clear when a source we would need was down: say so and keep watching.
+  if (!best && unavailable.length) {
+    return reply(spokenSourcesDown(item, unavailable, !!saved), {
+      status: 'source_unavailable',
+      unavailable,
+      item: spokenItem(item),
+    });
+  }
+
   const status = !best ? 'no_recall' : best.level === 'strong' ? 'recalled' : 'need_info';
   const clarification = best && best.level !== 'strong' ? questionFor(best, matches) : undefined;
   return reply(spokenCheckSummary(item, matches), {
@@ -105,6 +116,16 @@ async function check(item: Item, ctx: ToolContext, saved?: StoredItem) {
   });
 }
 
+/**
+ * A saved item with brand and model (or year) is checked right away, so a recalled product is reported, and
+ * raises its alert, in the same turn it is registered. Without those details we keep asking for them.
+ */
+async function checkOnSave(saved: StoredItem, ctx: ToolContext) {
+  if (!saved.brand || !(saved.model || saved.year)) return undefined;
+  const result = await check(saved, ctx, saved);
+  return result.structuredContent as { summary: string; status: string } & Record<string, unknown>;
+}
+
 export function registerTools(server: McpServer, ctx: ToolContext): void {
   server.registerTool(
     'add_item',
@@ -112,11 +133,20 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       title: 'Add item to household',
       description:
         'Register a product the household owns (car seat, heater, stroller...). ' +
-        'Ask the user for brand and model only if missing. Saves the item and says what is still needed.',
+        'Ask the user for brand and model only if missing. Saves the item and says what is still needed; ' +
+        'with brand and model (or year) it also checks recalls right away and returns the check status.',
       inputSchema: itemFields,
     },
     async (input) => {
       const item = await ctx.store.addItem(ctx.householdId, input);
+      const checked = await checkOnSave(item, ctx);
+      if (checked) {
+        const { summary, ...details } = checked;
+        return reply(`Okay, I saved your ${spokenItem(input)}. ${summary}`, {
+          item_id: item.id,
+          ...details,
+        });
+      }
       const missing = [!input.brand && 'brand', !input.model && 'model'].filter(
         Boolean,
       ) as string[];
@@ -161,6 +191,6 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     },
   );
 
-  registerInventoryTools(server, ctx);
+  registerInventoryTools(server, ctx, (saved) => checkOnSave(saved, ctx));
   registerAlertTools(server, ctx);
 }

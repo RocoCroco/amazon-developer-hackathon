@@ -111,7 +111,8 @@ describe('the demo story (SPEC section 8), start to finish, three times in a row
 
       // Alexa asks only what is needed; the family answers naturally.
       const heater = await f.say('The space heater is a Govee, model H7131.');
-      expect(heater.toolCalls.map((t) => t.name)).toEqual(['update_item', 'check_item']);
+      // With brand and model known, update_item checks the recall itself: one tool call, and the alert exists.
+      expect(heater.toolCalls.map((t) => t.name)).toEqual(['update_item']);
       expect(heater.reply).toMatch(/Your Govee H7131 space heater is recalled/);
 
       const seat = await f.say('The car seat is a Chicco, model KeyFit 30, made in 2023.');

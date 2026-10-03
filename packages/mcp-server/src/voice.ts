@@ -86,3 +86,12 @@ export function spokenBrandNotFound(item: Item, suggestion: Clarification): stri
 export function spokenPeriodMiss(item: Item, miss: PeriodMiss): string {
   return `There is a recall for your ${spokenItem({ ...item, year: undefined })}, but only for items ${miss.period}. Yours is from ${item.year}, so it does not look affected. ${miss.clarification.question}`;
 }
+
+/** "I couldn't reach the CPSC recall database just now, so I can't confirm ... yet." */
+export function spokenSourcesDown(item: Item, sources: string[], saved: boolean): string {
+  const which = sources.length === 1 ? `the ${sources[0]} recall database` : 'some recall databases';
+  const later = saved
+    ? " I'll check it again in the daily scan."
+    : ' Please ask me again in a little while.';
+  return `I couldn't reach ${which} just now, so I can't confirm that your ${spokenItem(item)} is clear yet.${later}`;
+}

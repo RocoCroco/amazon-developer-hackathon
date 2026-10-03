@@ -66,7 +66,15 @@ async function talk(page: Page, text: string): Promise<void> {
 }
 
 describe('simulator web UI (real browser, real MCP server)', () => {
-  it('registers a heater by typing, shows it in the inventory, then reports the recall', async () => {
+  it('starts silent: a real Alexa never speaks first', async () => {
+    const page = await browser.newPage();
+    await page.goto(appUrl);
+    await page.waitForTimeout(500);
+    await hasCount(page.locator('#transcript .bubble'), 0);
+    await page.close();
+  }, 60_000);
+
+  it('mentioning a recalled item turns it red and unfolds model, photo and hazard in the same turn', async () => {
     const page = await browser.newPage();
     await page.goto(appUrl);
     await hasCount(page.locator('#inventory .item'), 0);
@@ -74,21 +82,47 @@ describe('simulator web UI (real browser, real MCP server)', () => {
     await talk(page, 'We got a second-hand Govee space heater, model number H7131.');
     const added = page.locator('#transcript .bubble.alexa').last();
     await hasText(added, 'saved your Govee');
+    await hasText(added, 'is recalled');
     await hasExactText(added.locator('.chip'), 'MCP · add_item');
-    await hasText(page.locator('#inventory .item').first(), 'Govee space heater');
+
+    // No second question needed: the panel updates live from this one turn.
     const item = page.locator('#inventory .item').first();
-    expect(await item.getAttribute('data-status')).toBe('ok');
+    await hasText(item, 'Govee space heater');
+    await expect.poll(() => item.getAttribute('data-status'), poll).toBe('recalled');
+    await expect.poll(() => item.getAttribute('data-open'), poll).toBe('true');
+    await hasText(item.locator('.detail'), 'Model H7131');
+    await hasText(item.locator('.detail p'), 'overheat');
+    await expect.poll(() => item.locator('.detail img').getAttribute('src'), poll).toMatch(/^https:/);
+    // The detail really unfolds (height grows), it is not just an attribute.
+    await expect
+      .poll(async () => (await item.locator('.detail').boundingBox())?.height ?? 0, poll)
+      .toBeGreaterThan(40);
 
     await talk(page, 'Is it recalled?');
-    const checked = page.locator('#transcript .bubble.alexa').last();
-    await hasText(checked, 'is recalled');
-    await hasExactText(checked.locator('.chip'), 'MCP · check_item');
+    await hasExactText(
+      page.locator('#transcript .bubble.alexa').last().locator('.chip'),
+      'MCP · check_item',
+    );
+    await page.close();
+  }, 60_000);
 
-    // The household panel turns red and opens the detail: model, product picture, one hazard sentence.
-    await expect.poll(() => item.getAttribute('data-status'), poll).toBe('recalled');
-    expect(await item.getAttribute('data-open')).toBe('true');
-    await hasText(item.locator('.detail'), 'Model H7131');
-    await expect.poll(() => item.locator('.detail img').getAttribute('src'), poll).toMatch(/^https:/);
+  it('keeps older messages reachable by scrolling up', async () => {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 640 } });
+    await page.goto(appUrl);
+    for (const thing of ['space heater', 'stroller', 'crib', 'high chair', 'dresser']) {
+      await talk(page, `We got a Zzyzx ${thing}.`);
+    }
+    const list = page.locator('#transcript');
+    expect(await list.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+    await list.evaluate((el) => el.scrollTo({ top: 0 }));
+    const first = page.locator('#transcript .bubble.user').first();
+    await expect
+      .poll(async () => {
+        const [box, frame] = [await first.boundingBox(), await list.boundingBox()];
+        return !!box && !!frame && box.y >= frame.y;
+      }, poll)
+      .toBe(true);
+    await hasText(first, 'We got a Zzyzx space heater.');
     await page.close();
   }, 60_000);
 

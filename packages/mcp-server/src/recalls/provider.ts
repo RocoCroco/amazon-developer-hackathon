@@ -5,6 +5,21 @@ import type { Recall } from './types.js';
 /** Finds candidate recalls for an item (the matcher then decides which really match). */
 export interface RecallProvider {
   candidates(item: Item): Promise<Recall[]>;
+  /** Like candidates, but also names the sources that could not be reached (see CompositeRecallProvider). */
+  search?(item: Item): Promise<RecallSearch>;
+  /** Human name of the source, said aloud when it is down ("CPSC"). */
+  readonly source?: string;
+}
+
+export interface RecallSearch {
+  recalls: Recall[];
+  /** Sources that failed: an empty answer is then NOT proof that there is no recall. */
+  unavailable: string[];
+}
+
+export async function searchRecalls(provider: RecallProvider, item: Item): Promise<RecallSearch> {
+  if (provider.search) return provider.search(item);
+  return { recalls: await provider.candidates(item), unavailable: [] };
 }
 
 const CPSC_URL = 'https://www.saferproducts.gov/RestWebServices/Recall';
@@ -21,6 +36,7 @@ interface CacheEntry {
  * recall (~27 MB) - see FRICTION_LOG F3.
  */
 export class CpscRecallProvider implements RecallProvider {
+  readonly source = 'CPSC';
   private readonly cache = new Map<string, CacheEntry>();
 
   constructor(

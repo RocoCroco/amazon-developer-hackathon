@@ -163,10 +163,12 @@ describe('other situations', () => {
     expect(summary).toMatch(/could not check your car seat because I do not know who makes it/);
   });
 
-  it('check_item on a saved item records the alert, so the fix can be fetched', async () => {
+  it('add_item with brand and model checks right away and records the alert, so the fix can be fetched', async () => {
     const call = await connect('sAvEdCheCkSaVeDcHeCkSa005');
     const added = await call('add_item', { name: 'space heater', brand: 'Govee', model: 'H7131' });
-    expect((await call('get_alerts')).data.count).toBe(0);
+    expect(added.data.status).toBe('recalled');
+    expect(added.summary).toMatch(/^Okay, I saved your Govee H7131 space heater\. .*is recalled/);
+    // Checking again later does not duplicate the alert.
     await call('check_item', { item_id: added.data.item_id });
     const alerts = (await call('get_alerts')).data.alerts;
     expect(alerts).toHaveLength(1);

@@ -186,10 +186,8 @@ describe('the handler keeps no memory of its own', () => {
         message: 'The model is H7131.',
       })
     ).json();
-    expect(second.toolCalls.map((t: { name: string }) => t.name)).toEqual([
-      'update_item',
-      'check_item',
-    ]);
+    expect(second.toolCalls.map((t: { name: string }) => t.name)).toEqual(['update_item']);
+    expect(second.reply).toMatch(/updated your Govee H7131 space heater/);
     const stored = (await sessions.get(first.sessionId))!;
     expect(stored.turns).toBe(2);
   });

@@ -90,8 +90,11 @@ describe('update_item', () => {
     expect(added.data.still_needed).toEqual(['model']);
 
     const updated = await call('update_item', { item_id: added.data.item_id, model: 'H7131' });
-    expect(updated.summary).toMatch(/^Okay, I updated your Govee H7131 space heater\.$/);
-    expect(updated.data.still_needed).toEqual([]);
+    // Now that the model is known, the update checks recalls right away.
+    expect(updated.summary).toMatch(
+      /^Okay, I updated your Govee H7131 space heater\. Your Govee H7131 space heater is recalled/,
+    );
+    expect(updated.data.status).toBe('recalled');
     expect(updated.data.model).toBe('H7131');
 
     const check = await call('check_item', { item_id: added.data.item_id });

@@ -3,16 +3,16 @@
 _Last updated: 2026-10-03_
 
 ## Current task
-Phase 9 (human feedback). T9.1 live panel update.
+Phase 9 (human feedback), group B visual polish: T9.4-T9.8.
 
 ## Done (within this phase)
-- Tasks T9.1–T9.15 added to TASKS.md.
+- A (T9.1-T9.3): add_item/update_item check on save (panel turns red in the same turn, smooth unfold), scrollable chat, no greeting. Source-outage honesty (`source_unavailable`). Deployed.
 
 ## Left
-- Everything in Phase 9. Deploy after groups A, B, C and give the human the SimulatorUrl.
+- B (T9.4-T9.8) -> deploy -> URL to human. C (T9.9-T9.11) -> deploy -> URL. D (T9.12-T9.16).
 
 ## Next step
-Implement T9.1–T9.3 in packages/simulator/public/app.js (+ tests in packages/simulator/src/ui.e2e.test.ts), run `npm test`, deploy (`cd infra && npm run deploy`).
+Rework packages/simulator/public/styles.css + index.html for T9.4-T9.8 (see design/mockups vs design/screenshots), `node scripts/embed-ui.mjs`, `npm test`, screenshots with `node scripts/shoot-simulator.mjs <SimulatorUrl> docs/images` after deploy.
 
 ## Human steps
 docs/manual-checklist.md: voice check in Chrome, record video, flip repo public (T7.2), fill Devpost.

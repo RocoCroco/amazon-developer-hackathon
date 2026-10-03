@@ -64,6 +64,10 @@ export function registerAlertTools(server: McpServer, ctx: ToolContext): void {
       const recalled = ranked.filter((a) => a.kind === 'recalled');
       const needInfo = ranked.filter((a) => a.kind === 'need_info');
       const unchecked = items.filter((i) => !i.brand);
+      // Sources that were down for an item with no match: its "no recall" is not trustworthy.
+      const down = [
+        ...new Set(outcomes.filter((o) => !o.matches.length).flatMap((o) => o.unavailable ?? [])),
+      ];
 
       const open = needInfo.length + unchecked.length;
       const cannotCheck = unchecked[0]
@@ -97,6 +101,11 @@ export function registerAlertTools(server: McpServer, ctx: ToolContext): void {
         parts.push(`I checked ${plural(items.length, 'item')}.`);
         parts.push(`I need one more detail to check ${plural(needInfo.length, 'item')}.`);
         if (cannotCheck) parts.push(cannotCheck);
+      } else if (down.length) {
+        parts.push(
+          `I couldn't reach ${down.length === 1 ? `the ${down[0]} recall database` : 'some recall databases'} just now, so I can't confirm everything is clear yet. I'll check again in the daily scan.`,
+        );
+        if (cannotCheck) parts.push(cannotCheck);
       } else {
         parts.push(
           `Good news: I checked ${plural(items.length - unchecked.length, 'item')} and found no recalls.`,
@@ -104,7 +113,14 @@ export function registerAlertTools(server: McpServer, ctx: ToolContext): void {
         if (cannotCheck) parts.push(cannotCheck);
       }
       return reply(parts.join(' '), {
-        status: recalled.length ? 'recalled' : needInfo.length ? 'need_info' : 'clear',
+        status: recalled.length
+          ? 'recalled'
+          : needInfo.length
+            ? 'need_info'
+            : down.length
+              ? 'source_unavailable'
+              : 'clear',
+        ...(down.length ? { unavailable: down } : {}),
         checked: items.length - unchecked.length,
         recalled: recalled.map(alertView),
         need_info: needInfo.map(alertView),
