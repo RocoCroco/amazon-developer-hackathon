@@ -10,7 +10,8 @@ describe('text helpers', () => {
   it('normalizes dates', () => {
     expect(toIsoDate('2024-11-07T00:00:00')).toBe('2024-11-07');
     expect(toIsoDate('20140630')).toBe('2014-06-30');
-    expect(toIsoDate('04/11/2020')).toBe('2020-04-11');
+    expect(toIsoDate('04/11/2020')).toBe('2020-11-04'); // NHTSA: day first
+    expect(toIsoDate('28/05/2020')).toBe('2020-05-28');
     expect(toIsoDate('garbage')).toBe('');
     expect(toIsoDate(null)).toBe(''); // the live feed sometimes sends null fields
     expect(firmFromTitle(null)).toBe('');

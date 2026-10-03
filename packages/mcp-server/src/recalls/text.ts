@@ -1,12 +1,16 @@
-/** Date-only ISO string from `2024-11-07T00:00:00`, `20240614` or `04/11/2020`; '' if unparseable. */
+/**
+ * Date-only ISO string from `2024-11-07T00:00:00`, `20240614` or NHTSA's day-first `28/05/2020`; '' if
+ * unparseable.
+ */
 export function toIsoDate(value: string | null | undefined): string {
   const v = (value ?? '').trim();
   let m = /^(\d{4})-(\d{2})-(\d{2})/.exec(v);
   if (m) return `${m[1]}-${m[2]}-${m[3]}`;
   m = /^(\d{4})(\d{2})(\d{2})$/.exec(v);
   if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  // The NHTSA API writes dates day first: campaign 20V314000 was received on 28/05/2020.
   m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(v);
-  if (m) return `${m[3]}-${m[1]}-${m[2]}`;
+  if (m) return `${m[3]}-${m[2]}-${m[1]}`;
   return '';
 }
 

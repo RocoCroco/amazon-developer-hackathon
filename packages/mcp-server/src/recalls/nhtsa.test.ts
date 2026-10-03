@@ -73,7 +73,7 @@ describe('NHTSA vehicle API adapter', () => {
     expect(r.id).toBe('nhtsa:20V682000');
     expect(r.category).toBe('vehicle');
     expect(r.brands).toContain('Toyota');
-    expect(r.publishedAt).toBe('2020-04-11');
+    expect(r.publishedAt).toBe('2020-11-04'); // "04/11/2020" is day first
     expect(r.url).toBe('https://www.nhtsa.gov/recalls?nhtsaId=20V682000');
     expect(r.hazard).not.toBe('');
     expect(r.remedy).not.toBe('');

@@ -147,3 +147,8 @@ Format: what I tried / what I expected / what happened / how I solved it.
 ## F24 - Recall lookups without a time limit, and "thinking" frozen on Windows (2026-10-03, human test)
 - Happened: (1) Alexa said "I'm having trouble reaching the database": a live CPSC request from AWS could hang until the Lambda timed out, taking the whole tool call with it. (2) While Alexa was working, the typing dots and the thinking ring did not move: Windows "animation effects" off makes Chrome report reduced motion, and our reduced-motion rule stopped every animation, including the ones that say "I'm working".
 - Solved: every live lookup gives up after 6 s (then that source counts as unavailable and the others still answer); state indicators keep a slow pulse under reduced motion (tested with Playwright's reducedMotion emulation).
+
+## F25 - NHTSA API dates are day first, and our test agreed with the wrong reading (2026-10-03)
+- Found while mapping sources for the Open Recall Format: the recallsByVehicle API sends `ReportReceivedDate` as `28/05/2020` (campaign 20V314000). We parsed slash dates as month first, so most vehicle recalls got an impossible date (`2020-28-05`), and our test fixture `04/11/2020` (campaign 20V682000, received in November) "passed" as April 11.
+- Lesson: a fixture can only confirm a format if a value in it is unambiguous; check with a day above 12.
+- Solved: day-first parsing for slash dates, tests with `28/05/2020`.
