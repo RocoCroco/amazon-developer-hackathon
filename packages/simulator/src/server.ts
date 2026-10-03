@@ -10,15 +10,28 @@ const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
+  '.webp': 'image/webp',
+  '.svg': 'image/svg+xml',
 };
+const BINARY = new Set(['.webp']);
 
-/** Reads the page (index.html, app.js, styles.css) from a folder into the handler's asset map. */
-export async function loadAssets(dir: string): Promise<Record<string, Asset>> {
+/** Reads the page (index.html, app.js, styles.css and img/) from a folder into the handler's asset map. */
+export async function loadAssets(dir: string, prefix = ''): Promise<Record<string, Asset>> {
   const assets: Record<string, Asset> = {};
-  for (const name of await readdir(dir)) {
-    const contentType = MIME[path.extname(name)];
-    if (contentType)
-      assets[`/${name}`] = { contentType, body: await readFile(path.join(dir, name), 'utf8') };
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    const file = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      Object.assign(assets, await loadAssets(file, `${prefix}/${entry.name}`));
+      continue;
+    }
+    const ext = path.extname(entry.name);
+    const contentType = MIME[ext];
+    if (contentType) {
+      assets[`${prefix}/${entry.name}`] = {
+        contentType,
+        body: BINARY.has(ext) ? await readFile(file) : await readFile(file, 'utf8'),
+      };
+    }
   }
   return assets;
 }

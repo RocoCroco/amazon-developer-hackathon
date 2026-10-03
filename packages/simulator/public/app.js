@@ -1,38 +1,119 @@
 const $ = (selector) => document.querySelector(selector);
 
+const scene = $('#scene');
 const transcript = $('#transcript');
 const form = $('#composer');
 const input = $('#message');
 const sendButton = $('#send');
 const micButton = $('#mic');
 const resetButton = $('#reset');
-const demoButton = $('#demo-recall');
 const seedButton = $('#demo-seed');
+const demoButton = $('#demo-recall');
 const speakToggle = $('#speak-toggle');
+const menuButton = $('#menu-button');
+const menu = $('#menu');
 const inventory = $('#inventory');
-const alertsList = $('#alerts');
-const ring = $('#ring');
+const notice = $('#notice');
 const statusLine = $('#status');
 
 const POLL_MS = 4000;
-const greeting = transcript.innerHTML;
+const GREETING = "Hi, I'm Alexa. Tell me about something your family owns, and I'll watch for recalls.";
 const jsonHeaders = { 'content-type': 'application/json' };
 
 let sessionId = '';
 let config = { speech: false, demo: false };
 let busy = false;
+let listening = false;
+let speaking = false;
 const knownAlerts = new Set();
 
 function setStatus(text) {
   statusLine.textContent = text;
 }
 
-// ---- transcript ---------------------------------------------------------------------------------
+// ---- the light ring ----------------------------------------------------------------------------------
+// idle = ring off, listening = lit ring, thinking = two photos alternate so it seems to spin,
+// speaking = the lit ring breathes with the voice.
+
+let thinkTimer = 0;
+
+function updateRing() {
+  const state = listening ? 'listening' : speaking ? 'speaking' : busy ? 'thinking' : 'idle';
+  scene.dataset.ring = state;
+  if (state === 'thinking' && !thinkTimer) {
+    scene.dataset.think = '1';
+    thinkTimer = setInterval(() => {
+      scene.dataset.think = scene.dataset.think === '1' ? '2' : '1';
+    }, 170);
+  }
+  if (state !== 'thinking' && thinkTimer) {
+    clearInterval(thinkTimer);
+    thinkTimer = 0;
+  }
+}
+
+let audioContext = null;
+let pulseFrame = 0;
+let pulseValue = 0.5;
+
+/** Makes the ring's brightness follow the loudness of the audio being played. */
+function startPulse(audio) {
+  scene.classList.remove('fallback-pulse');
+  try {
+    const Context = window.AudioContext || window.webkitAudioContext;
+    audioContext = audioContext ?? new Context();
+    void audioContext.resume();
+    const source = audioContext.createMediaElementSource(audio);
+    const analyser = audioContext.createAnalyser();
+    analyser.fftSize = 512;
+    source.connect(analyser);
+    analyser.connect(audioContext.destination);
+    const samples = new Uint8Array(analyser.fftSize);
+    const tick = () => {
+      analyser.getByteTimeDomainData(samples);
+      let sum = 0;
+      for (const v of samples) sum += ((v - 128) / 128) ** 2;
+      const loudness = Math.min(1, Math.sqrt(sum / samples.length) * 5);
+      pulseValue = pulseValue * 0.6 + loudness * 0.4;
+      scene.style.setProperty('--pulse', pulseValue.toFixed(3));
+      pulseFrame = requestAnimationFrame(tick);
+    };
+    tick();
+  } catch {
+    // No audio analysis available: breathe on a timer instead.
+    scene.classList.add('fallback-pulse');
+  }
+}
+
+function stopPulse() {
+  cancelAnimationFrame(pulseFrame);
+  scene.classList.remove('fallback-pulse');
+}
+
+function setSpeaking(on) {
+  speaking = on;
+  if (!on) stopPulse();
+  updateRing();
+}
+
+// ---- transcript: floating bubbles that fade as the conversation grows ---------------------------------------
+
+const FADE_STEPS = [1, 1, 1, 1, 0.55, 0.3, 0.12];
+
+function updateFades() {
+  const bubbles = [...transcript.children].reverse();
+  bubbles.forEach((el, i) => {
+    const fade = FADE_STEPS[i] ?? 0;
+    el.style.setProperty('--fade', String(fade));
+    el.classList.toggle('gone', fade === 0);
+    el.setAttribute('aria-hidden', String(fade === 0));
+  });
+}
 
 function bubble(kind, text, toolCalls = []) {
   const li = document.createElement('li');
   li.className = `bubble ${kind}`;
-  li.textContent = text;
+  li.append(document.createTextNode(text));
   if (toolCalls.length) {
     const tools = document.createElement('div');
     tools.className = 'tools';
@@ -46,74 +127,140 @@ function bubble(kind, text, toolCalls = []) {
     li.append(tools);
   }
   transcript.append(li);
-  transcript.scrollTop = transcript.scrollHeight;
+  updateFades();
   return li;
 }
 
-// ---- side panels ---------------------------------------------------------------------------------
-
-function renderInventory(items) {
-  inventory.replaceChildren();
-  if (!items.length) {
-    const empty = document.createElement('li');
-    empty.className = 'empty';
-    empty.textContent = 'Nothing registered yet.';
-    inventory.append(empty);
-    return;
-  }
-  for (const item of items) {
-    const li = document.createElement('li');
-    li.textContent = [item.brand, item.name].filter(Boolean).join(' ');
-    const details = [item.model && `Model ${item.model}`, item.year && `${item.year}`].filter(
-      Boolean,
-    );
-    if (details.length) {
-      const small = document.createElement('small');
-      small.textContent = details.join(' · ');
-      li.append(small);
-    }
-    inventory.append(li);
-  }
+function greet() {
+  transcript.replaceChildren();
+  bubble('alexa', GREETING);
 }
 
-function renderAlerts(alerts) {
-  alertsList.replaceChildren();
-  if (!alerts.length) {
-    const empty = document.createElement('li');
-    empty.className = 'empty';
-    empty.textContent = 'No alerts.';
-    alertsList.append(empty);
-    return;
-  }
-  for (const alert of alerts) {
-    const li = document.createElement('li');
-    const recalled = alert.kind === 'recalled';
-    li.className = `alert ${recalled ? alert.severity : 'question'}`;
-    const badge = document.createElement('span');
-    badge.className = 'badge';
-    badge.textContent = recalled ? 'Recalled' : 'Needs a detail';
-    const title = document.createElement('div');
-    title.textContent = alert.item;
-    const small = document.createElement('small');
-    small.textContent = recalled
-      ? firstSentence(alert.hazard || alert.title)
-      : alert.question || alert.title;
-    li.append(badge, title, small);
-    alertsList.append(li);
-  }
-}
+// ---- household panel ---------------------------------------------------------------------------------------
 
 function firstSentence(text) {
-  const clean = String(text || '')
-    .replace(/\s+/g, ' ')
-    .trim();
+  const clean = String(text || '').replace(/\s+/g, ' ').trim();
   const end = clean.search(/[.!?](\s|$)/);
   return end === -1 ? clean : clean.slice(0, end + 1);
 }
 
+const rows = new Map(); // item id -> { li, status }
+
+function statusOf(alerts) {
+  if (alerts.some((a) => a.kind === 'recalled')) return 'recalled';
+  if (alerts.length) return 'question';
+  return 'ok';
+}
+
+function buildItem(item) {
+  const li = document.createElement('li');
+  li.className = 'item';
+  li.dataset.itemId = item.item_id;
+
+  const row = document.createElement('button');
+  row.type = 'button';
+  row.className = 'item-row';
+  const dot = document.createElement('span');
+  dot.className = 'dot';
+  dot.setAttribute('aria-hidden', 'true');
+  const title = document.createElement('span');
+  title.className = 'item-title';
+  row.append(dot, title);
+
+  const detail = document.createElement('div');
+  detail.className = 'detail';
+  const inner = document.createElement('div');
+  const body = document.createElement('div');
+  body.className = 'detail-body';
+  inner.append(body);
+  detail.append(inner);
+
+  row.addEventListener('click', () => {
+    if (li.dataset.status === 'ok') return;
+    const open = li.dataset.open !== 'true';
+    li.dataset.open = String(open);
+    row.setAttribute('aria-expanded', String(open));
+  });
+  li.append(row, detail);
+  return li;
+}
+
+function fillItem(li, item, alerts) {
+  const status = statusOf(alerts);
+  const previous = li.dataset.status;
+  const alert = alerts.find((a) => a.kind === 'recalled') ?? alerts[0];
+
+  li.querySelector('.item-title').textContent = [item.brand, item.name].filter(Boolean).join(' ');
+  li.dataset.status = status;
+  const row = li.querySelector('.item-row');
+  row.dataset.expandable = String(status !== 'ok');
+  row.setAttribute('aria-label', `${row.textContent}: ${status === 'ok' ? 'no recall known' : status === 'recalled' ? 'recalled' : 'needs a detail'}`);
+
+  const body = li.querySelector('.detail-body');
+  body.replaceChildren();
+  if (status !== 'ok') {
+    const text = document.createElement('div');
+    const model = [item.model && `Model ${item.model}`, item.year && String(item.year)].filter(Boolean).join(' · ');
+    if (model) {
+      const small = document.createElement('span');
+      small.className = 'model';
+      small.textContent = model;
+      text.append(small);
+    }
+    const sentence = document.createElement('p');
+    sentence.textContent = status === 'recalled' ? firstSentence(alert.hazard || alert.title) : alert.question || alert.title;
+    text.append(sentence);
+    if (status === 'recalled' && alert.image_url) {
+      const img = document.createElement('img');
+      img.src = alert.image_url;
+      img.alt = `Recalled ${item.name}`;
+      img.loading = 'lazy';
+      img.referrerPolicy = 'no-referrer';
+      img.addEventListener('error', () => img.remove());
+      body.append(img);
+    }
+    body.append(text);
+  }
+
+  if (previous && previous !== status) {
+    li.classList.remove('flip');
+    void li.offsetWidth; // restart the animation
+    li.classList.add('flip');
+    if (status === 'recalled') {
+      li.dataset.open = 'true';
+      row.setAttribute('aria-expanded', 'true');
+    }
+  } else if (!previous) {
+    li.dataset.open = String(status === 'recalled');
+    row.setAttribute('aria-expanded', String(status === 'recalled'));
+  }
+  return status;
+}
+
+/** Updates the list in place, so new items slide in and a recall turns the dot red with an animation. */
+function renderHousehold(items, alerts) {
+  const seen = new Set();
+  for (const item of items) {
+    seen.add(item.item_id);
+    let entry = rows.get(item.item_id);
+    if (!entry) {
+      entry = { li: buildItem(item) };
+      rows.set(item.item_id, entry);
+      inventory.append(entry.li);
+    }
+    fillItem(entry.li, item, alerts.filter((a) => a.item_id === item.item_id));
+  }
+  for (const [id, entry] of rows) {
+    if (!seen.has(id)) {
+      entry.li.remove();
+      rows.delete(id);
+    }
+  }
+}
+
 /**
- * Reads inventory and alerts from the server. With `announce`, an alert that appeared without the user asking
- * (the daily watcher found a new recall) becomes a proactive message, spoken like any other reply.
+ * Reads inventory and alerts from the server. With `announce`, a confirmed recall that appeared without the
+ * user asking (the daily watcher found it) becomes a proactive message, spoken like any other reply.
  */
 async function refreshState({ announce }) {
   if (!sessionId) return;
@@ -121,8 +268,7 @@ async function refreshState({ announce }) {
     const res = await fetch(`/api/state?sessionId=${encodeURIComponent(sessionId)}`);
     if (!res.ok) return;
     const state = await res.json();
-    renderInventory(state.items);
-    renderAlerts(state.alerts);
+    renderHousehold(state.items, state.alerts);
     const fresh = state.alerts.filter((a) => a.kind === 'recalled' && !knownAlerts.has(a.alert_id));
     for (const alert of state.alerts) knownAlerts.add(alert.alert_id);
     if (announce && fresh.length) {
@@ -138,7 +284,7 @@ async function refreshState({ announce }) {
 
 setInterval(() => void refreshState({ announce: true }), POLL_MS);
 
-// ---- speaking ------------------------------------------------------------------------------------
+// ---- speaking ----------------------------------------------------------------------------------------------
 
 let speakToken = 0;
 let currentAudio = null;
@@ -150,14 +296,13 @@ function stopSpeaking() {
     currentAudio = null;
   }
   if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-  ring.classList.remove('speaking');
+  setSpeaking(false);
 }
 
 /** Plays Polly audio from the server; if that is unavailable or refused, the browser's own voice. */
 async function speak(text) {
   if (!speakToggle.checked || !text) return;
   const token = ++speakToken;
-  ring.classList.add('speaking');
   try {
     if (config.speech) {
       try {
@@ -171,6 +316,8 @@ async function speak(text) {
           if (token !== speakToken) return;
           const audio = new Audio(URL.createObjectURL(blob));
           currentAudio = audio;
+          setSpeaking(true);
+          startPulse(audio);
           await new Promise((resolve) => {
             audio.onended = resolve;
             audio.onerror = resolve;
@@ -183,6 +330,8 @@ async function speak(text) {
       }
     }
     if (token === speakToken && 'speechSynthesis' in window) {
+      setSpeaking(true);
+      scene.classList.add('fallback-pulse');
       await new Promise((resolve) => {
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.onend = resolve;
@@ -191,7 +340,7 @@ async function speak(text) {
       });
     }
   } finally {
-    if (token === speakToken) ring.classList.remove('speaking');
+    if (token === speakToken) setSpeaking(false);
   }
 }
 
@@ -199,17 +348,16 @@ speakToggle.addEventListener('change', () => {
   if (!speakToggle.checked) stopSpeaking();
 });
 
-// ---- listening (push to talk) -----------------------------------------------------------------------
+// ---- listening (push to talk, Chrome and Edge) ---------------------------------------------------------
 
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 let recognizer = null;
-let listening = false;
 
 function setListening(on) {
   listening = on;
   micButton.setAttribute('aria-pressed', String(on));
-  ring.classList.toggle('listening', on);
   setStatus(on ? 'Listening… tap the microphone again when you are done.' : '');
+  updateRing();
 }
 
 function startListening() {
@@ -256,17 +404,19 @@ if (Recognition) {
   });
 } else {
   micButton.disabled = true;
-  micButton.title = 'Voice input needs Chrome or Edge. You can type instead.';
+  micButton.title = 'Voice input needs Chrome or Edge.';
+  notice.textContent = 'Voice input needs Chrome or Edge. You can still type to Alexa below.';
+  notice.hidden = false;
 }
 
-// ---- conversation ------------------------------------------------------------------------------------
+// ---- conversation --------------------------------------------------------------------------------------------
 
 function setBusy(on) {
   busy = on;
   sendButton.disabled = on;
   input.disabled = on;
   if (Recognition) micButton.disabled = on;
-  ring.classList.toggle('busy', on);
+  updateRing();
   if (!on) input.focus();
 }
 
@@ -288,11 +438,12 @@ async function send(message) {
     bubble('alexa', data.reply, data.toolCalls);
     // Alerts raised by this very turn are already in the reply: do not announce them a second time.
     await refreshState({ announce: false });
+    setBusy(false);
     void speak(data.reply);
   } catch {
     bubble('error', 'I could not reach the server. Please try again.');
   } finally {
-    setBusy(false);
+    if (busy) setBusy(false);
   }
 }
 
@@ -305,24 +456,66 @@ form.addEventListener('submit', (event) => {
   void send(message);
 });
 
+// ---- the discreet demo menu (behind the chevron) ----------------------------------------------------------------
+
+function setMenu(open) {
+  menu.hidden = !open;
+  menuButton.setAttribute('aria-expanded', String(open));
+}
+
+menuButton.addEventListener('click', (event) => {
+  event.stopPropagation();
+  setMenu(menu.hidden);
+});
+document.addEventListener('click', (event) => {
+  if (!menu.hidden && !menu.contains(event.target)) setMenu(false);
+});
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && !menu.hidden) {
+    setMenu(false);
+    menuButton.focus();
+  }
+});
+
 resetButton.addEventListener('click', async () => {
+  setMenu(false);
   stopSpeaking();
   if (listening && recognizer) recognizer.abort();
-  await fetch('/api/reset', {
-    method: 'POST',
-    headers: jsonHeaders,
-    body: JSON.stringify({ sessionId }),
-  }).catch(() => undefined);
+  await fetch('/api/reset', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ sessionId }) }).catch(
+    () => undefined,
+  );
   sessionId = '';
   knownAlerts.clear();
-  transcript.innerHTML = greeting;
-  renderInventory([]);
-  renderAlerts([]);
+  for (const entry of rows.values()) entry.li.remove();
+  rows.clear();
   setStatus('');
+  greet();
   input.focus();
 });
 
+seedButton.addEventListener('click', async () => {
+  setMenu(false);
+  seedButton.disabled = true;
+  setStatus('Adding the sample family…');
+  try {
+    const res = await fetch('/api/demo/seed', {
+      method: 'POST',
+      headers: jsonHeaders,
+      body: JSON.stringify({ sessionId }),
+    });
+    const data = await res.json();
+    if (data.sessionId) sessionId = data.sessionId;
+    setStatus(data.message ?? '');
+    await refreshState({ announce: false });
+  } catch {
+    setStatus('Could not load the sample family.');
+  } finally {
+    seedButton.disabled = false;
+  }
+});
+
 demoButton.addEventListener('click', async () => {
+  setMenu(false);
   if (!sessionId) {
     setStatus('Tell Alexa about something you own first, then simulate a new recall for it.');
     return;
@@ -345,33 +538,14 @@ demoButton.addEventListener('click', async () => {
   }
 });
 
-seedButton.addEventListener('click', async () => {
-  seedButton.disabled = true;
-  setStatus('Adding the sample family…');
-  try {
-    const res = await fetch('/api/demo/seed', {
-      method: 'POST',
-      headers: jsonHeaders,
-      body: JSON.stringify({ sessionId }),
-    });
-    const data = await res.json();
-    if (data.sessionId) sessionId = data.sessionId;
-    setStatus(data.message ?? '');
-    await refreshState({ announce: false });
-  } catch {
-    setStatus('Could not load the sample family.');
-  } finally {
-    seedButton.disabled = false;
-  }
-});
+// ---- start --------------------------------------------------------------------------------------------------------------
 
-// ---- start ------------------------------------------------------------------------------------------
-
+greet();
 fetch('/api/config')
   .then((res) => res.json())
   .then((c) => {
     config = c;
-    demoButton.hidden = !c.demo;
     seedButton.hidden = !c.demo;
+    demoButton.hidden = !c.demo;
   })
   .catch(() => undefined);

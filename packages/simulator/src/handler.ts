@@ -230,7 +230,11 @@ export function createSimulatorHandler(
       if (!asset) return json(404, {});
       return new Response(typeof asset.body === 'string' ? asset.body : Buffer.from(asset.body), {
         status: 200,
-        headers: { 'content-type': asset.contentType },
+        headers: {
+          'content-type': asset.contentType,
+          // Photos and the logo never change under the same name; the page itself must stay fresh.
+          'cache-control': pathname.startsWith('/img/') ? 'public, max-age=86400' : 'no-cache',
+        },
       });
     }
     return json(404, {});

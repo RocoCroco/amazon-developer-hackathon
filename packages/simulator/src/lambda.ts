@@ -2,7 +2,7 @@ import { GetParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { createDemoControls, lambdaWatcherInvoker } from './demo.js';
-import { createSimulatorHandler } from './handler.js';
+import { createSimulatorHandler, type Asset } from './handler.js';
 import { BedrockLlm } from './llm.js';
 import { RuleBasedLlm } from './mock-brain.js';
 import { DynamoDailyCap, DynamoSessionStore } from './session-store.js';
@@ -63,6 +63,15 @@ async function readDemoKey(paramName: string): Promise<string> {
   return value;
 }
 
+function decodeAssets(): Record<string, Asset> {
+  return Object.fromEntries(
+    Object.entries(UI_ASSETS).map(([route, { contentType, body, base64 }]) => [
+      route,
+      { contentType, body: base64 ? Buffer.from(body, 'base64') : body },
+    ]),
+  );
+}
+
 let cached: Promise<Handler> | undefined;
 
 /** Built once per container: wires DynamoDB sessions and caps, Bedrock, Polly and the watcher. */
@@ -76,7 +85,7 @@ function getHandler(): Promise<Handler> {
     return createSimulatorHandler({
       mcp: { url: MCP_URL, demoKey: await readDemoKey(DEMO_KEY_PARAM) },
       llm: () => (process.env.SIM_LLM === 'mock' ? new RuleBasedLlm() : new BedrockLlm()),
-      assets: UI_ASSETS,
+      assets: decodeAssets(),
       sessions: new DynamoSessionStore(db, TABLE_NAME),
       speaker: new PollySpeaker(),
       // Spending guards shared by every container (see docs/costs.md): model turns and spoken characters.

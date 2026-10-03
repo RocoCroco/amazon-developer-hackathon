@@ -1,10 +1,10 @@
 # PROGRESS
 
-_Last updated: 2026-10-02_
+_Last updated: 2026-10-03_
 
 ## State
 All tasks done except T7.2 (human: make repo public / share with judges, `[!]`, B2) and the Stretch items.
-Deployed and verified (`npm run e2e:deployed`); reserved concurrency applied (quota is 1000). 337 tests green; secret scan clean (docs/secret-scan.md).
+Deployed and verified (`npm run e2e:deployed`); reserved concurrency applied (quota is 1000). 342 tests green; simulator UI redesigned (Phase 8) and deployed; fixed a null-field crash in the CPSC feed; secret scan clean (docs/secret-scan.md).
 
 ## Human steps
 See docs/manual-checklist.md: voice check in Chrome, record video, flip repo public, fill Devpost.

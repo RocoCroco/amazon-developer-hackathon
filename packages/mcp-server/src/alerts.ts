@@ -28,6 +28,7 @@ export interface RecallSnapshot {
   remedyOptions: RemedyOption[];
   contact: string;
   url: string;
+  imageUrl?: string;
   publishedAt: string;
 }
 
@@ -104,6 +105,7 @@ export function alertFromMatch(
       remedyOptions: r.remedyOptions,
       contact: r.contact,
       url: r.url,
+      ...(r.imageUrl ? { imageUrl: r.imageUrl } : {}),
       publishedAt: r.publishedAt,
     },
   };

@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -18,6 +18,12 @@ describe('embedded page', () => {
       expect(UI_ASSETS[route]?.body, `${file} changed: re-run scripts/embed-ui.mjs`).toBe(onDisk);
     }
     expect(UI_ASSETS['/index.html']?.contentType).toMatch(/text\/html/);
+    for (const name of readdirSync(path.resolve(here, '../public/img'))) {
+      expect(UI_ASSETS[`/img/${name}`], `img/${name} not embedded: re-run scripts/embed-ui.mjs`).toBeDefined();
+    }
+    const photo = UI_ASSETS['/img/echo-off-1672.webp'];
+    expect(photo?.contentType).toBe('image/webp');
+    expect(Buffer.from(photo?.body ?? '', 'base64').subarray(8, 12).toString()).toBe('WEBP');
   });
 });
 

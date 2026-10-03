@@ -273,3 +273,29 @@ describe('remedy steps', () => {
     expect(remedy.spoken).toBe('I could not find fix instructions in the recall notice.');
   });
 });
+
+describe('product image', () => {
+  it('goes from the CPSC recall to the alert snapshot', async () => {
+    const { fromCpsc } = await import('./recalls/cpsc.js');
+    const { alertFromMatch } = await import('./alerts.js');
+    const raw = {
+      RecallID: 1,
+      RecallDate: '2026-09-01',
+      Title: 'Acme Recalls Dressers',
+      Images: [
+        { URL: 'http://insecure/x.jpg' },
+        { URL: 'https://cpsc.gov/s3fs-public/a.jpg?VersionId=1' },
+      ],
+    };
+    const recall = fromCpsc(raw);
+    expect(recall.imageUrl).toBe('https://cpsc.gov/s3fs-public/a.jpg?VersionId=1'); // https only
+    expect(fromCpsc({ ...raw, Images: [] }).imageUrl).toBeUndefined();
+    const alert = alertFromMatch(
+      { id: 'i', createdAt: '', name: 'dresser', brand: 'Acme' },
+      { recall, level: 'strong', score: 1, reasons: [], missing: [] },
+      undefined,
+      new Date(),
+    );
+    expect(alert.recall.imageUrl).toBe(recall.imageUrl);
+  });
+});

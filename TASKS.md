@@ -60,3 +60,11 @@ Target: thin end-to-end slice (Phase 1) working by ~day 7 (Oct 8), then widen.
 - [ ] S1 OAuth 2.1 for households.
 - [ ] S2 Photo of the product label → model number extraction.
 - [ ] S3 Pet food recalls, if openFDA coverage allows.
+
+## Phase 8 — Simulator redesign (from design/mockups, assets in design/assets)
+- [x] T8.1 Image pipeline: verify the four Echo photos align (measured: lit photos are 1 px off vertically; fix it), convert to WebP at two sizes, copy the logo. **Done when:** `scripts/build-images.mjs` regenerates `packages/simulator/public/img/*`, each file is small, and a check shows the aligned layers differ only where the ring is.
+- [x] T8.2 Carry a product image through the data (CPSC `Images`) to alerts and the MCP tool details. **Done when:** unit tests pass.
+- [x] T8.3 New UI: full-screen photo, animated light ring (idle / listening / thinking / speaking synced with the Polly audio), floating fading bubbles, glass Recall Guardian panel with status dots and expandable recalled items, input bar + mic (Chrome/Edge; clear message elsewhere), discreet demo menu behind the chevron, responsive for phones. **Done when:** it renders correctly on desktop and phone viewports (screenshots reviewed).
+- [x] T8.4 Serve images from the Lambda/hosting (binary-safe, cache headers, size within limits). **Done when:** deployed pages load every image.
+- [x] T8.5 Update the browser tests for the new UI (typed story, voice stub, ring states, panel, mobile viewport). **Done when:** `npm test` and `npm run e2e:deployed` pass.
+- [x] T8.6 Deploy and give the human the URL to review.

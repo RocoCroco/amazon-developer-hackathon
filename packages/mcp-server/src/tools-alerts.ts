@@ -22,6 +22,7 @@ const alertView = (a: Alert) => ({
   severity: a.severity,
   title: a.recall.title,
   hazard: a.recall.hazard,
+  image_url: a.recall.imageUrl,
   published: a.recall.publishedAt,
   source: a.recall.source,
   question: a.question,

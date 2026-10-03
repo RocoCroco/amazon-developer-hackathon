@@ -12,6 +12,8 @@ describe('text helpers', () => {
     expect(toIsoDate('20140630')).toBe('2014-06-30');
     expect(toIsoDate('04/11/2020')).toBe('2020-04-11');
     expect(toIsoDate('garbage')).toBe('');
+    expect(toIsoDate(null)).toBe(''); // the live feed sometimes sends null fields
+    expect(firmFromTitle(null)).toBe('');
   });
 
   it('extracts model numbers', () => {

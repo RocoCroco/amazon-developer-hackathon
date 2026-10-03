@@ -33,6 +33,7 @@ function matchSummary(m: ConfirmedMatch) {
     contact: m.recall.contact,
     published: m.recall.publishedAt,
     url: m.recall.url,
+    image_url: m.recall.imageUrl,
     product: m.product,
     details: m.recall.summary.slice(0, 600),
     reasons: m.reasons,

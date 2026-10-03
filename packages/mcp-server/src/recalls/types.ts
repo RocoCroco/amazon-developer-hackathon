@@ -34,6 +34,8 @@ export interface Recall {
   /** Contact info for the remedy (phone/web), as published. */
   contact: string;
   url: string;
+  /** A picture of the recalled product, when the source has one (CPSC does). */
+  imageUrl?: string;
   /** ISO date (YYYY-MM-DD) the recall was published/received. */
   publishedAt: string;
   brands: string[];

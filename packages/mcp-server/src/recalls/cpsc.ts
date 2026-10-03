@@ -23,6 +23,7 @@ export interface CpscRecall {
   RemedyOptions?: { Option?: string }[];
   Manufacturers?: CpscNamed[];
   Importers?: CpscNamed[];
+  Images?: { URL?: string; Caption?: string }[];
 }
 
 const REMEDY_MAP: Record<string, RemedyOption> = {
@@ -64,6 +65,7 @@ export function fromCpsc(raw: CpscRecall): Recall {
     ),
   ];
 
+  const imageUrl = (raw.Images ?? []).map((i) => i.URL ?? '').find((u) => u.startsWith('https://'));
   return {
     id: `cpsc:${raw.RecallID}`,
     source: 'cpsc',
@@ -76,7 +78,8 @@ export function fromCpsc(raw: CpscRecall): Recall {
     remedyOptions,
     contact: raw.ConsumerContact ?? '',
     url: raw.URL ?? '',
-    publishedAt: toIsoDate(raw.LastPublishDate ?? raw.RecallDate),
+    ...(imageUrl ? { imageUrl } : {}),
+    publishedAt: toIsoDate(raw.LastPublishDate || raw.RecallDate),
     brands: [...brands],
     products,
     years: [],

@@ -45,10 +45,11 @@ const page = await browser.newPage({ viewport: { width: 1100, height: 760 } });
 await page.goto(url);
 
 // 1. Sample family in one click.
+await page.click('#menu-button');
 await page.click('#demo-seed');
 check(
   await until(
-    async () => (await page.locator('#inventory li:not(.empty)').count()) === 2,
+    async () => (await page.locator('#inventory .item').count()) === 2,
     'sample family loaded',
   ),
   'sample family loaded (2 items)',
@@ -82,7 +83,7 @@ check(
 );
 check(
   await until(
-    async () => (await page.locator('#alerts li.alert').count()) >= 1,
+    async () => (await page.locator('#inventory .item[data-status=recalled]').count()) >= 1,
     'alerts panel',
     15000,
   ),
@@ -107,6 +108,7 @@ check(
 
 // 4. Time skip: publish a new recall; the real watcher Lambda matches it; the family is warned unprompted.
 const proactiveBefore = await page.locator('#transcript .bubble.proactive').count();
+await page.click('#menu-button');
 await page.click('#demo-recall');
 const warned = await until(
   async () => (await page.locator('#transcript .bubble.proactive').count()) > proactiveBefore,
@@ -128,10 +130,11 @@ if (warned) {
 if (shot) await page.screenshot({ path: shot });
 
 // 5. Clean up.
+await page.click('#menu-button');
 await page.click('#reset');
 check(
   await until(
-    async () => (await page.locator('#inventory li.empty').count()) === 1,
+    async () => (await page.locator('#inventory .item').count()) === 0,
     'reset',
     30000,
   ),

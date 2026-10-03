@@ -131,7 +131,7 @@ describe('voice in the simulator (real browser, stubbed microphone and speakers)
       page.locator('#transcript .bubble.alexa').last(),
       'saved your Govee H7131 space heater',
     );
-    await hasText(page.locator('#inventory li').first(), 'Govee space heater');
+    await hasText(page.locator('#inventory .item').first(), 'Govee space heater');
     await page.close();
   }, 60_000);
 
@@ -143,6 +143,8 @@ describe('voice in the simulator (real browser, stubbed microphone and speakers)
     );
     expect(await page.locator('#mic').isDisabled()).toBe(true);
     expect(await page.locator('#mic').getAttribute('title')).toMatch(/Chrome or Edge/);
+    await hasText(page.locator('#notice'), 'Voice input needs Chrome or Edge');
+    expect(await page.locator('#notice').isVisible()).toBe(true);
     await type(page, 'We got a Govee space heater.'); // typing still works
     await page.close();
   }, 60_000);
@@ -155,6 +157,7 @@ describe('voice in the simulator (real browser, stubbed microphone and speakers)
     expect(spoken[0]).toMatch(/saved your Govee H7131 space heater/);
     await expect.poll(() => page.evaluate(() => window.__played.length), poll).toBe(1);
 
+    await page.click('#menu-button');
     await page.uncheck('#speak-toggle');
     await type(page, 'Is it recalled?');
     expect(spoken).toHaveLength(1); // nothing more requested
@@ -172,19 +175,19 @@ describe('voice in the simulator (real browser, stubbed microphone and speakers)
   }, 60_000);
 });
 
-describe('alerts panel and proactive messages', () => {
-  it('shows a confirmed recall in the alerts panel after "is anything we own recalled?"', async () => {
+describe('household panel and proactive messages', () => {
+  it('turns the item red in the household panel after "is anything we own recalled?"', async () => {
     const page = await newPage();
     await type(page, 'We got a second-hand Govee space heater, model number H7131.');
-    await hasText(page.locator('#alerts'), 'No alerts.');
+    const row = page.locator('#inventory .item').first();
+    expect(await row.getAttribute('data-status')).toBe('ok');
     await type(page, 'Is anything we own recalled?');
     await hasText(
       page.locator('#transcript .bubble.alexa').last(),
       'Your Govee space heater is recalled.',
     );
-    await hasCount(page.locator('#alerts li.alert'), 1);
-    await hasText(page.locator('#alerts li.alert').first(), 'Recalled');
-    await hasText(page.locator('#alerts li.alert').first(), 'Govee space heater');
+    await expect.poll(() => row.getAttribute('data-status'), poll).toBe('recalled');
+    await hasText(row, 'Govee space heater');
     await page.close();
   }, 60_000);
 
@@ -192,7 +195,7 @@ describe('alerts panel and proactive messages', () => {
     spoken.length = 0;
     const page = await newPage();
     await type(page, 'We got a Zzyzx space heater, model number ZX-100.');
-    await hasText(page.locator('#alerts'), 'No alerts.');
+    expect(await page.locator('#inventory .item').first().getAttribute('data-status')).toBe('ok');
 
     // Time passes: a new recall is published and the daily watcher runs (here in-process, same stores).
     const newRecall: Recall = {
@@ -213,7 +216,9 @@ describe('alerts panel and proactive messages', () => {
     await hasCount(proactive, 1); // the page polls every few seconds
     await hasText(proactive, 'Heads up: your Zzyzx space heater has a recall.');
     await hasText(proactive, 'Want me to walk you through the fix?');
-    await hasText(page.locator('#alerts li.alert').first(), 'Zzyzx space heater');
+    await expect
+      .poll(() => page.locator('#inventory .item').first().getAttribute('data-status'), poll)
+      .toBe('recalled');
     await expect.poll(() => spoken.some((s) => s.startsWith('Heads up')), poll).toBe(true);
 
     // It is announced once, not on every poll.
@@ -231,10 +236,12 @@ describe('alerts panel and proactive messages', () => {
     await page.close();
   }, 60_000);
 
-  it('hides the demo button when the server has no demo controls', async () => {
+  it('hides the demo buttons when the server has no demo controls', async () => {
     const page = await newPage();
     await page.waitForTimeout(300);
+    await page.click('#menu-button');
     expect(await page.locator('#demo-recall').isHidden()).toBe(true);
+    expect(await page.locator('#demo-seed').isHidden()).toBe(true);
     await page.close();
   }, 60_000);
 });

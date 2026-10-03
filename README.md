@@ -8,7 +8,7 @@ Built for the Amazon "Build, Ship, Shape" hackathon, Alexa+ track.
 ![The Alexa+ simulator: a recalled space heater, and an unprompted warning about a car seat](docs/images/simulator.png)
 
 **Live demo:** https://6aqlg4s33zg7tgjhoqsetxjqyi0pctry.lambda-url.us-east-1.on.aws/
-(click **Load sample family**, ask *"Is anything we own recalled?"*, then **Simulate new recall**; voice works in Chrome.)
+(open the chevron menu next to the logo and click **Load sample family**, ask *"Is anything we own recalled?"*, then **Simulate new recall** from the same menu; voice works in Chrome and Edge, typing everywhere.)
 
 ## The problem
 
