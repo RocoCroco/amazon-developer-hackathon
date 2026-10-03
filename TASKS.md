@@ -85,8 +85,8 @@ Target: thin end-to-end slice (Phase 1) working by ~day 7 (Oct 8), then widen.
 - [x] T9.10 Hands-free mode: continuous listening after one mic permission, wake word "Alexa", silence detection ends the request, paused while Alexa speaks, auto-restart when Chrome stops recognition; tap-to-talk fallback; clear message without speech recognition. **Done when:** browser tests with a stubbed recognizer pass.
 - [x] T9.11 Persona: normal but limited Alexa; off-topic requests get a brief polite answer plus a reminder that this is a Recall Guardian simulation. **Done when:** prompt updated and tested (mock brain + one live check). Then deploy C and share the URL.
 ### D. Polish to win
-- [ ] T9.12 Food and medicine recalls (openFDA) live lookup + matching against family allergies (undeclared-allergen recalls); food recall moment in the demo if it fits in 3 minutes.
+- [x] T9.12 Food and medicine recalls (openFDA) live lookup + matching against family allergies (undeclared-allergen recalls); food recall moment in the demo if it fits in 3 minutes.
 - [x] T9.13 Harder hand-checked evaluation set (hard negatives, misspellings, vague descriptions, partial model numbers); honest numbers and failure modes in docs/matcher-results.md.
 - [x] T9.14 Clean up PROGRESS.md.
-- [ ] T9.15 Strict judge review (docs/rules.md criteria) → docs/judge-review.md, weaknesses ranked by score impact; fix the most important ones.
-- [ ] T9.16 Resilience to CPSC outages (seen 2026-10-03: the API answered HTTP 503 for hours): report "could not reach" instead of "no recalls" (done with T9.1), and backfill recent CPSC recalls into the DynamoDB recall cache so lookups keep working while CPSC is down.
+- [x] T9.15 Strict judge review (docs/rules.md criteria) → docs/judge-review.md, weaknesses ranked by score impact; fix the most important ones.
+- [x] T9.16 Resilience to CPSC outages (seen 2026-10-03: the API answered HTTP 503 for hours): report "could not reach" instead of "no recalls" (done with T9.1), and backfill recent CPSC recalls into the DynamoDB recall cache so lookups keep working while CPSC is down.
