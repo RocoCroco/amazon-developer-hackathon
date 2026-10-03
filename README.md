@@ -39,6 +39,19 @@ Alexa never claims a recall it is not sure about: when a detail is missing it as
 (the model sticker, the month it was made, the lot code) instead of guessing. And when a recall database is down
 (CPSC was, for hours, while we built this), it says it could not check instead of "no recalls".
 
+## Documentation
+
+| Document | What is in it |
+|---|---|
+| [docs/architecture.md](docs/architecture.md) | Every component, a spoken turn end to end, the matcher pipeline, the data model, resilience, security |
+| [docs/challenges.md](docs/challenges.md) | How we meet the Alexa+ track, the AWS Builder and Open Source mini challenges, and the judging criteria |
+| [docs/matcher-results.md](docs/matcher-results.md) | Matching quality on 1,313 real recalls, including a blind challenge set, with every failure mode |
+| [docs/data-sources.md](docs/data-sources.md) | CPSC, NHTSA and openFDA: endpoints, limits, quirks |
+| [docs/costs.md](docs/costs.md) | Cost per service and the spending guards |
+| [docs/sources.md](docs/sources.md) | Sources for every claim (statistics, quotes) |
+| [docs/judge-review.md](docs/judge-review.md) | Our own strict review against the judging criteria |
+| [FEEDBACK.md](FEEDBACK.md), [FRICTION_LOG.md](FRICTION_LOG.md) | Feedback on every tool and service; every significant problem and how we solved it |
+
 ## Architecture
 
 ```mermaid
@@ -151,7 +164,7 @@ Needs Bedrock model access for Claude Haiku 4.5 in us-east-1. `npx cdk destroy` 
 | Command | What it proves |
 |---|---|
 | `npm test` | everything above, offline and deterministic (real fixtures and a real-recall corpus) |
-| `npm run test:live` | real CPSC/openFDA/NHTSA feeds, real Claude on Bedrock (conversation and second opinion), real Polly |
+| `npm run test:live` | real CPSC/openFDA/NHTSA feeds, real Claude on Bedrock (conversation and second opinion), real Polly, real Transcribe streaming |
 | `npm run e2e:deployed` | the **deployed** system: all three data sources, the watcher with a seeded recall, and the public simulator in a real browser with real Claude and Polly |
 
 The SPEC section 8 demo story (register, check, time skip, proactive alert, walk through the fix, reset) is also an

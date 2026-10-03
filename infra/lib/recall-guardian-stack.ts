@@ -156,20 +156,21 @@ export class RecallGuardianStack extends cdk.Stack {
         ],
       }),
     );
-    // One cheap Claude model, through the US cross-region inference profile.
-    simulatorFunction.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ['bedrock:InvokeModel'],
-        resources: [
-          `arn:aws:bedrock:*::foundation-model/${bedrockModel}`,
-          cdk.Stack.of(this).formatArn({
-            service: 'bedrock',
-            resource: 'inference-profile',
-            resourceName: `us.${bedrockModel}`,
-          }),
-        ],
-      }),
-    );
+    // One cheap Claude model, through the US cross-region inference profile: the simulator's "Alexa" brain,
+    // and the MCP server's second opinion on recall matches.
+    const invokeClaude = new iam.PolicyStatement({
+      actions: ['bedrock:InvokeModel'],
+      resources: [
+        `arn:aws:bedrock:*::foundation-model/${bedrockModel}`,
+        cdk.Stack.of(this).formatArn({
+          service: 'bedrock',
+          resource: 'inference-profile',
+          resourceName: `us.${bedrockModel}`,
+        }),
+      ],
+    });
+    simulatorFunction.addToRolePolicy(invokeClaude);
+    mcpFunction.addToRolePolicy(invokeClaude);
     simulatorFunction.addToRolePolicy(
       new iam.PolicyStatement({ actions: ['polly:SynthesizeSpeech'], resources: ['*'] }),
     );

@@ -226,17 +226,16 @@ export async function confirmMatches(
   confirmer: Confirmer,
   limit = 3,
 ): Promise<ConfirmedMatch[]> {
-  const out: ConfirmedMatch[] = [];
-  for (const match of matches.slice(0, limit)) {
-    let verdict: Verdict;
-    try {
-      verdict = await confirmer.confirm(item, match);
-    } catch {
-      out.push({ ...match });
-      continue;
-    }
-    const confirmed = applyVerdict(match, verdict);
-    if (confirmed) out.push(confirmed);
-  }
-  return out;
+  // In parallel (a voice reply cannot wait for three model calls in a row); order is kept. A failed call
+  // keeps the deterministic answer: the second opinion may only make an answer more careful.
+  const results = await Promise.all(
+    matches.slice(0, limit).map(async (match): Promise<ConfirmedMatch | null> => {
+      try {
+        return applyVerdict(match, await confirmer.confirm(item, match));
+      } catch {
+        return { ...match };
+      }
+    }),
+  );
+  return results.filter((m): m is ConfirmedMatch => m !== null);
 }

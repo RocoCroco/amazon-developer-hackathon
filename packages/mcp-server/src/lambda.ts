@@ -11,6 +11,7 @@ import {
   StoreRecallProvider,
 } from './recalls/providers.js';
 import { liveAllergenFeed } from './recalls/openfda.js';
+import { BedrockConfirmer, CachedConfirmer } from './matcher/confirm.js';
 
 /** The parts of a Lambda Function URL event (payload v2) that we use. */
 export interface FunctionUrlEvent {
@@ -104,6 +105,8 @@ function getHandler(): Promise<McpHandler> {
           console.warn('recall source failed:', error instanceof Error ? error.message : error),
       ),
       allergenFeed: liveAllergenFeed(),
+      // Claude's second opinion on each match (downgrade-only, cached per item and recall).
+      confirmer: new CachedConfirmer(new BedrockConfirmer()),
       demoKey: await readDemoKey(keyParam),
     });
   })();
