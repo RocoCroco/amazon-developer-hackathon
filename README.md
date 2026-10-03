@@ -91,9 +91,11 @@ Details, limits and quirks we hit: [docs/data-sources.md](docs/data-sources.md).
 
 The matcher is deterministic first (brand and model normalization, model years, production windows), with a Claude
 second opinion that can only make an answer **more** careful, never less. It is evaluated on **1,313 real recalls**
-with 77 hand-labeled items and 478 generated items (about 730,000 item x recall pairs):
-**100% strong-match precision and recall on both sets**, with the honest history of how we got there, including
-the labels we got wrong and the bugs the evaluation found, in [docs/matcher-results.md](docs/matcher-results.md).
+with 77 hand-labeled items and 478 generated items (about 730,000 item x recall pairs), where it scores 100%;
+those labels were partly reconciled with the matcher, so we also built a **challenge set of 40 messy descriptions
+labeled blind** (misheard brands, partial model codes, "stove" for "range", no brand, 14 hard negatives). Blind
+first run: **0 false "recalled" claims**, but only **21 of 26 recalled items handled safely (80.8%)**; after two
+general fixes, 26 of 26. Every number, failure mode and caveat is in [docs/matcher-results.md](docs/matcher-results.md).
 Food and drug recalls are never confirmed without the lot code, because only the package knows it.
 
 ## Run it locally

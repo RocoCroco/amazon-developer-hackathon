@@ -11,19 +11,20 @@ const raw = JSON.parse(
 ) as unknown[];
 
 /**
- * CPSC that answers 503 a few times before it works, like on 2026-10-03. The fixture recalls are served
- * for the first quarter only, so every recall arrives once.
+ * A fake CPSC like the real one on 2026-10-03: any window that contains a "bad" day answers 503, every
+ * time; smaller windows work. The fixture recalls are served as if dated 2026-01-15, so they come back once.
  */
-function flappingCpsc(failures: number): { fetchFn: FetchLike; urls: string[] } {
+function cpscWithBadDay(badDay: string | undefined): { fetchFn: FetchLike; urls: string[] } {
   const urls: string[] = [];
-  let left = failures;
   return {
     urls,
     fetchFn: async (url) => {
       urls.push(url);
-      if (left-- > 0) return { ok: false, status: 503, json: async () => ({}) };
-      const firstQuarter = url.includes('RecallDateStart=2026-01-01');
-      return { ok: true, status: 200, json: async () => (firstQuarter ? raw : []) };
+      const from = /RecallDateStart=([\d-]+)/.exec(url)?.[1] ?? '';
+      const to = /RecallDateEnd=([\d-]+)/.exec(url)?.[1] ?? '9999';
+      const inside = (day: string) => from <= day && day <= to;
+      if (badDay && inside(badDay)) return { ok: false, status: 503, json: async () => ({}) };
+      return { ok: true, status: 200, json: async () => (inside('2026-01-15') ? raw : []) };
     },
   };
 }
@@ -32,26 +33,25 @@ const noWait = async () => undefined;
 const now = () => new Date('2026-10-03T12:00:00Z');
 
 describe('CPSC backfill into the recall cache', () => {
-  it('retries a flapping CPSC API and loads everything since the given date', async () => {
+  it('loads one quarter at a time, up to today', async () => {
     const store = new InMemoryRecallStore();
-    const cpsc = flappingCpsc(2);
+    const cpsc = cpscWithBadDay(undefined);
     const done = await backfillCpsc(store, '2026-01-01', cpsc.fetchFn, noWait, now);
-    // Two failures, then one request per quarter: Q1, Q2, Q3 and the started Q4 (up to today).
-    expect(cpsc.urls).toHaveLength(2 + 4);
-    expect(cpsc.urls[2]).toContain('RecallDateStart=2026-01-01&RecallDateEnd=2026-03-31');
-    expect(cpsc.urls[3]).toContain('RecallDateStart=2026-04-01&RecallDateEnd=2026-06-30');
+    expect(cpsc.urls).toHaveLength(4); // Q1, Q2, Q3 and the started Q4
+    expect(cpsc.urls[0]).toContain('RecallDateStart=2026-01-01&RecallDateEnd=2026-03-31');
+    expect(cpsc.urls[1]).toContain('RecallDateStart=2026-04-01&RecallDateEnd=2026-06-30');
     expect(cpsc.urls.at(-1)).toContain('RecallDateStart=2026-10-01&RecallDateEnd=2026-10-03');
-    expect(done.fetched).toBe(raw.length);
-    expect(done.added).toBe(raw.length);
+    expect(done).toMatchObject({ fetched: raw.length, added: raw.length, skippedDays: [] });
     expect(await store.candidates({ name: 'space heater', brand: 'Govee' })).not.toHaveLength(0);
   });
 
-  it('gives up after a few failures instead of running forever', async () => {
-    const cpsc = flappingCpsc(10);
-    await expect(
-      backfillCpsc(new InMemoryRecallStore(), '2026-01-01', cpsc.fetchFn, noWait, now),
-    ).rejects.toThrow(/503/);
-    expect(cpsc.urls).toHaveLength(4);
+  it('splits a window that keeps failing and skips only the one bad day', async () => {
+    const store = new InMemoryRecallStore();
+    const cpsc = cpscWithBadDay('2026-02-14');
+    const done = await backfillCpsc(store, '2026-01-01', cpsc.fetchFn, noWait, now);
+    expect(done.skippedDays).toEqual(['2026-02-14']);
+    expect(done.added).toBe(raw.length); // the recalls of January were still loaded, once
+    expect(cpsc.urls.length).toBeLessThan(60); // halving, not day by day
   });
 });
 
@@ -65,7 +65,7 @@ describe('a CPSC outage when the cache holds a copy of CPSC', () => {
 
   it('is no gap: the cache answers', async () => {
     const store = new InMemoryRecallStore();
-    await backfillCpsc(store, '2026-01-01', flappingCpsc(0).fetchFn, noWait, now);
+    await backfillCpsc(store, '2026-01-01', cpscWithBadDay(undefined).fetchFn, noWait, now);
     const res = await new CompositeRecallProvider([
       cpscDown,
       new StoreRecallProvider(store, ['CPSC']),

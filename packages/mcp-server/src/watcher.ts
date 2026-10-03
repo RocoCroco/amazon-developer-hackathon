@@ -144,9 +144,10 @@ export interface BackfillResult {
 
 /**
  * One-time load of CPSC recalls dated since `since` into the cache, so consumer-product checks keep working
- * when the CPSC API is down (it answered HTTP 503 for hours on 2026-10-03). Large queries fail there while
- * small ones work, so it goes one quarter at a time, retrying each a few times. Like the child-seat
- * backfill: no cursors, no alerts.
+ * when the CPSC API is down (it answered HTTP 503 for hours on 2026-10-03). Some date windows fail every
+ * time on CPSC's side (one bad record, presumably) while smaller windows inside them work, so it goes one
+ * quarter at a time and splits a failing window in halves, down to single days; a day that still fails is
+ * skipped and reported. Like the child-seat backfill: no cursors, no alerts.
  */
 export async function backfillCpsc(
   recalls: RecallStore,
@@ -154,20 +155,28 @@ export async function backfillCpsc(
   fetchFn?: FetchLike,
   wait: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms)),
   now: () => Date = () => new Date(),
-): Promise<BackfillResult> {
-  const total: BackfillResult = { fetched: 0, added: 0, updated: 0, unchanged: 0 };
-  const today = isoDay(now());
-  for (let from = since; from <= today; from = nextQuarter(from)) {
-    const to = minDay(dayBefore(nextQuarter(from)), today);
-    let chunk: Recall[] | undefined;
-    for (let attempt = 1; !chunk; attempt++) {
+): Promise<BackfillResult & { skippedDays: string[] }> {
+  const total = { fetched: 0, added: 0, updated: 0, unchanged: 0, skippedDays: [] as string[] };
+
+  const fetchWindow = async (from: string, to: string): Promise<Recall[]> => {
+    for (let attempt = 1; attempt <= 2; attempt++) {
       try {
-        chunk = await fetchCpscRecalls(from, fetchFn, to);
-      } catch (error) {
-        if (attempt >= 4) throw error;
-        await wait(attempt * 5_000);
+        return await fetchCpscRecalls(from, fetchFn, to);
+      } catch {
+        if (attempt === 1) await wait(2_000);
       }
     }
+    if (from === to) {
+      total.skippedDays.push(from);
+      return [];
+    }
+    const middle = midDay(from, to);
+    return [...(await fetchWindow(from, middle)), ...(await fetchWindow(nextDay(middle), to))];
+  };
+
+  const today = isoDay(now());
+  for (let from = since; from <= today; from = nextQuarter(from)) {
+    const chunk = await fetchWindow(from, minDay(dayBefore(nextQuarter(from)), today));
     const r = await recalls.upsert(chunk, { reindex: true });
     total.fetched += chunk.length;
     total.added += r.added.length;
@@ -176,6 +185,13 @@ export async function backfillCpsc(
   }
   return total;
 }
+
+const DAY = 24 * 60 * 60 * 1000;
+const dayMs = (day: string) => Date.parse(`${day}T00:00:00Z`);
+const nextDay = (day: string) => isoDay(new Date(dayMs(day) + DAY));
+/** Last day of the first half of [from, to]. */
+const midDay = (from: string, to: string) =>
+  isoDay(new Date(dayMs(from) + Math.floor((dayMs(to) - dayMs(from)) / DAY / 2) * DAY));
 
 /** "2024-02-10" -> "2024-04-01": the first day of the next calendar quarter. */
 function nextQuarter(day: string): string {

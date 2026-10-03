@@ -54,7 +54,7 @@ tools ("Where is the sticker? Do you know roughly which month it was made?") ins
 
 ## Accomplishments we're proud of
 
-- 100% strong-match precision on a corpus of real recalls, with the evaluation's history written down, not polished away.
+- Never a false "your X is recalled" on 1,313 real recalls, including a blind challenge set of messy, misheard descriptions; the blind first run (80.8% of recalled items handled safely) is published next to the improved one, not polished away.
 - A complete loop on real infrastructure: register by voice, check, a proactive warning from the daily watcher, a spoken walk-through of the fix, closed alert. One command (`npm run e2e:deployed`) verifies it against the deployed system with real Claude and Polly.
 - Voice-first throughout: short sentences, no URLs read aloud, phone numbers and model codes spelled out, confirmation before anything destructive.
 

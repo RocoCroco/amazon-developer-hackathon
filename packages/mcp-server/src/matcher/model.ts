@@ -67,6 +67,9 @@ export function modelEvidence(
     const words = wordsOf(model, ctx.brandWords);
     if (normalizeModel(words.join(' ')) === wanted || normalizeModel(model) === wanted)
       return 'exact';
+    // A code cut short ("FCFG3083" for FCFG3083AS): never proof, but worth asking for the full number.
+    if (hasDigit(wanted) && wanted.length >= 4 && normalizeModel(model).startsWith(wanted))
+      partial = true;
     for (const w of windows(words)) {
       if (w.value === wanted) {
         // A window made only of words ("Chaperone" in "CHAPERONE E9L69P5") names a family, not a unit.

@@ -61,7 +61,7 @@ responses are in `packages/mcp-server/test/fixtures/`). None needs an API key.
 ## Design consequences
 | Source | Since-date query | Watcher strategy |
 |---|---|---|
-| CPSC | yes (`LastPublishDateStart`) | fetch since last run |
+| CPSC | yes (`RecallDateStart/End`; `LastPublishDate*` answers HTTP 503 since 2026-10-03, F18) | fetch since last run |
 | openFDA | yes (`report_date`) | fetch since last run |
 | NHTSA vehicles (API) | no | re-query per registered vehicle (make/model/year), cache by campaign number |
 | NHTSA car seats/equipment/tires | via flat file RCDATE | stream daily flat file, filter by RCDATE |
@@ -71,8 +71,11 @@ responses are in `packages/mcp-server/test/fixtures/`). None needs an API key.
 - **NHTSA flat file:** streamed with `node:zlib` only (`flatfile.ts`): the zip's first entry is inflated on the fly, so the 311 MB file is never held in memory. A real run over the last 30 days takes ~3.6 s and yields ~63 campaigns. Rows of one campaign are grouped into one recall.
 - **Incremental sync:** `syncFeed` pulls from (cursor - 3 days) to today, upserts by id, then advances the cursor. Re-fetched overlap counts as `unchanged`; only never-seen ids are `added` (the watcher alerts on those); a failed fetch keeps the cursor.
 
-## What check_item can see in production (as of T5)
-- **Consumer products (CPSC):** live `ProductName` lookup by brand and by item name, cached 6 h in the Lambda.
+## What check_item can see in production (as of T9)
+- **Consumer products (CPSC):** live `ProductName` lookup by brand and by item name, cached 6 h in the Lambda, **plus a full copy in the recall cache** (watcher event `{"backfill":"cpsc","since":"2008-01-01"}`: one quarter per request, failing windows split down to single days). The CPSC API flaps (HTTP 503 for hours on 2026-10-03), so the cache answers when it is down (`StoreRecallProvider` "covers" CPSC). If no source can answer, the tools say "I couldn't reach the recall database" and never "no recalls" (`source_unavailable`).
 - **Vehicles (NHTSA API):** live lookup by make + model + model year, only when all three are known.
-- **Child seats (NHTSA flat file):** every campaign in the POST-2010 file, loaded once with the watcher's `{"backfill":true}` event (71 recalls) and kept current by the daily sync.
-- **Food, drugs, equipment, tires:** only what the daily watcher has synced (the last 14 days at first run, then daily). Older enforcement reports and tire/equipment campaigns are not searchable yet; a live openFDA lookup (`recalling_firm`/`product_description` search) and a larger backfill are the obvious next steps.
+- **Child seats (NHTSA flat file):** every campaign in the POST-2010 file, loaded once with the watcher's `{"backfill":"child-seats"}` event (71 recalls) and kept current by the daily sync.
+- **Food and drugs (openFDA):** live lookup by brand of the last 5 years of enforcement reports (food and drug), matched against `product_description` and `recalling_firm` with `search=(product_description:"<brand>"+recalling_firm:"<brand>")+AND+report_date:[...]`; the brand on the label is often not the recalling firm ("Mercer's brand ice cream sandwiches" from Quality Dairy Farms), so brands are also read from the description. Confirmed only with the lot code.
+- **Allergies:** `update_allergies` stores the family's food allergies; a food recall for an undeclared allergen says whether it matters ("It has undeclared peanuts, and Leo is allergic to peanuts") and jumps to the top of the alerts. `recent_allergen_recalls` answers "any recent peanut recalls?" from openFDA (`reason_for_recall:undeclared`, last N days). Without an API key openFDA allows 1,000 requests a day per IP; answers are cached 6 h.
+- **Equipment, tires:** only what the daily watcher has synced since it started.
+- **Cache index:** every cached recall is indexed by brand words and by product words (`PRODUCT#dresser`), so a misheard brand can still be compared by sound with the brands of the same kind of product.

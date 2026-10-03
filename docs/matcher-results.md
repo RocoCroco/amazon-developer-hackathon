@@ -54,6 +54,49 @@ Two evaluation sets, each item compared against every recall in the corpus:
   longer listed name, so the matcher asks for the full model number instead of guessing. These are acceptable.
 - The CI gate is `precision >= 95%` (and `recall >= 90%` on the generated set).
 
+## Challenge set: messy descriptions, labels never fitted to the matcher (T9.13)
+
+The two sets above score 100%, and a judge should not take that at face value: the hand-labeled labels
+were reconciled with the matcher (see "How we got here"), and the generated items are built from the same
+structured fields the matcher reads. So a third set was written to **find failures**:
+`test/challenge-items.ts`, run by `src/matcher/challenge.test.ts`.
+
+- **40 items, labeled before running the matcher and never edited to agree with it.** For each item the label
+  says which recalls really cover it and whether the description is enough to say "recalled" or whether the
+  right answer is a question.
+- They are written the way people talk: brands misheard by speech recognition ("Frigidair", "Go Vee",
+  "iTunes" and "8th June" for Aitjunz), model codes with spaces, a missing dash or lower case, **partial**
+  model codes, brand + product only, everyday words ("stove" for a recalled "gas range"), **no brand** ("our 2020
+  Camry"), food and drugs (only a lot code can confirm), and **14 hard negatives**: a sibling model of a recalled
+  series (Govee H7136), another product of a recalled brand (Belkin cable, Rowenta iron, Kirkland paper towels),
+  a brand that is also a recalled RV name (Brookstone), a recalled model's year outside the recall.
+- It scores the whole answer a family would hear, as `check_item` builds it: "recalled", a question (which
+  model or lot, "who makes it?", "do you mean ...?"), or nothing.
+
+| Run | Recalled items handled safely (confirmed or right question) | Missed | Exactly the ideal answer | False "recalled" claims | Needless questions |
+|---|---|---|---|---|---|
+| Blind first run | 21 / 26 (80.8%) | 5 | 34 / 40 | **0** | 1 |
+| Evaluator corrected (no matcher change) | 23 / 26 (88.5%) | 3 | 34 / 40 | **0** | 1 |
+| After two matcher fixes | 26 / 26 | 0 | 36 / 40 | **0** | 1 |
+
+The first run missed: a brand split in two by speech recognition ("Go Vee" heater H7131), two partial model codes
+("FCFG3083" for a recalled FCFG3083AS range, "RH99" for Rowenta RH99A2U1), and two vehicles said without a make.
+The vehicles were an evaluator error, not a matcher one: `check_item` never guesses a missing brand, it asks
+"Who makes it?", so they are "asked" (second row).
+Two general fixes followed: a model code that is the start of a listed model is now an open match ("what is the
+full model number?"), and a brand that differs from a recalled brand only by spacing gets a "do you mean"
+question. **These fixes were made after seeing the set, so the second row is optimistic**; the first row is the
+honest blind number.
+
+What is still not ideal (and stays in the report on purpose):
+
+- "Go Vee" and the two vehicles without a make get a question where a person would just say "recalled": one
+  extra turn, never a wrong answer.
+- "Vevor ice maker" gets a needless question, because a Vevor *ice crusher* is recalled and the product words
+  overlap ("ice"). The question is cheap; claiming it would be wrong.
+- Strong-answer precision stays 100% on this set and false alarms stay 0 (that is the CI gate). With 40 items
+  this is evidence, not proof.
+
 ## How we got here (what the evaluation found)
 
 Honest history, because the first numbers were not good and some labels were wrong too.

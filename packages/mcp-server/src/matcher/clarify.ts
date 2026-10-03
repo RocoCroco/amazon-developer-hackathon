@@ -201,7 +201,8 @@ export function suggestBrands(
       const sound = soundDifference(brand, info.display);
       return { info, typo, sound, score: Math.min(typo <= allowed ? typo / 10 : 1, sound) };
     })
-    .filter((c) => c.typo > 0 && (c.typo <= allowed || c.sound <= MAX_SOUND_DIFFERENCE))
+    // typo 0 here means the same letters spaced differently ("Go Vee" for Govee): still worth asking
+    .filter((c) => c.typo <= allowed || c.sound <= MAX_SOUND_DIFFERENCE)
     .sort((a, b) => a.score - b.score || b.info.count - a.info.count);
   // A clear winner is offered alone; a second option only when it is about as close.
   const best = ranked[0]?.score ?? 1;
