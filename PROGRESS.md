@@ -3,7 +3,7 @@
 _Last updated: 2026-10-03_
 
 ## Current task
-Phase 11. T11.1 Open Source: the human chose an open recall data standard. Research and design done: docs/open-recall-format.md. Creating a public repo needs the human (B4).
+Phase 11. T11.1 Open Source: the human creates and uploads the repo themselves. The project lives OUTSIDE this repo at C:/Users/Roco/Documents/open-recall-format (not committed here). Done there: types, JSON Schema, JSON-LD context, vocab/*.json, converters for 7 sources (CPSC, NHTSA API + flat file, openFDA, Canada RSA, EU Safety Gate, RappelConso, UK OPSS), checker, CLI (convert/fetch/validate/check), examples, 75 tests green; live fetch from every source validated; whole Canadian file (34,168) valid. Left: spec/open-recall-format-0.1.md, spec/mappings.md, docs/schema-org-3229.md, README, LICENSE (Apache-2.0), spec/LICENSE (CC BY 4.0), NOTICE, fixtures/README (data licences), CONTRIBUTING, CHANGELOG, and the guide for the human at C:/Users/Roco/Documents/open-recall-format-GUIDE.md. Also deploy the NHTSA day-first date fix (commit 3e21b4b) with npm run deploy -w infra.
 
 ## Done recently
 - docs/impact.md (numbers for the pitch, sources in docs/sources.md section 3); text credit "Built on AWS · Made for Alexa+" under the panel title, deployed.
@@ -12,7 +12,7 @@ Phase 11. T11.1 Open Source: the human chose an open recall data standard. Resea
   they show real footage of the project working; no unlicensed music or third-party trademarks).
 
 ## Next step
-Wait for the human on B4 (public repo for the Open Recall Format). Meanwhile, if continuing: draft `schema/orf.schema.json` (v0.1) and the CPSC normalizer in a local, unpublished folder next to this repo, following docs/open-recall-format.md section 3.
+In C:/Users/Roco/Documents/open-recall-format: write spec/open-recall-format-0.1.md (normative rules for selectors and the checker, matching src/check.ts), then README and licences; run npx vitest run there; then write the GUIDE outside it.
 
 ## Facts a fresh session needs
 - Simulator: https://6aqlg4s33zg7tgjhoqsetxjqyi0pctry.lambda-url.us-east-1.on.aws/ (stack `RecallGuardianStack`).
