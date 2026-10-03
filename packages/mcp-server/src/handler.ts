@@ -6,6 +6,7 @@ import type { Confirmer } from './matcher/confirm.js';
 import type { RecallProvider } from './recalls/provider.js';
 import type { ItemStore } from './store.js';
 import { registerTools } from './tools.js';
+import type { AllergenFeed } from './tools-allergies.js';
 import { SERVER_NAME, SERVER_VERSION } from './version.js';
 
 export interface McpDeps {
@@ -15,6 +16,8 @@ export interface McpDeps {
   alerts?: AlertStore;
   /** Optional LLM second opinion on matches (off when absent). */
   confirmer?: Confirmer;
+  /** Recent undeclared-allergen food recalls, for recent_allergen_recalls (off when absent). */
+  allergenFeed?: AllergenFeed;
   /** When set, every request must send `Authorization: Bearer <demoKey>`. */
   demoKey?: string;
 }
@@ -59,6 +62,7 @@ export function createMcpHandler(deps: McpDeps): (req: Request) => Promise<Respo
       alertStore,
       recalls: deps.recalls,
       confirmer: deps.confirmer,
+      allergenFeed: deps.allergenFeed,
     });
     const transport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,

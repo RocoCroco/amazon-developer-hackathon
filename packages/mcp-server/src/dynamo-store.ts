@@ -1,4 +1,5 @@
 import { randomBytes, randomUUID } from 'node:crypto';
+import type { Allergy } from './matcher/allergens.js';
 import { ConditionalCheckFailedException, DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
   DeleteCommand,
@@ -35,6 +36,8 @@ export function newHouseholdId(): string {
 
 const hhKey = (householdId: string) => `HH#${householdId}`;
 const itemKey = (itemId: string) => `ITEM#${itemId}`;
+/** PK=HH#<id> SK=ALLERGIES: the family's food allergies, one record per household. */
+const ALLERGIES_SK = 'ALLERGIES';
 
 interface ItemRecord extends StoredItem {
   PK: string;
@@ -140,6 +143,25 @@ export class DynamoItemStore implements ItemStore, HouseholdSource {
    * Scans the table for all inventory items, grouped by household. Fine at demo scale (a scan reads the
    * whole small table once a day); a larger deployment would keep a household index instead.
    */
+  async getAllergies(householdId: string): Promise<Allergy[]> {
+    const res = await this.db.send(
+      new GetCommand({
+        TableName: this.tableName,
+        Key: { PK: hhKey(householdId), SK: ALLERGIES_SK },
+      }),
+    );
+    return ((res.Item?.allergies as Allergy[] | undefined) ?? []).map((a) => ({ ...a }));
+  }
+
+  async setAllergies(householdId: string, allergies: Allergy[]): Promise<void> {
+    await this.db.send(
+      new PutCommand({
+        TableName: this.tableName,
+        Item: { PK: hhKey(householdId), SK: ALLERGIES_SK, allergies },
+      }),
+    );
+  }
+
   async listAllHouseholds(): Promise<{ householdId: string; items: StoredItem[] }[]> {
     const byHousehold = new Map<string, StoredItem[]>();
     let startKey: Record<string, unknown> | undefined;

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import type { Allergy } from './matcher/allergens.js';
 import type { Item } from './matcher/match.js';
 
 export interface StoredItem extends Item {
@@ -24,6 +25,9 @@ export interface ItemStore {
   ): Promise<StoredItem | undefined>;
   /** True if an item was removed. */
   removeItem(householdId: string, itemId: string): Promise<boolean>;
+  /** Food allergies in the family, checked against undeclared-allergen recalls. */
+  getAllergies(householdId: string): Promise<Allergy[]>;
+  setAllergies(householdId: string, allergies: Allergy[]): Promise<void>;
 }
 
 /** Every household with its items: what the daily watcher checks new recalls against. */
@@ -38,6 +42,15 @@ export function definedFields(patch: ItemPatch): ItemPatch {
 
 export class InMemoryItemStore implements ItemStore, HouseholdSource {
   private readonly items = new Map<string, StoredItem[]>();
+  private readonly allergies = new Map<string, Allergy[]>();
+
+  async getAllergies(householdId: string): Promise<Allergy[]> {
+    return [...(this.allergies.get(householdId) ?? [])];
+  }
+
+  async setAllergies(householdId: string, allergies: Allergy[]): Promise<void> {
+    this.allergies.set(householdId, [...allergies]);
+  }
 
   async addItem(householdId: string, item: NewItem): Promise<StoredItem> {
     const stored: StoredItem = { ...item, id: randomUUID(), createdAt: new Date().toISOString() };

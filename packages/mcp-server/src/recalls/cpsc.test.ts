@@ -77,7 +77,7 @@ describe('CPSC adapter', () => {
       seen = url;
       return { ok: true, status: 200, json: async () => body };
     });
-    expect(seen).toContain('LastPublishDateStart=2026-09-15');
+    expect(seen).toContain('RecallDateStart=2026-09-15');
     expect(recalls).toHaveLength(body.length);
   });
 

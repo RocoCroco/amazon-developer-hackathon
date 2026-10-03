@@ -8,11 +8,13 @@ import {
   suggestBrands,
 } from './matcher/clarify.js';
 import { confirmMatches, type ConfirmedMatch } from './matcher/confirm.js';
+import { allergiesHit, allergyNote } from './matcher/allergens.js';
 import { findMatches, type Item } from './matcher/match.js';
 import { unspell } from './matcher/phonetic.js';
 import { recordAlerts } from './household-check.js';
 import { searchRecalls } from './recalls/provider.js';
 import { registerAlertTools } from './tools-alerts.js';
+import { registerAllergyTools } from './tools-allergies.js';
 import { registerInventoryTools } from './tools-inventory.js';
 import { itemFields, reply, type ToolContext } from './tool-common.js';
 import { definedFields, type StoredItem } from './store.js';
@@ -24,6 +26,15 @@ import {
   spokenPeriodMiss,
   spokenSourcesDown,
 } from './voice.js';
+
+/** Puts a note right after the first sentence: "Your X may be recalled. <note> What is the lot code?" */
+export function withNote(summary: string, note: string | undefined): string {
+  if (!note) return summary;
+  const cut = summary.search(/[.!?]\s/);
+  return cut === -1
+    ? `${summary} ${note}`
+    : `${summary.slice(0, cut + 1)} ${note}${summary.slice(cut + 1)}`;
+}
 
 function matchSummary(m: ConfirmedMatch) {
   return {
@@ -108,8 +119,15 @@ async function check(item: Item, ctx: ToolContext, saved?: StoredItem) {
 
   const status = !best ? 'no_recall' : best.level === 'strong' ? 'recalled' : 'need_info';
   const clarification = best && best.level !== 'strong' ? questionFor(best, matches) : undefined;
-  return reply(spokenCheckSummary(item, matches), {
+  // A food recall for an undeclared allergen: say right away whether it matters for this family.
+  const allergies = best ? await ctx.store.getAllergies(ctx.householdId) : [];
+  const note = best
+    ? allergyNote(`${best.recall.hazard} ${best.recall.title}`, allergies)
+    : undefined;
+  const hits = best ? allergiesHit(`${best.recall.hazard} ${best.recall.title}`, allergies) : [];
+  return reply(withNote(spokenCheckSummary(item, matches), note), {
     status,
+    ...(note ? { allergy_note: note, allergy_alert: hits.length > 0 } : {}),
     item: spokenItem(item),
     matches: matches.slice(0, 3).map(matchSummary),
     ...(clarification ? { question: clarification.question, options: clarification.options } : {}),
@@ -214,4 +232,5 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
 
   registerInventoryTools(server, ctx, (saved) => checkOnSave(saved, ctx));
   registerAlertTools(server, ctx);
+  registerAllergyTools(server, ctx, ctx.allergenFeed);
 }

@@ -125,8 +125,11 @@ function firstSentence(text) {
 
 const rows = new Map(); // item id -> { li, status }
 
+/** Red for a confirmed recall, and for a possible food recall that hits a family allergy. */
+const urgent = (a) => a.kind === 'recalled' || a.allergy_alert === true;
+
 function statusOf(alerts) {
-  if (alerts.some((a) => a.kind === 'recalled')) return 'recalled';
+  if (alerts.some(urgent)) return 'recalled';
   if (alerts.length) return 'question';
   return 'ok';
 }
@@ -170,7 +173,7 @@ function buildItem(item) {
 function fillItem(li, item, alerts) {
   const status = statusOf(alerts);
   const previous = li.dataset.status;
-  const alert = alerts.find((a) => a.kind === 'recalled') ?? alerts[0];
+  const alert = alerts.find(urgent) ?? alerts[0];
 
   li.querySelector('.item-title').textContent = [item.brand, item.name].filter(Boolean).join(' ');
   li.dataset.status = status;
@@ -195,8 +198,9 @@ function fillItem(li, item, alerts) {
       text.append(small);
     }
     const sentence = document.createElement('p');
-    sentence.textContent =
-      status === 'recalled'
+    sentence.textContent = alert.allergy_note
+      ? `${alert.allergy_note} ${alert.kind === 'recalled' ? '' : (alert.question ?? '')}`.trim()
+      : status === 'recalled'
         ? firstSentence(alert.hazard || alert.title)
         : alert.question || alert.title;
     text.append(sentence);
@@ -262,11 +266,14 @@ async function refreshState({ announce }) {
     if (!res.ok) return;
     const state = await res.json();
     renderHousehold(state.items, state.alerts);
-    const fresh = state.alerts.filter((a) => a.kind === 'recalled' && !knownAlerts.has(a.alert_id));
+    const fresh = state.alerts.filter((a) => urgent(a) && !knownAlerts.has(a.alert_id));
     for (const alert of state.alerts) knownAlerts.add(alert.alert_id);
     if (announce && fresh.length) {
       const top = fresh[0];
-      const text = `Heads up: your ${top.item} has a recall. ${firstSentence(top.hazard || top.title)} Want me to walk you through the fix?`;
+      const text =
+        top.kind === 'recalled'
+          ? `Heads up: your ${top.item} has a recall. ${top.allergy_note ?? firstSentence(top.hazard || top.title)} Want me to walk you through the fix?`
+          : `Heads up: your ${top.item} may be part of a food recall. ${top.allergy_note} Can you check the lot code on the package with me?`;
       bubble('alexa proactive', text);
       void speak(text);
     }

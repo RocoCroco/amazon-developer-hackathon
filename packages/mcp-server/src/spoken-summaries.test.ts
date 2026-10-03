@@ -167,6 +167,15 @@ describe('every tool answers in a short, speakable way', () => {
     const clear = await household('sPoKeNcLeArHoUsEsPoKe004');
     await clear('add_item', 'setup', { name: 'desk lamp', brand: 'Govee' });
     await clear('check_household', 'nothing recalled');
+
+    await clear('update_allergies', 'none yet');
+    await clear('update_allergies', 'add two', {
+      add: [{ allergen: 'peanuts', person: 'Leo' }, { allergen: 'tree nuts' }],
+    });
+    await clear('update_allergies', 'list');
+    await clear('recent_allergen_recalls', 'no feed configured', { allergen: 'peanuts' });
+    const fresh = await household('sPoKeNaLlErGyHoUsEsPo005');
+    await fresh('recent_allergen_recalls', 'which allergen?');
   });
 
   it('exercised every tool', () => {
@@ -177,8 +186,10 @@ describe('every tool answers in a short, speakable way', () => {
       'get_alerts',
       'get_remedy',
       'list_items',
+      'recent_allergen_recalls',
       'remove_item',
       'resolve_alert',
+      'update_allergies',
       'update_item',
     ]);
     expect(seen.length).toBeGreaterThan(35);

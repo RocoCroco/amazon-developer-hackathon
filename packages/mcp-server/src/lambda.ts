@@ -7,8 +7,10 @@ import { CpscRecallProvider } from './recalls/provider.js';
 import {
   CompositeRecallProvider,
   NhtsaVehicleProvider,
+  OpenFdaProvider,
   StoreRecallProvider,
 } from './recalls/providers.js';
+import { liveAllergenFeed } from './recalls/openfda.js';
 
 /** The parts of a Lambda Function URL event (payload v2) that we use. */
 export interface FunctionUrlEvent {
@@ -86,18 +88,20 @@ function getHandler(): Promise<McpHandler> {
     return createMcpHandler({
       store: new DynamoItemStore(db, table),
       alerts: new DynamoAlertStore(db, table),
-      // Live CPSC (consumer products) + live NHTSA lookup (vehicles) + the cache the daily watcher keeps
-      // (child seats, equipment, tires, food, drugs).
+      // Live CPSC (consumer products), NHTSA (vehicles) and openFDA (food, drugs) lookups + the cache the
+      // daily watcher keeps (CPSC copy, child seats, equipment, tires, recent food and drug reports).
       recalls: new CompositeRecallProvider(
         [
           new CpscRecallProvider(),
           new NhtsaVehicleProvider(),
+          new OpenFdaProvider(),
           // The cache holds a copy of CPSC (daily sync + backfill), so a CPSC outage is covered.
           new StoreRecallProvider(new DynamoRecallStore(db, table), ['CPSC']),
         ],
         (error) =>
           console.warn('recall source failed:', error instanceof Error ? error.message : error),
       ),
+      allergenFeed: liveAllergenFeed(),
       demoKey: await readDemoKey(keyParam),
     });
   })();

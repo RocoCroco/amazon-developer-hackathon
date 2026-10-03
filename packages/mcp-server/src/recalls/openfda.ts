@@ -57,6 +57,31 @@ export function recallKey(r: OpenFdaRecord): string {
   return `hash-${createHash('sha256').update(content).digest('hex').slice(0, 16)}`;
 }
 
+// Words that start product descriptions but are not brands ("Organic Raisins", "Children's Ibuprofen").
+const NOT_BRANDS = new Set(
+  (
+    'organic natural fresh frozen childrens infant infants kids premium original classic pure raw whole ' +
+    'sliced dried assorted various all product products brand item items the each case box bag net pack ' +
+    'packs lot dietary supplement supplements rx ndc new mixed sweet hot spicy large small mini select ' +
+    'gluten free sugar low fat nonfat reduced plain unsweetened single family value great best'
+  ).split(' '),
+);
+
+/**
+ * Brands named in an openFDA product description, which the recalling firm often is not:
+ * "Mercer's brand 6 ICE CREAM SANDWICHES" -> Mercer's; "JIF 40 OUNCE CRUNCHY PEANUT BUTTER" -> JIF.
+ */
+export function descriptionBrands(description: string): string[] {
+  const found = new Set<string>();
+  const named = /([A-Z][A-Za-z'’&.-]+(?:\s+[A-Z][A-Za-z'’&.-]+){0,2})\s+[Bb]rand\b/.exec(
+    description,
+  );
+  if (named?.[1]) found.add(named[1]);
+  const first = /^([A-Z][A-Za-z'’&-]{2,})\b/.exec(description.trim())?.[1];
+  if (first && !NOT_BRANDS.has(first.toLowerCase().replace(/['’]/g, ''))) found.add(first);
+  return [...found];
+}
+
 /** Groups per-product records into one Recall per recall. */
 export function fromOpenFda(records: OpenFdaRecord[], kind: OpenFdaKind): Recall[] {
   const byNumber = new Map<string, OpenFdaRecord[]>();
@@ -84,7 +109,21 @@ export function fromOpenFda(records: OpenFdaRecord[], kind: OpenFdaKind): Recall
       contact: '',
       url: 'https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts',
       publishedAt: toIsoDate(first.report_date ?? ''),
-      brands: firm ? [firm] : [],
+      brands: [
+        ...new Set([
+          ...(firm ? [firm] : []),
+          // a brand that is just a word of the firm's name ("Everything" of Everything Sprouts) adds nothing
+          ...group
+            .flatMap((r) => descriptionBrands(r.product_description ?? ''))
+            .filter(
+              (b) =>
+                !firm
+                  .toLowerCase()
+                  .split(/[^a-z']+/)
+                  .includes(b.toLowerCase()),
+            ),
+        ]),
+      ],
       products: group.map((r) => ({
         name: clip((r.product_description ?? '').trim(), 200),
         models: [],
@@ -123,4 +162,46 @@ export async function fetchOpenFdaRecalls(
     if (results.length < PAGE) break;
   }
   return fromOpenFda(records, kind);
+}
+
+/**
+ * Food recalls of the last `days` days whose reason mentions an undeclared ingredient (allergens, mostly),
+ * newest first. One or two requests: openFDA filters on reason_for_recall server side.
+ */
+export async function fetchUndeclaredFoodRecalls(
+  days: number,
+  fetchFn: FetchLike = (url) => fetch(url),
+  now: () => Date = () => new Date(),
+): Promise<Recall[]> {
+  const ymd = (d: Date) => d.toISOString().slice(0, 10).replace(/-/g, '');
+  const until = ymd(now());
+  const since = ymd(new Date(now().getTime() - days * 24 * 60 * 60 * 1000));
+  const records: OpenFdaRecord[] = [];
+  for (let page = 0; page < 3; page++) {
+    const url =
+      `https://api.fda.gov/food/enforcement.json?search=reason_for_recall:undeclared` +
+      `+AND+report_date:[${since}+TO+${until}]&sort=report_date:desc&limit=${PAGE}&skip=${page * PAGE}`;
+    const res = await fetchFn(url);
+    if (res.status === 404) break;
+    if (!res.ok) throw new Error(`openFDA returned HTTP ${res.status}`);
+    const results = ((await res.json()) as { results?: OpenFdaRecord[] }).results ?? [];
+    records.push(...results);
+    if (results.length < PAGE) break;
+  }
+  return fromOpenFda(records, 'food');
+}
+
+/** fetchUndeclaredFoodRecalls with a small in-process cache (openFDA updates weekly; limits are per IP). */
+export function liveAllergenFeed(
+  ttlMs = 6 * 60 * 60 * 1000,
+  fetchFn?: FetchLike,
+): (days: number) => Promise<Recall[]> {
+  const cache = new Map<number, { at: number; recalls: Recall[] }>();
+  return async (days) => {
+    const hit = cache.get(days);
+    if (hit && Date.now() - hit.at < ttlMs) return hit.recalls;
+    const recalls = await fetchUndeclaredFoodRecalls(days, fetchFn);
+    cache.set(days, { at: Date.now(), recalls });
+    return recalls;
+  };
 }

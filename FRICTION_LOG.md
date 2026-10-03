@@ -107,3 +107,9 @@ Format: what I tried / what I expected / what happened / how I solved it.
 - Expected: a reply after add_item.
 - Happened: the model ended the turn with an empty message; we stored it and Bedrock rejected every later turn ("The content field in the Message object at messages.3 is empty"), so Alexa lost track of the dresser.
 - Solved: an empty final answer is replaced by the last tool's spoken summary, never stored empty, and empty messages in saved sessions are repaired on load (agent.test.ts).
+
+## F18 - CPSC answers 503 to LastPublishDate queries (2026-10-03)
+- Tried: a CPSC backfill since 2008 (`LastPublishDateStart=2008-01-01`), retried three times by Lambda.
+- Expected: the full list (it worked for the daily sync until this morning).
+- Happened: HTTP 503 "Page Unavailable" every time, in 0.3 s, while `ProductName=` and `RecallDateStart/End` queries answered 200 at the same moment. Every `LastPublishDate` query fails, with or without an end date; this also broke this morning's daily CPSC sync ("feed cpsc: ERROR").
+- Solved: the feed and the backfill query by recall date (`RecallDateStart`/`RecallDateEnd`), the backfill one quarter at a time with retries. Cost: revisions of old recalls are no longer picked up by the daily sync; new recalls are.

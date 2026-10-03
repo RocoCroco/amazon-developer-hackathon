@@ -1,4 +1,5 @@
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { AllergenFeed } from './tools-allergies.js';
 import { z } from 'zod';
 import type { AlertStore } from './alerts.js';
 import type { Confirmer } from './matcher/confirm.js';
@@ -12,6 +13,8 @@ export interface ToolContext {
   recalls: RecallProvider;
   /** Optional second opinion from a language model; downgrade-only (see matcher/confirm.ts). */
   confirmer?: Confirmer;
+  /** Recent undeclared-allergen food recalls (openFDA) for recent_allergen_recalls. */
+  allergenFeed?: AllergenFeed;
 }
 
 /**

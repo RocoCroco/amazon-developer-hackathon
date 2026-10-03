@@ -143,33 +143,52 @@ export interface BackfillResult {
 }
 
 /**
- * One-time load of CPSC recalls published since `since` into the cache, so consumer-product checks keep
- * working when the CPSC API is down (it answered HTTP 503 for hours on 2026-10-03). The API flaps, so a
- * failed download is retried a few times. Like the child-seat backfill: no cursors, no alerts.
+ * One-time load of CPSC recalls dated since `since` into the cache, so consumer-product checks keep working
+ * when the CPSC API is down (it answered HTTP 503 for hours on 2026-10-03). Large queries fail there while
+ * small ones work, so it goes one quarter at a time, retrying each a few times. Like the child-seat
+ * backfill: no cursors, no alerts.
  */
 export async function backfillCpsc(
   recalls: RecallStore,
   since = '2008-01-01',
   fetchFn?: FetchLike,
   wait: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms)),
+  now: () => Date = () => new Date(),
 ): Promise<BackfillResult> {
-  let all: Recall[] | undefined;
-  for (let attempt = 1; !all; attempt++) {
-    try {
-      all = await fetchCpscRecalls(since, fetchFn);
-    } catch (error) {
-      if (attempt >= 4) throw error;
-      await wait(attempt * 15_000);
+  const total: BackfillResult = { fetched: 0, added: 0, updated: 0, unchanged: 0 };
+  const today = isoDay(now());
+  for (let from = since; from <= today; from = nextQuarter(from)) {
+    const to = minDay(dayBefore(nextQuarter(from)), today);
+    let chunk: Recall[] | undefined;
+    for (let attempt = 1; !chunk; attempt++) {
+      try {
+        chunk = await fetchCpscRecalls(from, fetchFn, to);
+      } catch (error) {
+        if (attempt >= 4) throw error;
+        await wait(attempt * 5_000);
+      }
     }
+    const r = await recalls.upsert(chunk, { reindex: true });
+    total.fetched += chunk.length;
+    total.added += r.added.length;
+    total.updated += r.updated.length;
+    total.unchanged += r.unchanged;
   }
-  const r = await recalls.upsert(all, { reindex: true });
-  return {
-    fetched: all.length,
-    added: r.added.length,
-    updated: r.updated.length,
-    unchanged: r.unchanged,
-  };
+  return total;
 }
+
+/** "2024-02-10" -> "2024-04-01": the first day of the next calendar quarter. */
+function nextQuarter(day: string): string {
+  const d = new Date(`${day}T00:00:00Z`);
+  const month = Math.floor(d.getUTCMonth() / 3) * 3 + 3;
+  return isoDay(new Date(Date.UTC(d.getUTCFullYear(), month, 1)));
+}
+
+function dayBefore(day: string): string {
+  return isoDay(new Date(Date.parse(`${day}T00:00:00Z`) - 24 * 60 * 60 * 1000));
+}
+
+const minDay = (a: string, b: string) => (a < b ? a : b);
 
 /**
  * One-time load of EVERY child-seat recall into the cache (about 150 recalls since 1967). The daily sync

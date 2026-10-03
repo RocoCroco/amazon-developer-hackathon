@@ -71,8 +71,10 @@ describe('agent over a real MCP connection', () => {
       'get_alerts',
       'get_remedy',
       'list_items',
+      'recent_allergen_recalls',
       'remove_item',
       'resolve_alert',
+      'update_allergies',
       'update_item',
     ]);
     const lastCall = llm.calls[3]!;

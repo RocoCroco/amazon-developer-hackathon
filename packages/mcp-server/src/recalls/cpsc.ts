@@ -105,13 +105,20 @@ export type FetchLike = (
   url: string,
 ) => Promise<{ ok: boolean; status: number; json(): Promise<unknown> }>;
 
-/** Fetch CPSC recalls published on/after `since` (YYYY-MM-DD). `fetchFn` is injectable for tests. */
+/**
+ * Fetch CPSC recalls with a recall date in [since, until] (YYYY-MM-DD; until optional). `fetchFn` is injectable
+ * for tests. We filter on RecallDate: since 2026-10-03 the API answers HTTP 503 to every LastPublishDate
+ * query while RecallDate queries work (FRICTION_LOG F18). Revisions of old recalls are missed; new ones are not.
+ */
 export async function fetchCpscRecalls(
   since: string,
   fetchFn: FetchLike = (url) => fetch(url),
+  until?: string,
 ): Promise<Recall[]> {
-  const url = `${BASE_URL}?format=json&LastPublishDateStart=${encodeURIComponent(since)}`;
-  const res = await fetchFn(url);
+  const range =
+    `RecallDateStart=${encodeURIComponent(since)}` +
+    (until ? `&RecallDateEnd=${encodeURIComponent(until)}` : '');
+  const res = await fetchFn(`${BASE_URL}?format=json&${range}`);
   if (!res.ok) throw new Error(`CPSC API returned HTTP ${res.status}`);
   const body = (await res.json()) as CpscRecall[];
   return body.map(fromCpsc);

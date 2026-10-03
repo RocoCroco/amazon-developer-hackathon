@@ -64,8 +64,10 @@ describe('MCP server over Streamable HTTP', () => {
       'get_alerts',
       'get_remedy',
       'list_items',
+      'recent_allergen_recalls',
       'remove_item',
       'resolve_alert',
+      'update_allergies',
       'update_item',
     ]);
     await client.close();

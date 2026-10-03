@@ -123,13 +123,13 @@ describe('syncFeed (incremental fetch)', () => {
 });
 
 describe('real feeds use the incremental parameters', () => {
-  it('CPSC feed asks for LastPublishDateStart=since', async () => {
+  it('CPSC feed asks for recalls dated in [since, until] (LastPublishDate queries fail since 2026-10-03)', async () => {
     let url = '';
     await cpscFeed(async (u) => {
       url = u;
       return { ok: true, status: 200, json: async () => [] };
     }).fetchSince('2026-09-28', '2026-10-02');
-    expect(url).toContain('LastPublishDateStart=2026-09-28');
+    expect(url).toContain('RecallDateStart=2026-09-28&RecallDateEnd=2026-10-02');
   });
 
   it('openFDA feed asks for report_date in [since, until] using compact dates', async () => {

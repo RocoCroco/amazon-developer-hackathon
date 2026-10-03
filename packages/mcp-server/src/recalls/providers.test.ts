@@ -9,7 +9,12 @@ import { fromCpsc, type CpscRecall } from './cpsc.js';
 import { nhtsaFlatFeed } from './flatfile.js';
 import { parseFlatFile, type NhtsaVehicleResult } from './nhtsa.js';
 import { StaticRecallProvider, type RecallProvider } from './provider.js';
-import { CompositeRecallProvider, NhtsaVehicleProvider, StoreRecallProvider } from './providers.js';
+import {
+  CompositeRecallProvider,
+  NhtsaVehicleProvider,
+  OpenFdaProvider,
+  StoreRecallProvider,
+} from './providers.js';
 import type { Recall } from './types.js';
 
 const fixture = (name: string, encoding: BufferEncoding = 'utf8') =>
@@ -184,5 +189,45 @@ describe('CompositeRecallProvider.search', () => {
       name: 'x',
     });
     expect(ok.unavailable).toEqual([]);
+  });
+});
+
+describe('OpenFdaProvider (live openFDA lookup by brand)', () => {
+  const undeclared = (JSON.parse(fixture('openfda-food-undeclared.json')) as { results: unknown[] })
+    .results;
+
+  it('searches food and drug reports for the brand in the description or the firm, recent years only', async () => {
+    const urls: string[] = [];
+    const provider = new OpenFdaProvider(
+      async (url) => {
+        urls.push(url);
+        return url.includes('/food/')
+          ? { ok: true, status: 200, json: async () => ({ results: undeclared }) }
+          : { ok: false, status: 404, json: async () => ({}) }; // openFDA: nothing found
+      },
+      60_000,
+      () => Date.parse('2026-10-03T12:00:00Z'),
+    );
+    const out = await provider.candidates({ name: 'ice cream sandwiches', brand: "Mercer's" });
+    expect(urls).toHaveLength(2);
+    expect(urls[0]).toContain("/food/enforcement.json?search=(product_description:%22Mercer's%22");
+    expect(urls[0]).toContain(
+      "+recalling_firm:%22Mercer's%22)+AND+report_date:[20210101+TO+20261003]",
+    );
+    expect(urls[1]).toContain('/drug/enforcement.json');
+    expect(out.some((r) => r.brands.includes("Mercer's"))).toBe(true);
+
+    await provider.candidates({ name: 'x', brand: "Mercer's" });
+    expect(urls).toHaveLength(2); // cached
+    expect(await provider.candidates({ name: 'x' })).toEqual([]); // no brand, no lookup
+  });
+
+  it('fails loudly on a server error, so the check can say the source is down', async () => {
+    const provider = new OpenFdaProvider(async () => ({
+      ok: false,
+      status: 500,
+      json: async () => ({}),
+    }));
+    await expect(provider.candidates({ name: 'x', brand: 'Heinz' })).rejects.toThrow(/500/);
   });
 });

@@ -2,6 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { Alert } from './alerts.js';
 import { checkItems, recordAlerts } from './household-check.js';
+import { allergiesHit, allergyNote, type Allergy } from './matcher/allergens.js';
 import { buildRemedy } from './remedy.js';
 import { reply, type ToolContext } from './tool-common.js';
 import { severityRank } from './recalls/severity.js';
@@ -14,7 +15,12 @@ const plural = (n: number, one: string, many = `${one}s`) =>
   `${spokenCount(n)} ${n === 1 ? one : many}`;
 
 /** The alert as the assistant and the UI see it. */
-const alertView = (a: Alert) => ({
+const recallText = (a: Alert) => `${a.recall.hazard} ${a.recall.title}`;
+/** True when a food recall's undeclared allergen is one the family is allergic to. */
+const hitsAllergy = (a: Alert, allergies: Allergy[]) =>
+  allergiesHit(recallText(a), allergies).length > 0;
+
+const alertView = (a: Alert, allergies: Allergy[] = []) => ({
   alert_id: a.id,
   item_id: a.itemId,
   item: a.itemName,
@@ -27,7 +33,13 @@ const alertView = (a: Alert) => ({
   source: a.recall.source,
   question: a.question,
   created_at: a.createdAt,
+  ...withAllergy(a, allergies),
 });
+
+function withAllergy(a: Alert, allergies: Allergy[]) {
+  const note = allergyNote(recallText(a), allergies);
+  return note ? { allergy_note: note, allergy_alert: hitsAllergy(a, allergies) } : {};
+}
 
 export function registerAlertTools(server: McpServer, ctx: ToolContext): void {
   server.registerTool(
@@ -49,6 +61,7 @@ export function registerAlertTools(server: McpServer, ctx: ToolContext): void {
         );
       }
       const items = all.slice(0, MAX_ITEMS_PER_CHECK);
+      const allergies = await ctx.store.getAllergies(ctx.householdId);
       const outcomes = await checkItems(items, ctx.recalls, ctx.confirmer);
       const { all: touched } = await recordAlerts(ctx.alertStore, ctx.householdId, outcomes, {
         supersede: true,
@@ -97,6 +110,12 @@ export function registerAlertTools(server: McpServer, ctx: ToolContext): void {
             ),
           );
         }
+      } else if (needInfo.some((a) => hitsAllergy(a, allergies))) {
+        // A possible food recall with an allergen the family must avoid comes first.
+        const urgent = needInfo.find((a) => hitsAllergy(a, allergies))!;
+        parts.push(
+          `Your ${urgent.itemName} may be part of a food recall. ${allergyNote(recallText(urgent), allergies)} ${urgent.question ?? ''}`.trim(),
+        );
       } else if (needInfo.length > 0) {
         parts.push(`I checked ${plural(items.length, 'item')}.`);
         parts.push(`I need one more detail to check ${plural(needInfo.length, 'item')}.`);
@@ -122,8 +141,8 @@ export function registerAlertTools(server: McpServer, ctx: ToolContext): void {
               : 'clear',
         ...(down.length ? { unavailable: down } : {}),
         checked: items.length - unchecked.length,
-        recalled: recalled.map(alertView),
-        need_info: needInfo.map(alertView),
+        recalled: recalled.map((a) => alertView(a, allergies)),
+        need_info: needInfo.map((a) => alertView(a, allergies)),
         unchecked: unchecked.map((i) => ({ item_id: i.id, item: i.name })),
         skipped: all.length - items.length,
       });
@@ -140,17 +159,27 @@ export function registerAlertTools(server: McpServer, ctx: ToolContext): void {
       annotations: { readOnlyHint: true },
     },
     async () => {
-      const alerts = await ctx.alertStore.listAlerts(ctx.householdId, 'open');
+      const allergies = await ctx.store.getAllergies(ctx.householdId);
+      // Most severe first, but a food recall that hits a family allergy jumps the queue.
+      const alerts = (await ctx.alertStore.listAlerts(ctx.householdId, 'open')).sort(
+        (x, y) => Number(hitsAllergy(y, allergies)) - Number(hitsAllergy(x, allergies)),
+      );
       if (alerts.length === 0) {
         return reply('You have no open recall alerts.', { count: 0, alerts: [] });
       }
       const top = alerts[0]!;
       const recalled = alerts.filter((a) => a.kind === 'recalled').length;
+      const note = allergyNote(recallText(top), allergies);
       const summary =
         top.kind === 'recalled'
-          ? `You have ${plural(recalled, 'recall alert')}. The most urgent is your ${top.itemName}. ${firstSentence(top.recall.hazard || top.recall.title)} Want me to walk you through the fix?`
-          : `I still need one detail to check your ${top.itemName}. ${top.question ?? ''}`.trim();
-      return reply(summary, { count: alerts.length, alerts: alerts.map(alertView) });
+          ? `You have ${plural(recalled, 'recall alert')}. The most urgent is your ${top.itemName}. ${firstSentence(top.recall.hazard || top.recall.title)}${note ? ` ${note}` : ''} Want me to walk you through the fix?`
+          : hitsAllergy(top, allergies)
+            ? `Your ${top.itemName} may be part of a food recall. ${note} ${top.question ?? ''}`.trim()
+            : `I still need one detail to check your ${top.itemName}. ${top.question ?? ''}`.trim();
+      return reply(summary, {
+        count: alerts.length,
+        alerts: alerts.map((a) => alertView(a, allergies)),
+      });
     },
   );
 
@@ -169,16 +198,18 @@ export function registerAlertTools(server: McpServer, ctx: ToolContext): void {
       if (!alert) {
         return reply("I couldn't find that alert.", { status: 'not_found' });
       }
+      const allergies = await ctx.store.getAllergies(ctx.householdId);
       if (alert.kind !== 'recalled') {
+        const note = allergyNote(recallText(alert), allergies);
         return reply(
-          `I am not sure yet that this recall covers your ${alert.itemName}. ${alert.question ?? ''}`.trim(),
-          { status: 'need_info', ...alertView(alert) },
+          `I am not sure yet that this recall covers your ${alert.itemName}.${note ? ` ${note}` : ''} ${alert.question ?? ''}`.trim(),
+          { status: 'need_info', ...alertView(alert, allergies) },
         );
       }
       const remedy = buildRemedy(alert);
       return reply(remedy.spoken, {
         status: 'remedy',
-        ...alertView(alert),
+        ...alertView(alert, allergies),
         steps: remedy.steps,
         options: remedy.options,
         stop_using: remedy.stopUsing,

@@ -6,7 +6,7 @@ const compact = (isoDate: string) => isoDate.replaceAll('-', '');
 
 /** CPSC: everything published since the date (the API has no upper bound). */
 export function cpscFeed(fetchFn?: FetchLike): Feed {
-  return { id: 'cpsc', fetchSince: (since) => fetchCpscRecalls(since, fetchFn) };
+  return { id: 'cpsc', fetchSince: (since, until) => fetchCpscRecalls(since, fetchFn, until) };
 }
 
 /** openFDA food or drug enforcement reports with report_date in the window. */
