@@ -3,7 +3,7 @@
 _Last updated: 2026-10-03_
 
 ## Current task
-Phase 11. T11.1 Open Source: the human chose an open recall data standard. Researching existing standards (GS1, OECD GlobalRecalls, EU Safety Gate, Health Canada, schema.org) before proposing a design in docs/open-recall-standard-research.md. Creating a public repo needs the human (B4).
+Phase 11. T11.1 Open Source: the human chose an open recall data standard. Research and design done: docs/open-recall-format.md. Creating a public repo needs the human (B4).
 
 ## Done recently
 - docs/impact.md (numbers for the pitch, sources in docs/sources.md section 3); text credit "Built on AWS · Made for Alexa+" under the panel title, deployed.
@@ -12,7 +12,7 @@ Phase 11. T11.1 Open Source: the human chose an open recall data standard. Resea
   they show real footage of the project working; no unlicensed music or third-party trademarks).
 
 ## Next step
-Write docs/open-recall-standard-research.md: existing recall formats (fields, licenses), gaps, proposed schema + normalizers (CPSC, NHTSA, openFDA). Then ask the human to create the public repo.
+Wait for the human on B4 (public repo for the Open Recall Format). Meanwhile, if continuing: draft `schema/orf.schema.json` (v0.1) and the CPSC normalizer in a local, unpublished folder next to this repo, following docs/open-recall-format.md section 3.
 
 ## Facts a fresh session needs
 - Simulator: https://6aqlg4s33zg7tgjhoqsetxjqyi0pctry.lambda-url.us-east-1.on.aws/ (stack `RecallGuardianStack`).

@@ -53,7 +53,7 @@ Problems met and solved: FRICTION_LOG.md (CPSC refusing AWS traffic, Transcribe'
 > "Create a new, additional open-source project or contribute to an existing public repository during the
 > hackathon window, alongside a primary track submission"
 
-**Status: not done yet.** Publishing this repo is not enough; it has to be a separate project (or a contribution
+**Chosen: the Open Recall Format**, an open, owner-side recall data format with converters for official feeds. Research and design: docs/open-recall-format.md. **Status: designed, not published yet.** Publishing this repo is not enough; it has to be a separate project (or a contribution
 to someone else's repository). Candidates, from things we built and that do not exist yet:
 
 1. **A tiny browser client for Amazon Transcribe streaming** (`eventstream.js` + `voice.js` + the presigner):

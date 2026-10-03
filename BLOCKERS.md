@@ -18,4 +18,5 @@
 - What: the rules (docs/rules.md) ask for "a new, additional open-source project or contribute to an existing public repository during the hackathon window". Making this repo public does not qualify.
 - Why it needs you: it is a product choice (which project, under whose GitHub account, published publicly).
 - Options (docs/challenges.md): (1) a small browser client for Amazon Transcribe streaming, (2) a US recall data normalizer (CPSC, NHTSA, openFDA), (3) a contribution to another repo (e.g. an MCP-on-Lambda example).
+- Update 2026-10-03: the human chose an open recall data standard. Research and design: docs/open-recall-format.md ("Open Recall Format"). Still needed from the human: OK to create a **public** GitHub repository (which account, name "open-recall-format"?), and OK on the licences (spec CC BY 4.0, code Apache-2.0). Until then the work happens locally, unpublished.
 - Blocks: T11.1 only.
