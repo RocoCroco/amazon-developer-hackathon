@@ -68,7 +68,9 @@ export function registerInventoryTools(
       title: 'Update a registered item',
       description:
         'Change details of a registered item, for example add the model number or the year once the ' +
-        'user finds out. Only the fields you pass are changed.',
+        'user finds out, or the brand once the user confirms a "do you mean ...?" suggestion (always call it ' +
+        'then: the item is only checked against recalls under the corrected brand). Only the fields you pass ' +
+        'are changed.',
       inputSchema: {
         item_id: z.string().describe('ID from add_item or list_items'),
         ...itemFields,

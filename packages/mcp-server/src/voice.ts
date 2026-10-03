@@ -76,7 +76,7 @@ export function spokenCheckSummary(item: Item, matches: ConfirmedMatch[]): strin
     if (options && options.length > 1) {
       return `Some ${what} models are recalled: ${spokenList(options)}. Is yours one of them? If you are not sure, the model number is usually on a sticker on the bottom or back.`;
     }
-    return `Some ${what} models are recalled, so I need your model number. It is usually on a sticker on the bottom or back; if you cannot find it, tell me roughly what year it is.`;
+    return `Some ${what} models are recalled, so I need your model number. It is usually on a sticker on the bottom or back.`;
   }
   return `There may be a recall for your ${what}, and I need one more detail to be sure. ${question}`;
 }

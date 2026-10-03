@@ -176,11 +176,15 @@ async function brandHeardRight(saved: StoredItem, ctx: ToolContext) {
   const { recalls } = await searchRecalls(ctx.recalls, saved);
   const suggestion = suggestBrands(saved.brand ?? '', recalls, saved.name);
   if (!suggestion) return undefined;
+  const [first] = suggestion.options ?? [];
   return {
     summary: `Just to be sure I heard the brand right: ${suggestion.question.replace(/^Do you mean/, 'do you mean')}`,
     status: 'need_info',
-    still_needed: ['brand', 'model'],
+    still_needed: ['brand'],
     options: suggestion.options,
+    // Spelled out for the assistant: saying "great, saved" without this call leaves the misheard brand in
+    // place, and the item is never checked against the recall that made us ask.
+    next_step: `If the user confirms, call update_item with item_id "${saved.id}" and brand "${first}" (that checks the recall). If they spell another brand, pass those letters as the brand.`,
   };
 }
 

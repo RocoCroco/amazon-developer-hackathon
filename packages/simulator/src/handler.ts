@@ -72,6 +72,9 @@ async function readJson(req: Request, maxBody: number): Promise<Record<string, u
   }
 }
 
+/** Longest text spoken outside a conversation (the voice preview in the settings). */
+const PREVIEW_CHARS = 100;
+
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 
@@ -200,15 +203,15 @@ export function createSimulatorHandler(
       if (!text) return json(400, { error: 'text is required' });
       const stored = await sessions.get(asString(body.sessionId));
       const used = stored?.speechChars ?? 0;
-      if (
-        !stored ||
-        used + text.length > sessionSpeechChars ||
-        !(await speechCap.tryUse(text.length))
-      ) {
+      // Without a conversation only a short preview (the voice picker) is spoken; both count against the day.
+      const allowed = stored
+        ? used + text.length <= sessionSpeechChars
+        : text.length <= PREVIEW_CHARS;
+      if (!allowed || !(await speechCap.tryUse(text.length))) {
         return json(429, { error: 'Voice budget used up; the browser voice takes over.' });
       }
-      await sessions.put({ ...stored, speechChars: used + text.length });
-      const speech = await options.speaker.synthesize(text);
+      if (stored) await sessions.put({ ...stored, speechChars: used + text.length });
+      const speech = await options.speaker.synthesize(text, asString(body.voice) || undefined);
       return new Response(Buffer.from(speech.audio), {
         status: 200,
         headers: { 'content-type': speech.contentType, 'cache-control': 'private, max-age=3600' },

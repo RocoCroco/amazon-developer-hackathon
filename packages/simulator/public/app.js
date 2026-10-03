@@ -14,6 +14,7 @@ const demoButton = $('#demo-recall');
 const speakToggle = $('#speak-toggle');
 const handsFreeToggle = $('#hands-free');
 const engineSelect = $('#engine');
+const voiceSelect = $('#voice');
 const menuButton = $('#menu-button');
 const settings = $('#settings');
 const inventory = $('#inventory');
@@ -423,7 +424,7 @@ async function speak(text, li) {
         const res = await fetch('/api/speak', {
           method: 'POST',
           headers: jsonHeaders,
-          body: JSON.stringify({ sessionId, text }),
+          body: JSON.stringify({ sessionId, text, voice: voiceSelect.value }),
         });
         if (res.ok) {
           const blob = await res.blob();
@@ -835,6 +836,17 @@ if (Recognition) {
     .catch(() => undefined);
 }
 
+const VOICE_PREVIEW = "Hi, I'm Alexa. I'll keep an eye on recalls for your family.";
+
+loadSetting('voice', (v) => {
+  if ([...voiceSelect.options].some((o) => o.value === v)) voiceSelect.value = v;
+});
+voiceSelect.addEventListener('change', () => {
+  saveSetting('voice', voiceSelect.value);
+  stopSpeaking();
+  void speak(VOICE_PREVIEW); // hear it at once
+});
+
 engineSelect.addEventListener('change', () => {
   saveSetting('engine', engineSelect.value);
   if (engineSelect.value === 'browser') microphone.close();
@@ -1002,6 +1014,7 @@ fetch('/api/config')
     config = c;
     seedButton.hidden = !c.demo;
     demoButton.hidden = !c.demo;
+    $('#voice-row').hidden = !c.speech; // the browser's own voice has no choice here
     setUpVoice(); // Transcribe may be available now
   })
   .catch(() => undefined);

@@ -8,7 +8,8 @@ export interface Speech {
 }
 
 export interface Speaker {
-  synthesize(text: string): Promise<Speech>;
+  /** `voice` is one of VOICES (e.g. "Ruth" or "Ruth (natural)"); unknown or missing -> the default. */
+  synthesize(text: string, voice?: string): Promise<Speech>;
 }
 
 const escapeXml = (s: string) =>
@@ -51,7 +52,27 @@ export function clipForSpeech(text: string, max = 600): string {
   return end > max / 2 ? cut.slice(0, end + 1) : `${cut.trimEnd()}.`;
 }
 
-/** Amazon Polly, neural voice, MP3, with an in-memory cache so repeated phrases cost nothing. */
+/**
+ * The US English Polly voices the page offers (adult voices only). "neural" costs $16 and "generative" $30
+ * per million characters (docs/costs.md); generative voices sound more natural.
+ */
+export const VOICES: Record<string, { id: string; engine: 'neural' | 'generative' }> = {
+  Joanna: { id: 'Joanna', engine: 'neural' },
+  Ruth: { id: 'Ruth', engine: 'neural' },
+  Danielle: { id: 'Danielle', engine: 'neural' },
+  Salli: { id: 'Salli', engine: 'neural' },
+  Kendra: { id: 'Kendra', engine: 'neural' },
+  Kimberly: { id: 'Kimberly', engine: 'neural' },
+  Matthew: { id: 'Matthew', engine: 'neural' },
+  Stephen: { id: 'Stephen', engine: 'neural' },
+  Gregory: { id: 'Gregory', engine: 'neural' },
+  Joey: { id: 'Joey', engine: 'neural' },
+  'Ruth (natural)': { id: 'Ruth', engine: 'generative' },
+  'Danielle (natural)': { id: 'Danielle', engine: 'generative' },
+  'Joanna (natural)': { id: 'Joanna', engine: 'generative' },
+};
+
+/** Amazon Polly, MP3, with an in-memory cache so repeated phrases cost nothing. */
 export class PollySpeaker implements Speaker {
   private readonly cache = new Map<string, Speech>();
 
@@ -61,16 +82,18 @@ export class PollySpeaker implements Speaker {
     private readonly maxEntries = 200,
   ) {}
 
-  async synthesize(text: string): Promise<Speech> {
+  async synthesize(text: string, voice?: string): Promise<Speech> {
+    const chosen = (voice && VOICES[voice]) ||
+      VOICES[this.voiceId] || { id: this.voiceId, engine: 'neural' };
     const ssml = toSsml(clipForSpeech(text));
-    const key = createHash('sha256').update(`${this.voiceId}|${ssml}`).digest('hex');
+    const key = createHash('sha256').update(`${chosen.id}|${chosen.engine}|${ssml}`).digest('hex');
     const hit = this.cache.get(key);
     if (hit) return hit;
 
     const res = await this.client.send(
       new SynthesizeSpeechCommand({
-        Engine: 'neural',
-        VoiceId: this.voiceId as never,
+        Engine: chosen.engine,
+        VoiceId: chosen.id as never,
         OutputFormat: 'mp3',
         TextType: 'ssml',
         Text: ssml,

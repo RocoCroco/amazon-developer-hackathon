@@ -83,6 +83,19 @@ describe('PollySpeaker', () => {
     });
   });
 
+  it('uses the voice chosen on the page, including the generative ones, and ignores unknown names', async () => {
+    const speaker = new PollySpeaker('Joanna', new PollyClient({ region: 'us-east-1' }));
+    await speaker.synthesize('Hello there.', 'Matthew');
+    await speaker.synthesize('Hello there.', 'Ruth (natural)');
+    await speaker.synthesize('Hello there.', 'Not A Voice');
+    const inputs = polly.commandCalls(SynthesizeSpeechCommand).map((c) => c.args[0].input);
+    expect(inputs.map((i) => [i.VoiceId, i.Engine])).toEqual([
+      ['Matthew', 'neural'],
+      ['Ruth', 'generative'],
+      ['Joanna', 'neural'], // the default
+    ]);
+  });
+
   it('answers a repeated phrase from the cache', async () => {
     const speaker = new PollySpeaker('Joanna', new PollyClient({ region: 'us-east-1' }));
     await speaker.synthesize('Hello there.');

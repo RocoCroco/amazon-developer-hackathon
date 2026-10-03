@@ -210,6 +210,9 @@ describe('a brand misheard by speech recognition (the human tester said "Aitjunz
     const added = await call('add_item', { name: '8-drawer dresser', brand: '8th June' });
     expect(added.data.status).toBe('need_info');
     expect(added.data.options).toEqual(['Aitjunz']);
+    // The assistant is told exactly what to do on "yes", so the corrected brand really gets checked.
+    expect(added.data.next_step).toContain(`item_id "${added.data.item_id}"`);
+    expect(added.data.next_step).toContain('brand "Aitjunz"');
     expect(added.summary).toBe(
       'Okay, I saved your 8th June 8-drawer dresser. Just to be sure I heard the brand right: do you mean ' +
         'Aitjunz, A-I-T-J-U-N-Z? If not, you can spell the brand for me, letter by letter.',

@@ -37,13 +37,14 @@ async function check(args: Record<string, unknown>) {
 
 describe('clarifying questions through the MCP tool (real recalls)', () => {
   describe('unknown model', () => {
-    it('asks for the sticker and offers the year as the way out', async () => {
+    it('asks for the sticker, and keeps the year in the details only', async () => {
       const { summary, data } = await check({ name: 'car seat', brand: 'Evenflo' });
       expect(data.status).toBe('need_info');
       expect(summary).not.toMatch(/is recalled/);
       expect(summary).toMatch(/model number/);
       expect(summary).toMatch(/sticker/);
-      expect(summary).toMatch(/roughly what year/);
+      expect(summary).not.toMatch(/year/); // no extra homework when they cannot find the model
+      expect(data.question).toMatch(/roughly what year/); // the year is still there if they offer it
       // Some are recalled, so the hard-to-find model number is worth looking for.
       expect(summary).toMatch(
         /^Some Evenflo car seat models are recalled, so I need your model number\./,

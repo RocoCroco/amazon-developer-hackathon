@@ -254,12 +254,17 @@ describe('abuse limits', () => {
     ).toBe(429);
   });
 
-  it('does not speak for a session it does not know', async () => {
-    const res = await call(handlerWith(), 'POST', '/api/speak', {
+  it('without a conversation, speaks only a short voice preview', async () => {
+    const preview = await call(handlerWith(), 'POST', '/api/speak', {
       sessionId: 'nobody',
-      text: 'Hello there.',
+      text: "Hi, I'm Alexa. I'll keep an eye on recalls for your family.",
     });
-    expect(res.status).toBe(429);
+    expect(preview.status).toBe(200);
+    const long = await call(handlerWith(), 'POST', '/api/speak', {
+      sessionId: 'nobody',
+      text: 'A long text that is not a preview at all. '.repeat(4),
+    });
+    expect(long.status).toBe(429);
   });
 
   it('answers 501 without a speaker, 413 for a huge message, and 400 for nonsense', async () => {
