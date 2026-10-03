@@ -13,6 +13,11 @@
   --scene-w: min(1672px, 100vw, 100vh * var(--photo-ratio));
   --scene-x: -50%;
   --photo-edge: #8a7864;
+  /* Where the photo starts (0 when it fills the width), and how far inside it the chat and the panel sit,
+     clear of its feathered edges. */
+  --photo-left: max(0px, (100vw - var(--scene-w)) / 2);
+  --inset-left: calc(var(--photo-left) + var(--scene-w) * 0.12);
+  --inset-right: calc(var(--photo-left) + var(--scene-w) * 0.1);
   color-scheme: light;
 }
 
@@ -182,7 +187,7 @@ button {
 
 .convo {
   position: absolute;
-  left: clamp(14px, 9vw, 150px);
+  left: var(--inset-left);
   top: clamp(10px, 3vh, 40px);
   bottom: clamp(230px, 48vh, 560px);
   width: min(540px, calc(100vw - 28px));
@@ -410,7 +415,7 @@ button {
 .panel {
   position: absolute;
   top: clamp(12px, 4vh, 44px);
-  right: clamp(14px, 3.2vw, 60px);
+  right: var(--inset-right);
   width: min(380px, calc(100vw - 28px));
   max-height: calc(100% - 150px);
   display: flex;
@@ -814,7 +819,7 @@ button {
 
 .hint {
   position: absolute;
-  left: clamp(14px, 9vw, 150px);
+  left: var(--inset-left);
   bottom: clamp(230px, 48vh, 560px);
   max-width: min(540px, calc(100vw - 28px));
   margin: 0;
@@ -836,7 +841,7 @@ button {
 .notice,
 .status {
   position: absolute;
-  left: clamp(14px, 9vw, 150px);
+  left: var(--inset-left);
   margin: 0;
   max-width: min(540px, calc(100vw - 28px));
   padding: 6px 12px;
@@ -866,7 +871,7 @@ button {
 
 .composer {
   position: absolute;
-  left: clamp(14px, 9vw, 150px);
+  left: var(--inset-left);
   bottom: clamp(18px, 7vh, 64px);
   width: min(540px, calc(100vw - 28px));
   display: flex;
