@@ -3,7 +3,7 @@
 _Last updated: 2026-10-03_
 
 ## Current task
-Phase 11. T11.1 Open Source: the human creates and uploads the repo themselves. The project lives OUTSIDE this repo at C:/Users/Roco/Documents/open-recall-format (not committed here). Done there: types, JSON Schema, JSON-LD context, vocab/*.json, converters for 7 sources (CPSC, NHTSA API + flat file, openFDA, Canada RSA, EU Safety Gate, RappelConso, UK OPSS), checker, CLI (convert/fetch/validate/check), examples, 75 tests green; live fetch from every source validated; whole Canadian file (34,168) valid. Left: spec/open-recall-format-0.1.md, spec/mappings.md, docs/schema-org-3229.md, README, LICENSE (Apache-2.0), spec/LICENSE (CC BY 4.0), NOTICE, fixtures/README (data licences), CONTRIBUTING, CHANGELOG, and the guide for the human at C:/Users/Roco/Documents/open-recall-format-GUIDE.md. Also deploy the NHTSA day-first date fix (commit 3e21b4b) with npm run deploy -w infra.
+Phase 11. T11.1 Open Source: Open Recall Format is built in C:/Users/Roco/Documents/open-recall-format (outside this repo, not committed here), with the human's guide at C:/Users/Roco/Documents/open-recall-format-GUIDE.md. Waiting for the human to upload it (B4). Credits at the bottom of the screen are deployed as text; logos load automatically once the human adds img/logo-aws and img/logo-alexa (svg or png), then embed + deploy.
 
 ## Done recently
 - docs/impact.md (numbers for the pitch, sources in docs/sources.md section 3); text credit "Built on AWS · Made for Alexa+" under the panel title, deployed.
@@ -12,7 +12,7 @@ Phase 11. T11.1 Open Source: the human creates and uploads the repo themselves. 
   they show real footage of the project working; no unlicensed music or third-party trademarks).
 
 ## Next step
-In C:/Users/Roco/Documents/open-recall-format: write spec/open-recall-format-0.1.md (normative rules for selectors and the checker, matching src/check.ts), then README and licences; run npx vitest run there; then write the GUIDE outside it.
+When the human has published the repo: optionally switch Recall Guardian's CPSC/NHTSA/openFDA adapters to the open-recall-format package (install from GitHub). When the human adds logo files to packages/simulator/public/img/: `node scripts/embed-ui.mjs`, `npm test`, `npm run deploy -w infra`, screenshot.
 
 ## Facts a fresh session needs
 - Simulator: https://6aqlg4s33zg7tgjhoqsetxjqyi0pctry.lambda-url.us-east-1.on.aws/ (stack `RecallGuardianStack`).

@@ -19,4 +19,5 @@
 - Why it needs you: it is a product choice (which project, under whose GitHub account, published publicly).
 - Options (docs/challenges.md): (1) a small browser client for Amazon Transcribe streaming, (2) a US recall data normalizer (CPSC, NHTSA, openFDA), (3) a contribution to another repo (e.g. an MCP-on-Lambda example).
 - Update 2026-10-03: the human chose an open recall data standard. Research and design: docs/open-recall-format.md ("Open Recall Format"). Still needed from the human: OK to create a **public** GitHub repository (which account, name "open-recall-format"?), and OK on the licences (spec CC BY 4.0, code Apache-2.0). Until then the work happens locally, unpublished.
+- Update 2026-10-03 (later): the human will create the repository and upload it themselves. Everything is ready outside this repo, with a step-by-step guide (licences explained, git commands, the comment for schema.org #3229, Devpost text) in `C:UsersRocoDocumentsopen-recall-format-GUIDE.md`. Waiting only on the upload.
 - Blocks: T11.1 only.
