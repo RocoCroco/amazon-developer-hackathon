@@ -2,12 +2,17 @@
 
 _Last updated: 2026-10-03_
 
-## State
-All tasks done except T7.2 (human: make repo public / share with judges, `[!]`, B2) and the Stretch items.
-Deployed and verified (`npm run e2e:deployed`); reserved concurrency applied (quota is 1000). 342 tests green; simulator UI redesigned (Phase 8) and deployed; fixed a null-field crash in the CPSC feed; secret scan clean (docs/secret-scan.md).
+## Current task
+Phase 9 (human feedback). T9.1 live panel update.
+
+## Done (within this phase)
+- Tasks T9.1–T9.15 added to TASKS.md.
+
+## Left
+- Everything in Phase 9. Deploy after groups A, B, C and give the human the SimulatorUrl.
+
+## Next step
+Implement T9.1–T9.3 in packages/simulator/public/app.js (+ tests in packages/simulator/src/ui.e2e.test.ts), run `npm test`, deploy (`cd infra && npm run deploy`).
 
 ## Human steps
-See docs/manual-checklist.md: voice check in Chrome, record video, flip repo public, fill Devpost.
-
-## Next step (if continuing)
-Optional stretch: S1 OAuth 2.1, S2 label photo, S3 pet food. Or a live openFDA lookup / larger tire+equipment backfill (docs/data-sources.md "Still not covered").
+docs/manual-checklist.md: voice check in Chrome, record video, flip repo public (T7.2), fill Devpost.
