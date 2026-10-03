@@ -75,11 +75,11 @@ Target: thin end-to-end slice (Phase 1) working by ~day 7 (Oct 8), then widen.
 - [x] T9.2 Chat scrolls: older messages stay reachable (scrollable transcript, fade only at the top edge). **Done when:** a browser test scrolls up to the first message.
 - [x] T9.3 No greeting on load (a real Alexa never speaks first). **Done when:** the transcript is empty on load (test). Then deploy A and share the URL.
 ### B. Visual polish (compare design/screenshots with design/mockups)
-- [ ] T9.4 Remove the cut-off bubble shadow; match the mockup bubbles.
-- [ ] T9.5 Background photo without zoom/upscaling (never wider than its natural 1672 px; letterbox filled with a blurred copy); higher-quality WebP.
-- [ ] T9.6 Cleaner glass panel (blur, subtle border, soft shadow), logo/title like the mockups.
-- [ ] T9.7 Settings button that opens a pop-up dialog (demo actions, speak replies, hands-free).
-- [ ] T9.8 Thinking = soft breathing blue glow over the ring of the lit photo (no photo swap); all ring transitions soft. **Done when:** screenshots reviewed at desktop + phone, browser tests updated and green. Then deploy B and share the URL.
+- [x] T9.4 Remove the cut-off bubble shadow; match the mockup bubbles.
+- [x] T9.5 Background photo without zoom/upscaling (never wider than its natural 1672 px; letterbox filled with a blurred copy); higher-quality WebP.
+- [x] T9.6 Cleaner glass panel (blur, subtle border, soft shadow), logo/title like the mockups.
+- [x] T9.7 Settings button that opens a pop-up dialog (demo actions, speak replies, hands-free).
+- [x] T9.8 Thinking = soft breathing blue glow over the ring of the lit photo (no photo swap); all ring transitions soft. **Done when:** screenshots reviewed at desktop + phone, browser tests updated and green. Then deploy B and share the URL.
 ### C. Voice
 - [ ] T9.9 Phonetic brand matching in the MCP server: heard brand compared by sound with brands in the recall data; Alexa confirms with spelling ("Do you mean Aitjunz, A-I-T-J-U-N-Z?"); the user can spell letter by letter. **Done when:** unit tests with realistic misrecognitions pass.
 - [ ] T9.10 Hands-free mode: continuous listening after one mic permission, wake word "Alexa", silence detection ends the request, paused while Alexa speaks, auto-restart when Chrome stops recognition; tap-to-talk fallback; clear message without speech recognition. **Done when:** browser tests with a stubbed recognizer pass.

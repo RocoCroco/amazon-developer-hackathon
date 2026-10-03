@@ -11,7 +11,7 @@ const seedButton = $('#demo-seed');
 const demoButton = $('#demo-recall');
 const speakToggle = $('#speak-toggle');
 const menuButton = $('#menu-button');
-const menu = $('#menu');
+const settings = $('#settings');
 const inventory = $('#inventory');
 const notice = $('#notice');
 const statusLine = $('#status');
@@ -26,29 +26,21 @@ let listening = false;
 let speaking = false;
 const knownAlerts = new Set();
 
-function setStatus(text) {
+let statusTimer = 0;
+
+/** A short-lived line above the input; it clears itself unless replaced. */
+function setStatus(text, ms = 7000) {
+  clearTimeout(statusTimer);
   statusLine.textContent = text;
+  if (text && ms) statusTimer = setTimeout(() => (statusLine.textContent = ''), ms);
 }
 
 // ---- the light ring ----------------------------------------------------------------------------------
-// idle = ring off, listening = lit ring, thinking = two photos alternate so it seems to spin,
-// speaking = the lit ring breathes with the voice.
-
-let thinkTimer = 0;
+// idle = ring off, listening = lit ring, thinking = the ring breathes in soft blue (CSS),
+// speaking = the lit ring follows the loudness of the voice.
 
 function updateRing() {
-  const state = listening ? 'listening' : speaking ? 'speaking' : busy ? 'thinking' : 'idle';
-  scene.dataset.ring = state;
-  if (state === 'thinking' && !thinkTimer) {
-    scene.dataset.think = '1';
-    thinkTimer = setInterval(() => {
-      scene.dataset.think = scene.dataset.think === '1' ? '2' : '1';
-    }, 170);
-  }
-  if (state !== 'thinking' && thinkTimer) {
-    clearInterval(thinkTimer);
-    thinkTimer = 0;
-  }
+  scene.dataset.ring = listening ? 'listening' : speaking ? 'speaking' : busy ? 'thinking' : 'idle';
 }
 
 let audioContext = null;
@@ -121,7 +113,9 @@ function bubble(kind, text, toolCalls = []) {
 // ---- household panel ---------------------------------------------------------------------------------------
 
 function firstSentence(text) {
-  const clean = String(text || '').replace(/\s+/g, ' ').trim();
+  const clean = String(text || '')
+    .replace(/\s+/g, ' ')
+    .trim();
   const end = clean.search(/[.!?](\s|$)/);
   return end === -1 ? clean : clean.slice(0, end + 1);
 }
@@ -179,13 +173,18 @@ function fillItem(li, item, alerts) {
   li.dataset.status = status;
   const row = li.querySelector('.item-row');
   row.dataset.expandable = String(status !== 'ok');
-  row.setAttribute('aria-label', `${row.textContent}: ${status === 'ok' ? 'no recall known' : status === 'recalled' ? 'recalled' : 'needs a detail'}`);
+  row.setAttribute(
+    'aria-label',
+    `${row.textContent}: ${status === 'ok' ? 'no recall known' : status === 'recalled' ? 'recalled' : 'needs a detail'}`,
+  );
 
   const body = li.querySelector('.detail-body');
   body.replaceChildren();
   if (status !== 'ok') {
     const text = document.createElement('div');
-    const model = [item.model && `Model ${item.model}`, item.year && String(item.year)].filter(Boolean).join(' · ');
+    const model = [item.model && `Model ${item.model}`, item.year && String(item.year)]
+      .filter(Boolean)
+      .join(' · ');
     if (model) {
       const small = document.createElement('span');
       small.className = 'model';
@@ -193,7 +192,10 @@ function fillItem(li, item, alerts) {
       text.append(small);
     }
     const sentence = document.createElement('p');
-    sentence.textContent = status === 'recalled' ? firstSentence(alert.hazard || alert.title) : alert.question || alert.title;
+    sentence.textContent =
+      status === 'recalled'
+        ? firstSentence(alert.hazard || alert.title)
+        : alert.question || alert.title;
     text.append(sentence);
     if (status === 'recalled' && alert.image_url) {
       const img = document.createElement('img');
@@ -232,7 +234,11 @@ function renderHousehold(items, alerts) {
       rows.set(item.item_id, entry);
       inventory.append(entry.li);
     }
-    fillItem(entry.li, item, alerts.filter((a) => a.item_id === item.item_id));
+    fillItem(
+      entry.li,
+      item,
+      alerts.filter((a) => a.item_id === item.item_id),
+    );
   }
   for (const [id, entry] of rows) {
     if (!seen.has(id)) {
@@ -340,7 +346,7 @@ let recognizer = null;
 function setListening(on) {
   listening = on;
   micButton.setAttribute('aria-pressed', String(on));
-  setStatus(on ? 'Listening… tap the microphone again when you are done.' : '');
+  setStatus(on ? 'Listening… tap the microphone again when you are done.' : '', 0);
   updateRing();
 }
 
@@ -440,34 +446,36 @@ form.addEventListener('submit', (event) => {
   void send(message);
 });
 
-// ---- the discreet demo menu (behind the chevron) ----------------------------------------------------------------
+// ---- settings: a pop-up dialog behind the chevron (voice options and the demo controls) ---------------------------
 
 function setMenu(open) {
-  menu.hidden = !open;
+  if (open && !settings.open) settings.showModal();
   menuButton.setAttribute('aria-expanded', String(open));
+  if (!open && settings.open) settings.close();
 }
 
-menuButton.addEventListener('click', (event) => {
-  event.stopPropagation();
-  setMenu(menu.hidden);
+menuButton.addEventListener('click', () => setMenu(true));
+settings.addEventListener('close', () => {
+  menuButton.setAttribute('aria-expanded', 'false');
+  menuButton.focus();
 });
-document.addEventListener('click', (event) => {
-  if (!menu.hidden && !menu.contains(event.target)) setMenu(false);
+settings.addEventListener('toggle', () => {
+  menuButton.setAttribute('aria-expanded', String(settings.open));
 });
-document.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape' && !menu.hidden) {
-    setMenu(false);
-    menuButton.focus();
-  }
+// A click on the dimmed area around the dialog closes it (Escape closes it natively).
+settings.addEventListener('click', (event) => {
+  if (event.target === settings) setMenu(false);
 });
 
 resetButton.addEventListener('click', async () => {
   setMenu(false);
   stopSpeaking();
   if (listening && recognizer) recognizer.abort();
-  await fetch('/api/reset', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ sessionId }) }).catch(
-    () => undefined,
-  );
+  await fetch('/api/reset', {
+    method: 'POST',
+    headers: jsonHeaders,
+    body: JSON.stringify({ sessionId }),
+  }).catch(() => undefined);
   sessionId = '';
   knownAlerts.clear();
   for (const entry of rows.values()) entry.li.remove();
@@ -480,7 +488,7 @@ resetButton.addEventListener('click', async () => {
 seedButton.addEventListener('click', async () => {
   setMenu(false);
   seedButton.disabled = true;
-  setStatus('Adding the sample family…');
+  setStatus('Adding the sample family…', 0);
   try {
     const res = await fetch('/api/demo/seed', {
       method: 'POST',
@@ -505,7 +513,7 @@ demoButton.addEventListener('click', async () => {
     return;
   }
   demoButton.disabled = true;
-  setStatus('Publishing a new recall and running the daily watcher…');
+  setStatus('Publishing a new recall and running the daily watcher…', 0);
   try {
     const res = await fetch('/api/demo/new-recall', {
       method: 'POST',

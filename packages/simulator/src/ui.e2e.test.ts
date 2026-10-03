@@ -92,7 +92,9 @@ describe('simulator web UI (real browser, real MCP server)', () => {
     await expect.poll(() => item.getAttribute('data-open'), poll).toBe('true');
     await hasText(item.locator('.detail'), 'Model H7131');
     await hasText(item.locator('.detail p'), 'overheat');
-    await expect.poll(() => item.locator('.detail img').getAttribute('src'), poll).toMatch(/^https:/);
+    await expect
+      .poll(() => item.locator('.detail img').getAttribute('src'), poll)
+      .toMatch(/^https:/);
     // The detail really unfolds (height grows), it is not just an attribute.
     await expect
       .poll(async () => (await item.locator('.detail').boundingBox())?.height ?? 0, poll)
@@ -141,27 +143,44 @@ describe('simulator web UI (real browser, real MCP server)', () => {
     await page.fill('#message', 'We got a Govee space heater.');
     await page.click('#send');
     await expect.poll(ring, poll).toBe('thinking');
-    const seen = new Set<string | null>();
-    for (let i = 0; i < 6; i++) {
-      seen.add(await page.locator('#scene').getAttribute('data-think'));
-      await page.waitForTimeout(100);
-    }
-    expect(seen.size).toBe(2); // the two thinking photos alternate
+    // Thinking is a soft breathing of the lit ring and its glow, not a swap between two photos.
+    const animation = (sel: string) =>
+      page.locator(sel).evaluate((el) => getComputedStyle(el).animationName);
+    expect(await animation('#scene .l-lit')).toBe('breathe-ring');
+    expect(await animation('#scene .glow')).toBe('breathe-glow');
+    expect(await page.locator('#scene img').count()).toBe(2);
     await expect.poll(ring, poll).toBe('idle');
     await page.close();
   }, 60_000);
 
-  it('keeps the demo controls behind the chevron and hides them when there are none', async () => {
+  it('opens the settings pop-up from the chevron; demo controls hide when there are none', async () => {
     const page = await browser.newPage();
     await page.goto(appUrl);
-    expect(await page.locator('#menu').isHidden()).toBe(true);
+    expect(await page.locator('#settings').isVisible()).toBe(false);
     await page.click('#menu-button');
-    expect(await page.locator('#menu').isVisible()).toBe(true);
+    expect(await page.locator('#settings').isVisible()).toBe(true);
+    expect(await page.locator('#menu-button').getAttribute('aria-expanded')).toBe('true');
     expect(await page.locator('#reset').isVisible()).toBe(true);
     expect(await page.locator('#speak-toggle').isVisible()).toBe(true);
     expect(await page.locator('#demo-seed').isHidden()).toBe(true); // this server has no demo controls
     await page.keyboard.press('Escape');
-    expect(await page.locator('#menu').isHidden()).toBe(true);
+    expect(await page.locator('#settings').isVisible()).toBe(false);
+    await expect
+      .poll(() => page.locator('#menu-button').getAttribute('aria-expanded'), poll)
+      .toBe('false');
+    // The close button works too.
+    await page.click('#menu-button');
+    await page.click('#settings .close');
+    expect(await page.locator('#settings').isVisible()).toBe(false);
+    await page.close();
+  }, 60_000);
+
+  it('never upscales the photo: at most its natural 1672 px wide on a large screen', async () => {
+    const page = await browser.newPage({ viewport: { width: 2200, height: 1000 } });
+    await page.goto(appUrl);
+    const box = await page.locator('#scene').boundingBox();
+    expect(box?.width).toBeLessThanOrEqual(1672.5);
+    expect(box!.width / box!.height).toBeCloseTo(1672 / 941, 2);
     await page.close();
   }, 60_000);
 
@@ -169,7 +188,9 @@ describe('simulator web UI (real browser, real MCP server)', () => {
     const page = await browser.newPage({ viewport: { width: 390, height: 780 } });
     await page.goto(appUrl);
     await talk(page, 'We got a Govee space heater.');
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
     expect(await page.locator('#composer').isVisible()).toBe(true);
     expect(await page.locator('#panel').isVisible()).toBe(true);
     const box = await page.locator('#composer').boundingBox();

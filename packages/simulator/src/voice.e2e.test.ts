@@ -159,6 +159,7 @@ describe('voice in the simulator (real browser, stubbed microphone and speakers)
 
     await page.click('#menu-button');
     await page.uncheck('#speak-toggle');
+    await page.keyboard.press('Escape'); // close the settings pop-up
     await type(page, 'Is it recalled?');
     expect(spoken).toHaveLength(1); // nothing more requested
     await page.close();

@@ -3,20 +3,41 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#0b1b3a" />
+    <meta name="theme-color" content="#2a2017" />
     <title>Recall Guardian · Alexa+ simulator</title>
     <link rel="icon" href="/img/logo.svg" type="image/svg+xml" />
-    <link rel="preload" as="image" href="/img/echo-off-1672.webp" imagesrcset="/img/echo-off-960.webp 960w, /img/echo-off-1672.webp 1672w" imagesizes="100vw" />
+    <link
+      rel="preload"
+      as="image"
+      href="/img/echo-off-1672.webp"
+      imagesrcset="/img/echo-off-960.webp 960w, /img/echo-off-1672.webp 1672w"
+      imagesizes="(max-width: 760px) 1400px, 1672px"
+    />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
     <main class="stage" id="stage">
-      <!-- The Echo Dot photos are stacked with identical framing; opacity changes move the light ring. -->
+      <!-- Wide screens: a blurred copy fills the space around the photo, which is never upscaled. -->
+      <div class="backdrop" aria-hidden="true"></div>
+      <!-- The Echo photos share one aspect-locked box, so the glow can sit exactly on the light ring. -->
       <div class="scene" id="scene" data-ring="idle" aria-hidden="true">
-        <img class="layer l-off" src="/img/echo-off-1672.webp" srcset="/img/echo-off-960.webp 960w, /img/echo-off-1672.webp 1672w" sizes="100vw" alt="" decoding="async" />
-        <img class="layer l-listening" src="/img/echo-listening-1672.webp" srcset="/img/echo-listening-960.webp 960w, /img/echo-listening-1672.webp 1672w" sizes="100vw" alt="" decoding="async" />
-        <img class="layer l-think1" src="/img/echo-thinking1-1672.webp" srcset="/img/echo-thinking1-960.webp 960w, /img/echo-thinking1-1672.webp 1672w" sizes="100vw" alt="" decoding="async" />
-        <img class="layer l-think2" src="/img/echo-thinking2-1672.webp" srcset="/img/echo-thinking2-960.webp 960w, /img/echo-thinking2-1672.webp 1672w" sizes="100vw" alt="" decoding="async" />
+        <img
+          class="layer l-off"
+          src="/img/echo-off-1672.webp"
+          srcset="/img/echo-off-960.webp 960w, /img/echo-off-1672.webp 1672w"
+          sizes="(max-width: 760px) 1400px, 1672px"
+          alt=""
+          decoding="async"
+        />
+        <img
+          class="layer l-lit"
+          src="/img/echo-listening-1672.webp"
+          srcset="/img/echo-listening-960.webp 960w, /img/echo-listening-1672.webp 1672w"
+          sizes="(max-width: 760px) 1400px, 1672px"
+          alt=""
+          decoding="async"
+        />
+        <div class="glow"></div>
       </div>
       <div class="scrim" aria-hidden="true"></div>
 
@@ -26,35 +47,117 @@
 
       <aside class="panel" id="panel" aria-label="Recall Guardian">
         <header class="panel-head">
-          <img class="logo" src="/img/logo.svg" alt="" width="40" height="44" />
+          <img class="logo" src="/img/logo.svg" alt="" width="46" height="50" />
           <h1>Recall Guardian</h1>
-          <button id="menu-button" class="chevron" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="menu" aria-label="Demo menu">
-            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          <button
+            id="menu-button"
+            class="chevron"
+            type="button"
+            aria-haspopup="dialog"
+            aria-expanded="false"
+            aria-controls="settings"
+            aria-label="Settings and demo controls"
+            title="Settings"
+          >
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+              <path
+                d="m6 9 6 6 6-6"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.4"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
           </button>
         </header>
-        <div id="menu" class="menu" role="menu" hidden>
-          <button id="demo-seed" type="button" role="menuitem" hidden>Load sample family</button>
-          <button id="demo-recall" type="button" role="menuitem" hidden>Simulate new recall</button>
-          <button id="reset" type="button" role="menuitem">Reset demo</button>
-          <label class="switch">
-            <input id="speak-toggle" type="checkbox" checked />
-            <span>Speak replies</span>
-          </label>
-        </div>
         <ul id="inventory" class="household" aria-label="Your household"></ul>
       </aside>
+
+      <dialog id="settings" class="settings" aria-labelledby="settings-title">
+        <form method="dialog" class="settings-form">
+          <header class="settings-head">
+            <h2 id="settings-title">Settings</h2>
+            <button class="close" value="close" aria-label="Close settings">
+              <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                <path
+                  d="M6 6l12 12M18 6 6 18"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.4"
+                  stroke-linecap="round"
+                />
+              </svg>
+            </button>
+          </header>
+
+          <fieldset>
+            <legend>Voice</legend>
+            <label class="switch">
+              <input id="speak-toggle" type="checkbox" checked />
+              <span class="track" aria-hidden="true"></span>
+              <span>Speak replies</span>
+            </label>
+            <label class="switch" id="hands-free-row" hidden>
+              <input id="hands-free" type="checkbox" />
+              <span class="track" aria-hidden="true"></span>
+              <span>Hands-free: say “Alexa” to talk</span>
+            </label>
+          </fieldset>
+
+          <fieldset>
+            <legend>Demo</legend>
+            <div class="actions">
+              <button id="demo-seed" type="button" hidden>Load sample family</button>
+              <button id="demo-recall" type="button" hidden>Simulate new recall</button>
+              <button id="reset" type="button" class="quiet">Reset demo</button>
+            </div>
+          </fieldset>
+          <p class="fineprint">
+            A simulation of Alexa+ for the Recall Guardian MCP server. Recalls come from CPSC, NHTSA
+            and openFDA.
+          </p>
+        </form>
+      </dialog>
 
       <p id="notice" class="notice" role="status" hidden></p>
       <p id="status" class="status" aria-live="polite"></p>
 
       <form id="composer" class="composer" autocomplete="off">
-        <button id="mic" type="button" class="mic" aria-pressed="false" aria-label="Talk to Alexa" title="Talk to Alexa">
-          <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="currentColor" d="M12 15a4 4 0 0 0 4-4V6a4 4 0 0 0-8 0v5a4 4 0 0 0 4 4Zm6-4a6 6 0 0 1-12 0H4a8 8 0 0 0 7 7.94V22h2v-3.06A8 8 0 0 0 20 11h-2Z" /></svg>
+        <button
+          id="mic"
+          type="button"
+          class="mic"
+          aria-pressed="false"
+          aria-label="Talk to Alexa"
+          title="Talk to Alexa"
+        >
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M12 15a4 4 0 0 0 4-4V6a4 4 0 0 0-8 0v5a4 4 0 0 0 4 4Zm6-4a6 6 0 0 1-12 0H4a8 8 0 0 0 7 7.94V22h2v-3.06A8 8 0 0 0 20 11h-2Z"
+            />
+          </svg>
         </button>
         <label class="sr-only" for="message">Message</label>
-        <input id="message" name="message" type="text" placeholder="Text to simulate your voice…" maxlength="500" />
+        <input
+          id="message"
+          name="message"
+          type="text"
+          placeholder="Text to simulate your voice…"
+          maxlength="500"
+        />
         <button id="send" type="submit" class="send" aria-label="Send">
-          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 19V5m0 0-6 6m6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+            <path
+              d="M12 19V5m0 0-6 6m6-6 6 6"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
         </button>
       </form>
     </main>

@@ -1,14 +1,18 @@
 :root {
-  --navy: #07173a;
-  --blue: #0a5cff;
-  --ink: #0b2540;
-  --muted: #5b6b82;
+  --navy: #0a1a3d;
+  --blue: #1a66ff;
+  --ink: #0e1f3a;
+  --muted: #56647a;
   --green: #2fbf5b;
   --red: #e5484d;
   --amber: #f5a524;
-  --glass: rgba(255, 255, 255, 0.78);
   --font: Inter, 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
-  color-scheme: dark;
+  /* The photos are 1672 x 941. Like the mockups, the whole photo is shown (fitted inside the window) and never
+     wider than its natural 1672 CSS px; a blurred copy fills the rest. */
+  --photo-ratio: 1.7768;
+  --scene-w: min(1672px, 100vw, 100vh * var(--photo-ratio));
+  --scene-x: -50%;
+  color-scheme: light;
 }
 
 * {
@@ -19,7 +23,7 @@ html,
 body {
   height: 100%;
   margin: 0;
-  background: #1a1410;
+  background: #2a2017;
   font-family: var(--font);
   -webkit-font-smoothing: antialiased;
 }
@@ -47,7 +51,7 @@ button {
   outline-offset: 2px;
 }
 
-/* ---- the stage: full-screen photo ------------------------------------------------------------- */
+/* ---- the stage: photo at natural size, blurred copy around it ------------------------------------------------ */
 
 .stage {
   position: relative;
@@ -57,103 +61,161 @@ button {
   color: #fff;
 }
 
-.scene {
+.backdrop {
   position: absolute;
-  inset: 0;
-  --pulse: 0.6;
+  inset: -40px;
+  background: url('/img/echo-backdrop-480.webp') center / cover no-repeat;
+  filter: blur(28px) brightness(0.92);
 }
 
-/* The four photos have identical framing: stacked, cover-fitted around the device. */
+.scene {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--scene-w);
+  aspect-ratio: 1672 / 941;
+  transform: translate(var(--scene-x), -50%);
+  --pulse: 0.6;
+  /* feathered edges, so on very wide screens the photo melts into its blurred copy */
+  -webkit-mask-image:
+    linear-gradient(to right, transparent, #000 4%, #000 96%, transparent),
+    linear-gradient(to bottom, transparent, #000 4%, #000 96%, transparent);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent, #000 4%, #000 96%, transparent),
+    linear-gradient(to bottom, transparent, #000 4%, #000 96%, transparent);
+  mask-composite: intersect;
+}
+
 .layer {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  object-position: 41% 55%;
-  opacity: 0;
-  transition: opacity 0.22s ease;
   user-select: none;
   pointer-events: none;
 }
 
-.l-off {
-  opacity: 1;
-}
-
-.scene[data-ring='listening'] .l-listening {
-  opacity: 1;
-}
-
-/* thinking: the two photos alternate quickly (JS toggles data-think) so the ring seems to spin */
-.scene[data-ring='thinking'] .l-think1 {
+/* The lit photo fades in and out over the dark one; every ring change is soft. */
+.l-lit {
   opacity: 0;
-}
-.scene[data-ring='thinking'][data-think='1'] .l-think1 {
-  opacity: 1;
-  transition-duration: 0.12s;
-}
-.scene[data-ring='thinking'][data-think='2'] .l-think2 {
-  opacity: 1;
-  transition-duration: 0.12s;
+  transition: opacity 0.5s ease;
 }
 
-/* speaking: the lit ring breathes; --pulse (0..1) follows the voice's loudness */
-.scene[data-ring='speaking'] .l-listening {
-  opacity: calc(0.3 + 0.7 * var(--pulse));
-  transition-duration: 0.08s;
-}
-.scene[data-ring='speaking'].fallback-pulse .l-listening {
-  animation: breathe 1.3s ease-in-out infinite;
+/* A soft blue light exactly over the ring (measured on the photo: x 25-58 %, y 49-56 %). */
+.glow {
+  position: absolute;
+  left: 22.5%;
+  width: 38.2%;
+  top: 45.5%;
+  height: 14%;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    rgba(90, 200, 255, 0.85),
+    rgba(40, 130, 255, 0.4) 55%,
+    transparent
+  );
+  filter: blur(12px);
+  mix-blend-mode: screen;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  pointer-events: none;
 }
 
-@keyframes breathe {
+.scene[data-ring='listening'] .l-lit {
+  opacity: 1;
+}
+.scene[data-ring='listening'] .glow {
+  opacity: 0.35;
+}
+
+/* thinking: the ring breathes slowly instead of spinning between two photos */
+.scene[data-ring='thinking'] .l-lit {
+  animation: breathe-ring 1.8s ease-in-out infinite;
+}
+.scene[data-ring='thinking'] .glow {
+  animation: breathe-glow 1.8s ease-in-out infinite;
+}
+
+/* speaking: brightness follows the loudness of the voice (--pulse, 0..1, smoothed in app.js) */
+.scene[data-ring='speaking'] .l-lit {
+  opacity: calc(0.45 + 0.55 * var(--pulse));
+  transition-duration: 0.12s;
+}
+.scene[data-ring='speaking'] .glow {
+  opacity: calc(0.7 * var(--pulse));
+  transition-duration: 0.12s;
+}
+.scene[data-ring='speaking'].fallback-pulse .l-lit {
+  animation: breathe-ring 1.3s ease-in-out infinite;
+}
+.scene[data-ring='speaking'].fallback-pulse .glow {
+  animation: breathe-glow 1.3s ease-in-out infinite;
+}
+
+@keyframes breathe-ring {
   0%,
   100% {
-    opacity: 0.35;
+    opacity: 0.3;
   }
   50% {
-    opacity: 1;
+    opacity: 0.95;
   }
 }
 
-/* soft gradients keep light text readable over bright areas of the photo */
+@keyframes breathe-glow {
+  0%,
+  100% {
+    opacity: 0.08;
+  }
+  50% {
+    opacity: 0.75;
+  }
+}
+
+/* a light wash keeps text readable over the bright parts of the photo */
 .scrim {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background:
-    linear-gradient(to bottom, rgba(7, 20, 45, 0.38), rgba(7, 20, 45, 0) 34%),
-    linear-gradient(to top, rgba(7, 20, 45, 0.5), rgba(7, 20, 45, 0) 30%);
+  background: linear-gradient(to top, rgba(20, 14, 8, 0.32), rgba(20, 14, 8, 0) 26%);
 }
 
-/* ---- conversation: floating bubbles ------------------------------------------------------------ */
+/* ---- conversation: floating bubbles, scrollable ------------------------------------------------------------- */
 
 .convo {
   position: absolute;
-  left: clamp(14px, 4vw, 72px);
-  top: clamp(14px, 6vh, 64px);
-  bottom: clamp(260px, 44vh, 520px);
-  width: min(560px, calc(100vw - 28px));
+  left: clamp(14px, 9vw, 150px);
+  top: clamp(10px, 3vh, 40px);
+  bottom: clamp(230px, 48vh, 560px);
+  width: min(540px, calc(100vw - 28px));
   display: flex;
 }
 
 .transcript {
   list-style: none;
   margin: 0;
-  padding: 0;
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 44px 10px 4px 0;
+  gap: 10px;
+  padding: 36px 14px 4px 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.45) transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.55) transparent;
   /* only the top edge fades; scrolling up brings older messages back */
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 44px);
-  mask-image: linear-gradient(to bottom, transparent 0, #000 44px);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 36px);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 36px);
+}
+
+.transcript::-webkit-scrollbar {
+  width: 6px;
+}
+.transcript::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.55);
 }
 
 /* new messages stack from the bottom, but the list still scrolls (justify-content: flex-end would not) */
@@ -162,11 +224,11 @@ button {
 }
 
 .bubble {
-  max-width: 82%;
-  padding: 12px 18px;
-  border-radius: 22px;
-  font-size: 1.02rem;
-  line-height: 1.4;
+  max-width: 76%;
+  padding: 10px 16px;
+  border-radius: 14px;
+  font-size: 0.97rem;
+  line-height: 1.38;
   color: #fff;
   animation: rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   overflow-wrap: anywhere;
@@ -174,19 +236,17 @@ button {
 
 .bubble.alexa {
   align-self: flex-start;
-  background: rgba(7, 23, 58, 0.93);
-  border-bottom-left-radius: 6px;
+  background: rgba(10, 26, 61, 0.95);
 }
 
 .bubble.user {
   align-self: flex-end;
   background: var(--blue);
-  border-bottom-right-radius: 6px;
 }
 
 .bubble.error {
   align-self: flex-start;
-  background: rgba(120, 22, 38, 0.94);
+  background: rgba(120, 22, 38, 0.95);
 }
 
 .bubble.proactive {
@@ -197,7 +257,7 @@ button {
   content: 'Alexa noticed something';
   display: block;
   margin-bottom: 2px;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -212,8 +272,11 @@ button {
 }
 
 .chip {
-  font: 11px/1.4 ui-monospace, Consolas, monospace;
-  color: #9fd2ff;
+  font:
+    11px/1.4 ui-monospace,
+    Consolas,
+    monospace;
+  color: #a9d4ff;
   background: rgba(127, 178, 255, 0.14);
   border: 1px solid rgba(127, 178, 255, 0.3);
   border-radius: 999px;
@@ -223,38 +286,33 @@ button {
 @keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(18px) scale(0.96);
+    transform: translateY(14px) scale(0.97);
   }
 }
 
-/* ---- Recall Guardian panel ----------------------------------------------------------------------- */
+/* ---- Recall Guardian panel: brand header on the photo, items in one glass card ------------------------------------ */
 
 .panel {
   position: absolute;
-  top: clamp(14px, 4vh, 40px);
-  right: clamp(14px, 3vw, 56px);
-  width: min(400px, calc(100vw - 28px));
-  max-height: calc(100% - 140px);
+  top: clamp(12px, 4vh, 44px);
+  right: clamp(14px, 3.2vw, 60px);
+  width: min(380px, calc(100vw - 28px));
+  max-height: calc(100% - 150px);
   display: flex;
   flex-direction: column;
+  gap: 10px;
   color: var(--ink);
-  background: var(--glass);
-  -webkit-backdrop-filter: blur(16px) saturate(1.2);
-  backdrop-filter: blur(16px) saturate(1.2);
-  border: 1px solid rgba(255, 255, 255, 0.55);
-  border-radius: 22px;
-  box-shadow: 0 14px 40px rgba(3, 10, 28, 0.3);
 }
 
 .panel-head {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 14px 12px 16px;
+  gap: 14px;
+  padding: 0 4px 0 10px;
 }
 
 .logo {
-  width: 40px;
+  width: 46px;
   height: auto;
   flex: none;
 }
@@ -262,7 +320,7 @@ button {
 .panel-head h1 {
   flex: 1;
   margin: 0;
-  font-size: 1.42rem;
+  font-size: 1.55rem;
   font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--navy);
@@ -282,89 +340,58 @@ button {
 }
 
 .chevron:hover {
-  background: rgba(7, 23, 58, 0.08);
+  background: rgba(255, 255, 255, 0.4);
 }
 
 .chevron[aria-expanded='true'] {
   transform: rotate(180deg);
 }
 
-.menu {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: 0 12px 8px;
-  padding: 8px;
-  border-radius: 14px;
-  background: rgba(7, 23, 58, 0.06);
-  animation: rise 0.25s ease both;
-}
-
-.menu button {
-  text-align: left;
-  padding: 9px 12px;
-  border-radius: 10px;
-  background: transparent;
-  color: var(--navy);
-  font-weight: 600;
-  font-size: 0.92rem;
-}
-
-.menu button:hover:not(:disabled) {
-  background: rgba(7, 23, 58, 0.1);
-}
-
-.menu button:disabled {
-  opacity: 0.5;
-  cursor: progress;
-}
-
-.switch {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
-  color: var(--navy);
-  font-weight: 600;
-  font-size: 0.92rem;
-  cursor: pointer;
-}
-
-.switch input {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--blue);
-}
-
 .household {
   list-style: none;
   margin: 0;
-  padding: 0 12px 12px;
+  padding: 6px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
   overflow-y: auto;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.36);
+  -webkit-backdrop-filter: blur(22px) saturate(1.5);
+  backdrop-filter: blur(22px) saturate(1.5);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow:
+    0 10px 30px rgba(30, 20, 10, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.household:empty {
+  padding: 14px 18px;
 }
 
 .household:empty::after {
-  content: 'Nothing registered yet.';
-  padding: 4px 8px 4px;
+  content: 'Nothing registered yet. Tell Alexa what you own.';
   color: var(--muted);
   font-size: 0.92rem;
 }
 
 .item {
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.6);
-  border: 1px solid rgba(7, 23, 58, 0.08);
+  border-radius: 13px;
   animation: slide-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  overflow: hidden;
+  transition: background 0.4s;
+}
+
+.item + .item {
+  margin-top: 2px;
+}
+
+.item[data-status='recalled'] {
+  background: rgba(255, 255, 255, 0.42);
 }
 
 @keyframes slide-in {
   from {
     opacity: 0;
-    transform: translateX(26px);
+    transform: translateX(22px);
   }
 }
 
@@ -373,40 +400,40 @@ button {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 13px 14px;
+  padding: 12px 14px;
   background: transparent;
   color: var(--ink);
   text-align: left;
-  font-size: 1rem;
-  font-weight: 500;
+  font-size: 0.98rem;
+  font-weight: 600;
+  border-radius: 13px;
 }
 
-.item-row[aria-expanded='false'][data-expandable='false'] {
+.item-row[data-expandable='false'] {
   cursor: default;
 }
 
 .dot {
-  position: relative;
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   flex: none;
   border-radius: 50%;
   background: var(--green);
-  box-shadow: 0 0 0 5px rgba(47, 191, 91, 0.2);
+  box-shadow: 0 0 0 5px rgba(47, 191, 91, 0.18);
   transition:
-    background 0.4s,
-    box-shadow 0.4s;
+    background 0.5s,
+    box-shadow 0.5s;
 }
 
 .item[data-status='recalled'] .dot {
   background: var(--red);
-  box-shadow: 0 0 0 5px rgba(229, 72, 77, 0.22);
-  animation: alarm 1.6s ease-in-out infinite;
+  box-shadow: 0 0 0 5px rgba(229, 72, 77, 0.2);
+  animation: alarm 1.8s ease-in-out infinite;
 }
 
 .item[data-status='question'] .dot {
   background: var(--amber);
-  box-shadow: 0 0 0 5px rgba(245, 165, 36, 0.24);
+  box-shadow: 0 0 0 5px rgba(245, 165, 36, 0.22);
 }
 
 .item.flip .dot {
@@ -415,19 +442,13 @@ button {
 
 @keyframes alarm {
   50% {
-    box-shadow: 0 0 0 9px rgba(229, 72, 77, 0.08);
+    box-shadow: 0 0 0 9px rgba(229, 72, 77, 0.06);
   }
 }
 
 @keyframes flip {
-  0% {
-    transform: scale(1);
-  }
   40% {
-    transform: scale(1.9);
-  }
-  100% {
-    transform: scale(1);
+    transform: scale(1.8);
   }
 }
 
@@ -437,14 +458,19 @@ button {
   overflow-wrap: anywhere;
 }
 
+/* the detail unfolds smoothly (grid rows 0fr -> 1fr) */
 .detail {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows 0.35s ease;
+  opacity: 0;
+  transition:
+    grid-template-rows 0.55s cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 0.45s ease;
 }
 
 .item[data-open='true'] .detail {
   grid-template-rows: 1fr;
+  opacity: 1;
 }
 
 .detail > div {
@@ -455,53 +481,224 @@ button {
 .detail-body {
   display: flex;
   gap: 12px;
-  padding: 0 14px 14px 44px;
-  font-size: 0.9rem;
-  line-height: 1.35;
+  padding: 0 14px 14px 42px;
+  font-size: 0.88rem;
+  line-height: 1.36;
+  color: #24324a;
 }
 
 .detail .model {
   display: block;
-  margin: -6px 0 6px;
+  margin: -6px 0 5px;
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 .detail img {
-  width: 92px;
-  height: 92px;
+  width: 88px;
+  height: 88px;
   flex: none;
-  object-fit: cover;
+  object-fit: contain;
   border-radius: 10px;
-  background: #d9dee6;
+  background: #fff;
 }
 
 .detail p {
   margin: 0;
 }
 
-/* ---- notices, status, composer ---------------------------------------------------------------- */
+/* ---- settings dialog --------------------------------------------------------------------------------------- */
+
+.settings {
+  width: min(420px, calc(100vw - 32px));
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 22px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.82);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  backdrop-filter: blur(24px) saturate(1.4);
+  box-shadow: 0 24px 60px rgba(20, 14, 8, 0.3);
+}
+
+.settings[open] {
+  animation: pop 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.settings::backdrop {
+  background: rgba(20, 14, 8, 0.28);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+}
+
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px 20px;
+}
+
+.settings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.settings h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: var(--navy);
+}
+
+.close {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(10, 26, 61, 0.06);
+  color: var(--navy);
+}
+
+.settings fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings legend {
+  margin-bottom: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.actions button {
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--navy);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.actions button.quiet {
+  background: rgba(10, 26, 61, 0.08);
+  color: var(--navy);
+}
+
+.actions button:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+
+.switch {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+/* visually replaced by .track, but still the real, focusable, clickable checkbox */
+.switch input {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 42px;
+  height: 24px;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.track {
+  position: relative;
+  width: 42px;
+  height: 24px;
+  flex: none;
+  border-radius: 12px;
+  background: rgba(10, 26, 61, 0.2);
+  transition: background 0.2s;
+  pointer-events: none;
+}
+
+.track::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s;
+}
+
+.switch input:checked + .track {
+  background: var(--blue);
+}
+
+.switch input:checked + .track::after {
+  transform: translateX(18px);
+}
+
+.switch input:focus-visible + .track {
+  outline: 3px solid #7fb2ff;
+  outline-offset: 2px;
+}
+
+.fineprint {
+  margin: 2px 0 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+/* ---- notices, status, composer ---------------------------------------------------------------------------- */
 
 .notice,
 .status {
   position: absolute;
-  left: clamp(14px, 4vw, 72px);
+  left: clamp(14px, 9vw, 150px);
   margin: 0;
-  max-width: min(560px, calc(100vw - 28px));
+  max-width: min(540px, calc(100vw - 28px));
   padding: 6px 12px;
   border-radius: 999px;
-  background: rgba(7, 23, 58, 0.78);
+  background: rgba(10, 26, 61, 0.8);
   font-size: 0.85rem;
   line-height: 1.3;
 }
 
 .notice {
-  bottom: calc(clamp(18px, 6vh, 56px) + 76px);
+  bottom: calc(clamp(18px, 7vh, 64px) + 70px);
   color: #ffe2a8;
 }
 
 .status {
-  bottom: calc(clamp(18px, 6vh, 56px) + 76px);
+  bottom: calc(clamp(18px, 7vh, 64px) + 70px);
   transition: opacity 0.3s;
 }
 
@@ -510,14 +707,14 @@ button {
 }
 
 .notice:not([hidden]) ~ .status:not(:empty) {
-  bottom: calc(clamp(18px, 6vh, 56px) + 116px);
+  bottom: calc(clamp(18px, 7vh, 64px) + 108px);
 }
 
 .composer {
   position: absolute;
-  left: clamp(14px, 4vw, 72px);
-  bottom: clamp(18px, 6vh, 56px);
-  width: min(560px, calc(100vw - 28px));
+  left: clamp(14px, 9vw, 150px);
+  bottom: clamp(18px, 7vh, 64px);
+  width: min(540px, calc(100vw - 28px));
   display: flex;
   align-items: center;
   gap: 10px;
@@ -526,20 +723,26 @@ button {
 .composer input {
   flex: 1;
   min-width: 0;
-  height: 52px;
+  height: 50px;
   padding: 0 18px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 16px;
-  background: rgba(40, 36, 32, 0.55);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.22);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  backdrop-filter: blur(14px) saturate(1.3);
   color: #fff;
   font: inherit;
   font-size: 1rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
 }
 
 .composer input::placeholder {
-  color: rgba(255, 255, 255, 0.78);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.composer input:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.8);
+  outline-offset: 0;
 }
 
 .composer input:disabled {
@@ -548,8 +751,8 @@ button {
 
 .mic,
 .send {
-  width: 52px;
-  height: 52px;
+  width: 46px;
+  height: 46px;
   flex: none;
   display: grid;
   place-items: center;
@@ -566,19 +769,23 @@ button {
 }
 
 .mic {
-  background: rgba(255, 255, 255, 0.86);
+  background: rgba(255, 255, 255, 0.85);
   color: var(--blue);
 }
 
 .mic[aria-pressed='true'] {
   background: #31d6a0;
   color: #04261b;
-  animation: breathe-btn 1s ease-in-out infinite;
+  animation: breathe-btn 1.2s ease-in-out infinite;
+}
+
+.mic[data-armed='true'] {
+  box-shadow: 0 0 0 3px rgba(49, 214, 160, 0.7);
 }
 
 .mic:disabled {
   background: rgba(255, 255, 255, 0.4);
-  color: rgba(7, 23, 58, 0.5);
+  color: rgba(10, 26, 61, 0.5);
   cursor: not-allowed;
 }
 
@@ -598,11 +805,19 @@ button {
   }
 }
 
-/* ---- phones ---------------------------------------------------------------------------------------- */
+/* ---- phones ------------------------------------------------------------------------------------------------- */
 
 @media (max-width: 760px) {
-  .layer {
-    object-position: 38% 62%;
+  :root {
+    /* a phone is too narrow to show the whole photo: fill the height and keep the Echo (ring centre at
+       41.6 % of the photo) in the middle */
+    --scene-w: min(1672px, max(100vw, 100vh * var(--photo-ratio)));
+    --scene-x: -41.6%;
+  }
+
+  .scene {
+    -webkit-mask-image: none;
+    mask-image: none;
   }
 
   .panel {
@@ -610,24 +825,37 @@ button {
     left: 10px;
     right: 10px;
     width: auto;
-    max-height: 38%;
+    max-height: 40%;
+    gap: 8px;
+  }
+
+  .panel-head {
+    padding: 6px 4px 6px 10px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.4);
+    -webkit-backdrop-filter: blur(18px);
+    backdrop-filter: blur(18px);
+  }
+
+  .logo {
+    width: 34px;
   }
 
   .panel-head h1 {
-    font-size: 1.15rem;
+    font-size: 1.2rem;
   }
 
   .convo {
     left: 10px;
-    top: 34%;
-    bottom: calc(env(safe-area-inset-bottom) + 190px);
+    top: 38%;
+    bottom: calc(env(safe-area-inset-bottom) + 84px);
     width: calc(100vw - 20px);
   }
 
   .bubble {
-    max-width: 88%;
+    max-width: 86%;
     font-size: 0.95rem;
-    padding: 10px 14px;
+    padding: 9px 14px;
   }
 
   .composer {
@@ -640,11 +868,15 @@ button {
   .status {
     left: 10px;
     max-width: calc(100vw - 20px);
-    bottom: calc(env(safe-area-inset-bottom) + 80px);
+    bottom: calc(env(safe-area-inset-bottom) + 74px);
   }
 
   .notice:not([hidden]) ~ .status:not(:empty) {
-    bottom: calc(env(safe-area-inset-bottom) + 122px);
+    bottom: calc(env(safe-area-inset-bottom) + 112px);
+  }
+
+  .detail-body {
+    padding-left: 14px;
   }
 
   .detail img {
@@ -655,7 +887,7 @@ button {
 
 @media (max-height: 560px) and (min-width: 761px) {
   .convo {
-    bottom: 150px;
+    bottom: 140px;
   }
 }
 
@@ -664,6 +896,7 @@ button {
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
 }

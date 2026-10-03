@@ -4,7 +4,11 @@ import { chromium } from 'playwright-core';
 const url = process.argv[2];
 const out = process.argv[3] ?? 'docs/images';
 const browser = await chromium.launch();
-for (const [name, viewport] of [['desktop', { width: 1440, height: 810 }], ['phone', { width: 390, height: 780 }]]) {
+for (const [name, viewport] of [
+  ['wide', { width: 1892, height: 890 }],
+  ['desktop', { width: 1440, height: 810 }],
+  ['phone', { width: 390, height: 780 }],
+]) {
   const page = await browser.newPage({ viewport });
   await page.goto(url);
   await page.waitForTimeout(1500);

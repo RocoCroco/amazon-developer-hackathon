@@ -61,7 +61,11 @@ async function connect(household: string) {
 describe('a recall source is down', () => {
   it('check_item says it could not reach CPSC instead of "no recalls"', async () => {
     const call = await connect('oUtAgEoUtAgEoUtAgEoUt001');
-    const res = await call('check_item', { name: 'dresser', brand: 'Aitjunz', model: 'LDQMFJ8D-BK' });
+    const res = await call('check_item', {
+      name: 'dresser',
+      brand: 'Aitjunz',
+      model: 'LDQMFJ8D-BK',
+    });
     expect(res.data.status).toBe('source_unavailable');
     expect(res.data.unavailable).toEqual(['CPSC']);
     expect(res.summary).toMatch(/couldn't reach the CPSC recall database/);
@@ -72,7 +76,9 @@ describe('a recall source is down', () => {
     const call = await connect('oUtAgEoUtAgEoUtAgEoUt002');
     const res = await call('add_item', { name: 'dresser', brand: 'Aitjunz', model: 'LDQMFJ8D-BK' });
     expect(res.data.item_id).toBeTruthy();
-    expect(res.summary).toMatch(/^Okay, I saved your Aitjunz LDQMFJ8D-BK dresser\. I couldn't reach/);
+    expect(res.summary).toMatch(
+      /^Okay, I saved your Aitjunz LDQMFJ8D-BK dresser\. I couldn't reach/,
+    );
     expect(res.summary).toMatch(/daily scan/);
   });
 

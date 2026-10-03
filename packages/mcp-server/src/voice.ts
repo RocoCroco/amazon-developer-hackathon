@@ -89,7 +89,8 @@ export function spokenPeriodMiss(item: Item, miss: PeriodMiss): string {
 
 /** "I couldn't reach the CPSC recall database just now, so I can't confirm ... yet." */
 export function spokenSourcesDown(item: Item, sources: string[], saved: boolean): string {
-  const which = sources.length === 1 ? `the ${sources[0]} recall database` : 'some recall databases';
+  const which =
+    sources.length === 1 ? `the ${sources[0]} recall database` : 'some recall databases';
   const later = saved
     ? " I'll check it again in the daily scan."
     : ' Please ask me again in a little while.';

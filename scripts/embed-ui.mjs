@@ -20,7 +20,11 @@ const assets = Object.fromEntries(
 for (const name of readdirSync('packages/simulator/public/img')) {
   const file = `packages/simulator/public/img/${name}`;
   if (name.endsWith('.webp')) {
-    assets[`/img/${name}`] = { contentType: 'image/webp', body: readFileSync(file).toString('base64'), base64: true };
+    assets[`/img/${name}`] = {
+      contentType: 'image/webp',
+      body: readFileSync(file).toString('base64'),
+      base64: true,
+    };
   } else if (name.endsWith('.svg')) {
     assets[`/img/${name}`] = { contentType: 'image/svg+xml', body: readFileSync(file, 'utf8') };
   }

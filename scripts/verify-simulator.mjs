@@ -133,11 +133,7 @@ if (shot) await page.screenshot({ path: shot });
 await page.click('#menu-button');
 await page.click('#reset');
 check(
-  await until(
-    async () => (await page.locator('#inventory .item').count()) === 0,
-    'reset',
-    30000,
-  ),
+  await until(async () => (await page.locator('#inventory .item').count()) === 0, 'reset', 30000),
   'reset empties the household',
 );
 await browser.close();

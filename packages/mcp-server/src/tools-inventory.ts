@@ -42,8 +42,11 @@ function stillNeeded(item: Item): { missing: string[]; next?: string } {
 }
 
 export function registerInventoryTools(
-  server: McpServer, ctx: ToolContext,
-  checkOnSave: (saved: StoredItem) => Promise<({ summary: string; status: string } & Record<string, unknown>) | undefined>,
+  server: McpServer,
+  ctx: ToolContext,
+  checkOnSave: (
+    saved: StoredItem,
+  ) => Promise<({ summary: string; status: string } & Record<string, unknown>) | undefined>,
 ): void {
   server.registerTool(
     'list_items',
