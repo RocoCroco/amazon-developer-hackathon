@@ -71,5 +71,5 @@ to someone else's repository). Candidates, from things we built and that do not 
 |---|---|
 | Tech Implementation | Real MCP server on Lambda (11 tools, spec 2025-11-25, stateless Streamable HTTP); matcher on 1,313 real recalls with a blind challenge set and 0 false "recalled" claims; outage-proof data path; 440+ automated tests including real-browser and deployed checks |
 | Design | Hands-free conversation like an Echo (wake word, follow-up, "thanks" ends it); Alexa asks only what matters (the model number only when some models are recalled); the household panel turns red with the product photo; voice-first answers |
-| Potential Impact | Verified need: about 6% of consumers act on a press-release recall, about 50% with direct notice (CPSC, docs/sources.md); covers what retailer emails cannot: gifts, second-hand items, cars, food and medicine, family allergies |
+| Potential Impact | Verified need: about 6% of consumers act on a press-release recall, about 50% with direct notice (CPSC, docs/sources.md); covers what retailer emails cannot: gifts, second-hand items, cars, food and medicine, family allergies. All numbers, with sources and safe phrasings: docs/impact.md |
 | Quality of the Idea | Turns the assistant into a guardian that speaks up unprompted; solves misheard brands in the server by sound; never says "no recalls" when it could not check |

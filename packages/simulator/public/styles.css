@@ -485,13 +485,27 @@ button {
   flex: none;
 }
 
-.panel-head h1 {
+.brand {
   flex: 1;
+  min-width: 0;
+}
+
+.panel-head h1 {
   margin: 0;
   font-size: 1.55rem;
   font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--navy);
+}
+
+/* A plain-text credit, not logos: third-party logos need permission. */
+.credit {
+  margin: 1px 0 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--navy);
+  opacity: 0.72;
 }
 
 .gear {
@@ -1050,6 +1064,10 @@ button {
 
   .panel-head h1 {
     font-size: 1.2rem;
+  }
+
+  .credit {
+    font-size: 0.7rem;
   }
 
   .convo {

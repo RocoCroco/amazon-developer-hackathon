@@ -45,6 +45,7 @@ Alexa never claims a recall it is not sure about: when a detail is missing it as
 |---|---|
 | [docs/architecture.md](docs/architecture.md) | Every component, a spoken turn end to end, the matcher pipeline, the data model, resilience, security |
 | [docs/challenges.md](docs/challenges.md) | How we meet the Alexa+ track, the AWS Builder and Open Source mini challenges, and the judging criteria |
+| [docs/impact.md](docs/impact.md) | The numbers for the pitch: the recall problem, recall volumes, reach, what direct notice could change, safe phrasings |
 | [docs/matcher-results.md](docs/matcher-results.md) | Matching quality on 1,313 real recalls, including a blind challenge set, with every failure mode |
 | [docs/data-sources.md](docs/data-sources.md) | CPSC, NHTSA and openFDA: endpoints, limits, quirks |
 | [docs/costs.md](docs/costs.md) | Cost per service and the spending guards |

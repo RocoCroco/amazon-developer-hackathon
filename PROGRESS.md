@@ -3,17 +3,16 @@
 _Last updated: 2026-10-03_
 
 ## Current task
-Phase 11 (submission polish). Open: T11.1 Open Source project (waiting for the human's choice, B4).
+Phase 11. T11.1 Open Source: the human chose an open recall data standard. Researching existing standards (GS1, OECD GlobalRecalls, EU Safety Gate, Health Canada, schema.org) before proposing a design in docs/open-recall-standard-research.md. Creating a public repo needs the human (B4).
 
 ## Done recently
+- docs/impact.md (numbers for the pitch, sources in docs/sources.md section 3); text credit "Built on AWS · Made for Alexa+" under the panel title, deployed.
 - Third voice test fixes (confirmed brands applied, no insisting, voice picker), second opinion live in the MCP server.
 - docs/architecture.md, docs/challenges.md, docs/rules.md (exact wording: edited promotional videos are fine if
   they show real footage of the project working; no unlicensed music or third-party trademarks).
 
 ## Next step
-If continuing: stretch S1 (per-household OAuth). Keep the CPSC copy fresh before judging if the daily sync from
-Lambda keeps failing: `npm run build && node scripts/backfill-cpsc-local.mjs 2026-09-01`. After the copy grows,
-`node scripts/build-vocabulary.mjs` refreshes the Transcribe vocabulary.
+Write docs/open-recall-standard-research.md: existing recall formats (fields, licenses), gaps, proposed schema + normalizers (CPSC, NHTSA, openFDA). Then ask the human to create the public repo.
 
 ## Facts a fresh session needs
 - Simulator: https://6aqlg4s33zg7tgjhoqsetxjqyi0pctry.lambda-url.us-east-1.on.aws/ (stack `RecallGuardianStack`).

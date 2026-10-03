@@ -49,3 +49,25 @@ in 2023).
 
 Safe phrasing: *"Amazon already protects what you buy on Amazon. Recall Guardian protects everything else in your
 home."*
+
+## 3. More figures (read 2026-10-03)
+
+Used in docs/impact.md, which also has the safe phrasings.
+
+- **Car seat registration:** Safe Kids Worldwide, "Car Seat Recalls: What Every Parent Needs to Know" (Sept 2015,
+  Harris Poll, 562 parents): 42% return the registration card; more than 6 million car seats recalled in 2014,
+  fewer than half repaired; NHTSA: 75% of recalled vehicles repaired.
+  https://www.safekids.org/sites/default/files/cps_study-2015_v8-for_web.pdf
+- **Pre-owned children's equipment:** C.S. Mott Children's Hospital National Poll on Children's Health, Vol. 43
+  Issue 3 (May 15 2023, 932 parents of children 0-7): 53% used pre-owned equipment; 63% find it hard to tell if
+  it is safe; 49% very likely to look up recalls.
+  https://www.newswise.com/pdf_docs/168364108247411_NPCH_vol43_issue3_PreOwnedChildEquip_FINAL.pdf
+- **Tip-overs:** CPSC 2022 Tip-Over Report (news release Feb 9 2023): 592 deaths 2000-2021, 81% children, 88% of
+  child deaths under 5; about 19,400 ED-treated injuries a year (2019-2021).
+- **Food allergy:** CDC NCHS, NHIS 2021: 6.2% of adults, 5.8% of children.
+  https://www.cdc.gov/nchs/pressroom/releases/20230126.html
+- **Alexa reach:** 600 million+ Alexa devices, 97% can run Alexa+ (Daniel Rausch, Jan 12 2026).
+  https://techcrunch.com/2026/01/12/amazon-says-97-of-its-devices-can-support-alexa
+- **Unfixed vehicle recalls:** CARFAX, one in five vehicles (2026), via Digital Dealer; re-check the primary
+  release before publishing.
+- **Recall volumes:** computed by us from the CPSC Recalls API, the NHTSA bulk file and openFDA (docs/impact.md §2).
