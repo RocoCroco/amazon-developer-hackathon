@@ -5,7 +5,7 @@
 - [ ] **Follow-up mode**: after "Alexa, ..." and her reply, the ring stays lit for about 8 seconds; say the next sentence without "Alexa". Say "thanks": the conversation ends and "Alexa" is needed again. Stay silent: it ends by itself.
 - [ ] **Speech engine** (Settings): compare "Amazon Transcribe" and "Browser" with your own voice on the same sentences (for example "We got a hand-me-down Chicco car seat and an Evenflo stroller"); note in FEEDBACK.md which one understands you better. Recognition is always US English, whatever the browser or Windows language.
 - [ ] **Misheard brand**: say "Alexa, we were gifted an eight-drawer dresser", then "It's an Aitjunz"; Alexa should ask "do you mean Aitjunz, A-I-T-J-U-N-Z?". Note what the recognizer wrote (it is shown in your bubble) and add it to FEEDBACK.md if it is a new variant.
-- [ ] **Firefox**: the mic is disabled with "Voice input needs Chrome or Edge", typing works.
+- [ ] **Firefox**: the notice says hands-free "Alexa" needs Chrome or Edge; tapping the mic still works (Amazon Transcribe), and typing works.
 - [ ] **Phone**: open the URL on a phone; check the layout, scrolling the chat, and the settings pop-up.
 - [ ] Polly voice: `POLLY_VOICE_ID` (default Joanna, neural, set on the simulator Lambda env); try Ruth/Kendra/Salli and pick the one that sounds most like Alexa.
 - [ ] (Optional) MCP Inspector against the deployed server: URL = `McpUrl` output; headers `Authorization: Bearer <demo key>` and `X-Household-Id: <22+ random base64url chars>`. Key: `MSYS_NO_PATHCONV=1 aws ssm get-parameter --name /recall-guardian/demo-key --with-decryption --region us-east-1 --query Parameter.Value --output text`.
