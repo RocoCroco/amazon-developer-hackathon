@@ -4,7 +4,7 @@ Our candidate for the **Open Source mini challenge** (docs/challenges.md): a sep
 this repo. This page is the research it rests on (read 2026-10-03) and the first design.
 
 **Status (2026-10-03): built.** The project lives outside this repository, in its own folder
-(`C:UsersRocoDocumentsopen-recall-format` on the build machine), ready for the human to publish as a new public
+(`../open-recall-format`, next to this repository on the build machine), ready for the human to publish as a new public
 GitHub repository: specification 0.1, JSON Schema, JSON-LD context, vocabularies, converters for seven sources (US
 CPSC, NHTSA API and bulk file, openFDA food/drug/device, Canada Recalls and Safety Alerts, EU Safety Gate, France
 RappelConso, UK OPSS), the reference checker, the `orf` CLI, 75 tests on real records, and a schema.org `ProductRecall`

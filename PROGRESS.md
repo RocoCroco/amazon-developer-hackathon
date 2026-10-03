@@ -3,7 +3,7 @@
 _Last updated: 2026-10-03_
 
 ## Current task
-Phase 11. T11.1 Open Source: Open Recall Format is built in C:/Users/Roco/Documents/open-recall-format (outside this repo, not committed here), with the human's guide at C:/Users/Roco/Documents/open-recall-format-GUIDE.md. Waiting for the human to upload it (B4). Credits at the bottom of the screen are deployed as text; logos load automatically once the human adds img/logo-aws and img/logo-alexa (svg or png), then embed + deploy.
+Phase 11. T11.1 Open Source: Open Recall Format is built in ../open-recall-format (outside this repo, not committed here), with the human's guide at ../open-recall-format-GUIDE.md. Waiting for the human to upload it (B4). Credits at the bottom of the screen are deployed as text; logos load automatically once the human adds img/logo-aws and img/logo-alexa (svg or png), then embed + deploy.
 
 ## Done recently
 - docs/impact.md (numbers for the pitch, sources in docs/sources.md section 3); text credit "Built on AWS · Made for Alexa+" under the panel title, deployed.
