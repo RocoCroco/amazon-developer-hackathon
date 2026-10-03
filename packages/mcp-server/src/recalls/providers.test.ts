@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { findMatches } from '../matcher/match.js';
 import { backfillChildSeats } from '../watcher.js';
 import { InMemoryRecallStore } from './cache.js';
-import { fromCpsc, type CpscRecall } from './cpsc.js';
+import { fetchWithin, fromCpsc, type CpscRecall } from './cpsc.js';
 import { nhtsaFlatFeed } from './flatfile.js';
 import { parseFlatFile, type NhtsaVehicleResult } from './nhtsa.js';
 import { StaticRecallProvider, type RecallProvider } from './provider.js';
@@ -229,5 +229,19 @@ describe('OpenFdaProvider (live openFDA lookup by brand)', () => {
       json: async () => ({}),
     }));
     await expect(provider.candidates({ name: 'x', brand: 'Heinz' })).rejects.toThrow(/500/);
+  });
+});
+
+describe('live lookups never hang a conversation', () => {
+  it('gives up on a server that does not answer, so the source counts as unavailable', async () => {
+    const { createServer } = await import('node:http');
+    const server = createServer(() => undefined); // accepts, never answers
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const { port } = server.address() as { port: number };
+    const started = Date.now();
+    await expect(fetchWithin(300)(`http://127.0.0.1:${port}/`)).rejects.toThrow();
+    expect(Date.now() - started).toBeLessThan(3_000);
+    server.closeAllConnections();
+    server.close();
   });
 });

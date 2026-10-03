@@ -485,17 +485,31 @@ speakToggle.addEventListener('change', () => {
 //            "thanks" / "that's all" / "stop" ends the conversation and goes back to waiting for "Alexa"
 
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-const SILENCE_MS = 1300;
+/** No new words for this long ends a request; after a sentence the recognizer marked final, less. */
+const SILENCE_MS = 1200;
+const FINAL_SILENCE_MS = 600;
 const WAKE_ONLY_MS = 7000;
 const FOLLOW_UP_MS = 8000;
-const WAKE_WORD = /\b(alexa|alexia|alexis|elexa|alecsa)\b[,.!?]?/i;
+const WAKE_WORD = /\b(alexa|alexia|alexis|alex|elexa|alecsa)\b[,.!?]?/i;
+// Sounds that are not words ("Mhm", "uh"): they neither keep a request open nor get sent.
+const FILLERS = /\b(m+h+m+|m{2,}|h+m+|uh+|um+|uhm+|erm+|ah+)\b[.,!?]?/gi;
+
+/** "Mhm. We got a dresser, uh, yesterday. Mhm" -> "We got a dresser, yesterday." */
+function withoutFillers(text) {
+  return text
+    .replace(FILLERS, ' ')
+    .replace(/\s+([.,!?])/g, '$1')
+    .replace(/^[\s.,!?]+/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 const END_PHRASES =
   /^(thanks|thank you|thank you alexa|that's all|that is all|that's it|stop|cancel|never ?mind|no thanks|no thank you|nothing|bye|goodbye|good bye)[.!]?$/i;
 
 /** "Alexa, we got a dresser" -> "We got a dresser". */
 function afterWakeWord(text) {
   const parts = text.split(new RegExp(WAKE_WORD.source, 'gi'));
-  const rest = (parts.at(-1) ?? '').trim();
+  const rest = (parts.at(-1) ?? '').replace(/^[\s,.!?]+/, '').trim();
   return rest.charAt(0).toUpperCase() + rest.slice(1);
 }
 
@@ -518,7 +532,8 @@ const voice = {
   wakeEngine: null,
   engine: null,
   liveBubble: null,
-  text: '',
+  text: null,
+  final: false,
   fromWake: false,
   silenceTimer: 0,
   followTimer: 0,
@@ -581,12 +596,12 @@ const voice = {
     this.wakeEngine = engine;
     engine
       .start({
-        onText: (text) => {
+        onText: (text, info) => {
           this.failures = 0;
           if (this.mode === 'wake' && WAKE_WORD.test(text))
             void this.beginRequest({ fromWake: true, text });
           else if (this.mode === 'request' && this.engine === engine)
-            this.heard(afterWakeWord(text));
+            this.heard(afterWakeWord(text), info);
         },
         onError: (error) => {
           if (error === 'not-allowed' || error === 'service-not-allowed') {
@@ -621,7 +636,7 @@ const voice = {
   /** Starts recording: after the wake word, after a tap on the mic, or (followup) after Alexa's reply. */
   async beginRequest({ fromWake = false, text = '', followUp = false } = {}) {
     clearTimeout(this.followTimer);
-    this.text = '';
+    this.text = null; // so the first words, even none, start the silence timer
     this.fromWake = fromWake;
     stopSpeaking();
     this.setMode(followUp ? 'followup' : 'request');
@@ -643,7 +658,8 @@ const voice = {
     try {
       await engine.start({
         preroll: fromWake,
-        onText: (t) => this.engine === engine && this.heard(fromWake ? afterWakeWord(t) : t),
+        onText: (t, info) =>
+          this.engine === engine && this.heard(fromWake ? afterWakeWord(t) : t, info),
         onError: (message) => {
           if (this.engine !== engine) return;
           setStatus(
@@ -669,21 +685,30 @@ const voice = {
     }
   },
 
-  /** New words: shown live in the user's bubble; a moment of silence ends the request. */
-  heard(text) {
+  /**
+   * New words: shown live in the user's bubble. The request ends after a moment without NEW words (Transcribe
+   * repeats unchanged results while you are quiet, and noises like "mhm" do not count), sooner once the
+   * recognizer has marked the sentence final.
+   */
+  heard(raw, { final = false } = {}) {
     if (this.mode !== 'request' && this.mode !== 'followup') return;
+    const text = withoutFillers(raw);
+    const changed = text !== this.text;
+    if (!changed && !(final && !this.final)) return;
     if (text && this.mode === 'followup') {
       clearTimeout(this.followTimer);
       this.setMode('request');
     }
     this.text = text;
+    this.final = final;
     if (text) {
       if (!this.liveBubble) this.liveBubble = bubble('user live', '');
       this.liveBubble.querySelector('.text').textContent = text;
       scrollToEnd();
     }
     clearTimeout(this.silenceTimer);
-    this.silenceTimer = setTimeout(() => this.finish(), text ? SILENCE_MS : WAKE_ONLY_MS);
+    const wait = !text ? WAKE_ONLY_MS : final ? FINAL_SILENCE_MS : SILENCE_MS;
+    this.silenceTimer = setTimeout(() => this.finish(), wait);
   },
 
   /** The user stopped talking (or tapped the mic): send it, or end the conversation on "thanks". */
@@ -694,7 +719,7 @@ const voice = {
     const engine = this.engine;
     this.engine = null;
     engine?.abort();
-    const text = this.text.trim();
+    const text = (this.text ?? '').trim();
     const live = this.liveBubble;
     this.liveBubble = null;
     live?.classList.remove('live');

@@ -193,6 +193,40 @@ describe('Amazon Transcribe as the speech engine (fake socket and microphone)', 
     await page.close();
   }, 60_000);
 
+  it('ends the request about a second after the words stop, although Transcribe keeps repeating them', async () => {
+    const page = await open(false);
+    await page.click('#mic');
+    await expect.poll(() => sockets(page), poll).toBe(1);
+    await expect
+      .poll(async () => {
+        await page.evaluate(() => window.__mic());
+        return page.evaluate(() => window.__sockets.at(-1)!.sent.length);
+      }, poll)
+      .toBeGreaterThan(0);
+    const words = transcriptEvent('r1', 'We got a Govee space heater.', true);
+    const noise = transcriptEvent('r2', 'Mhm.', true);
+    // Like the real service while you are quiet: the same partial result again and again, plus a noise.
+    await page.evaluate(
+      ([w, n]) => {
+        window.__hear(w!);
+        let i = 0;
+        const timer = setInterval(() => {
+          window.__hear(i++ % 2 ? w! : n!);
+          if (i > 20) clearInterval(timer);
+        }, 200);
+      },
+      [words, noise],
+    );
+    const started = Date.now();
+    await expect.poll(() => page.locator('#transcript .bubble.user.live').count(), poll).toBe(0);
+    await expect.poll(() => page.locator('#transcript .bubble.user').count(), poll).toBe(1);
+    expect(Date.now() - started).toBeLessThan(3_000); // not the 45-second stream limit
+    expect(await page.locator('#transcript .bubble.user').textContent()).toBe(
+      'We got a Govee space heater.',
+    );
+    await page.close();
+  }, 60_000);
+
   it('offers the engine choice in Chrome, Transcribe first, and falls back to the browser recognizer', async () => {
     const page = await open(true);
     await page.click('#menu-button');

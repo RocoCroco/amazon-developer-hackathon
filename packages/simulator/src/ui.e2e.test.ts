@@ -167,6 +167,24 @@ describe('simulator web UI (real browser, real MCP server)', () => {
     await page.close();
   }, 60_000);
 
+  it('still shows that Alexa is thinking when the system asks for reduced motion (Windows animations off)', async () => {
+    const page = await browser.newPage({ reducedMotion: 'reduce' });
+    await page.goto(appUrl);
+    await page.route('**/api/chat', async (route) => {
+      await new Promise((r) => setTimeout(r, 1500));
+      await route.continue();
+    });
+    await page.fill('#message', 'We got a Govee space heater.');
+    await page.click('#send');
+    const dot = page.locator('#transcript .typing span').first();
+    await expect.poll(() => dot.count(), poll).toBe(1);
+    const css = (prop: string) =>
+      dot.evaluate((el, p) => getComputedStyle(el).getPropertyValue(p), prop);
+    expect(await css('animation-iteration-count')).toBe('infinite');
+    expect(await css('animation-duration')).toBe('2.4s');
+    await page.close();
+  }, 60_000);
+
   it('draws bubbles like a messaging app: a tail on the speaker side and a spring entrance', async () => {
     const page = await browser.newPage();
     await page.goto(appUrl);

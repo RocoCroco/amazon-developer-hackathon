@@ -1,5 +1,11 @@
 import type { Item } from '../matcher/match.js';
-import { type CpscRecall, type FetchLike, fromCpsc } from './cpsc.js';
+import {
+  type CpscRecall,
+  type FetchLike,
+  fetchWithin,
+  fromCpsc,
+  LOOKUP_TIMEOUT_MS,
+} from './cpsc.js';
 import type { Recall } from './types.js';
 
 /** Finds candidate recalls for an item (the matcher then decides which really match). */
@@ -42,7 +48,7 @@ export class CpscRecallProvider implements RecallProvider {
   private readonly cache = new Map<string, CacheEntry>();
 
   constructor(
-    private readonly fetchFn: FetchLike = (url) => fetch(url),
+    private readonly fetchFn: FetchLike = fetchWithin(LOOKUP_TIMEOUT_MS),
     private readonly ttlMs = 6 * 60 * 60 * 1000,
     private readonly now: () => number = Date.now,
   ) {}

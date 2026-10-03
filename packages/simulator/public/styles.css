@@ -1112,4 +1112,14 @@ button {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+
+  /* Except what tells you Alexa's state (Windows "animation effects off" turns on reduced motion): thinking,
+     listening and the typing dots keep a slow, gentle pulse instead of freezing. */
+  .typing span,
+  .scene[data-ring='thinking'] .l-lit,
+  .scene[data-ring='thinking'] .glow,
+  .mic[aria-pressed='true'] {
+    animation-duration: 2.4s !important;
+    animation-iteration-count: infinite !important;
+  }
 }

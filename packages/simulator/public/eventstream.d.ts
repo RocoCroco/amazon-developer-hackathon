@@ -12,4 +12,4 @@ export function decodeMessage(data: ArrayBuffer | Uint8Array): {
 export function readTranscribeMessage(
   data: ArrayBuffer | Uint8Array,
   results: Map<string, string>,
-): { text?: string; error?: string };
+): { text?: string; final?: boolean; error?: string };

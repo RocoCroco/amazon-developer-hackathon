@@ -32,6 +32,14 @@ describe('text helpers', () => {
 
   it('extracts the firm from a title', () => {
     expect(firmFromTitle('Love To Dream Recalls Portable Sleep Machines')).toBe('Love To Dream');
+    // Real CPSC headlines that are not "<firm> Recalls ...":
+    expect(
+      firmFromTitle(
+        'Following an Additional Child Fatality, IKEA Reannounces Recall of MALM and Other Models of Chests and Dressers',
+      ),
+    ).toBe('IKEA');
+    expect(firmFromTitle('IKEA Reannounces Recall of MALM Dressers')).toBe('IKEA');
+    expect(firmFromTitle('Peloton Expands Recall of Tread+ Treadmills')).toBe('Peloton');
   });
 });
 

@@ -137,3 +137,13 @@ Format: what I tried / what I expected / what happened / how I solved it.
 - Expected: the simulated car-seat recall announced within a few seconds.
 - Happened: never announced. The page marked the new alert as "seen" on the poll that arrived while Polly was still reading the previous (long) reply, so later polls skipped it. Local tests missed it because their fake audio ends after 10 ms.
 - Solved: a new alert stays pending until Alexa is quiet; a browser test with a 6-second reply covers it.
+
+## F23 - "It never notices I stopped talking" (2026-10-03, human test)
+- Tried: the human talked to the deployed simulator with Amazon Transcribe.
+- Expected: the request sent about a second after they stopped.
+- Happened: it kept "listening" until the mic was tapped. The silence timer restarted on every message from Transcribe, but while you are quiet Transcribe keeps re-sending the same partial result, and background noise came back as "Mhm"; so the timer never ran out (until the 45-second stream limit).
+- Solved: only new words restart the timer; a result Transcribe marks final shortens the wait to 0.6 s; fillers ("mhm", "uh") are ignored and not sent. Browser test with a fake socket that repeats itself.
+
+## F24 - Recall lookups without a time limit, and "thinking" frozen on Windows (2026-10-03, human test)
+- Happened: (1) Alexa said "I'm having trouble reaching the database": a live CPSC request from AWS could hang until the Lambda timed out, taking the whole tool call with it. (2) While Alexa was working, the typing dots and the thinking ring did not move: Windows "animation effects" off makes Chrome report reduced motion, and our reduced-motion rule stopped every animation, including the ones that say "I'm working".
+- Solved: every live lookup gives up after 6 s (then that source counts as unavailable and the others still answer); state indicators keep a slow pulse under reduced motion (tested with Playwright's reducedMotion emulation).

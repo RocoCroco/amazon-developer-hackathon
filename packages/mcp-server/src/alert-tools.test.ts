@@ -221,7 +221,7 @@ describe('a brand misheard by speech recognition (the human tester said "Aitjunz
       brand: 'A I T J U N Z',
     });
     expect(spelled.data.brand).toBe('AITJUNZ');
-    expect(spelled.summary).toMatch(/What is the model number\?/);
+    expect(spelled.summary).toMatch(/models are recalled, so I need your model number/);
 
     const model = await call('update_item', { item_id: added.data.item_id, model: 'LDQMFJ8D-BK' });
     expect(model.data.status).toBe('recalled');
@@ -239,11 +239,23 @@ describe('a brand misheard by speech recognition (the human tester said "Aitjunz
     expect(res.summary).toMatch(/Do you mean Aitjunz, A-I-T-J-U-N-Z\?/);
   });
 
+  it('"a new Aitjunz dresser", no model: says some are recalled before asking for the hard-to-find model', async () => {
+    const call = await connect('nOmOdElNoMoDeLnOmOdEl012');
+    const added = await call('add_item', { name: 'dresser', brand: 'Aitjunz' });
+    expect(added.data.status).toBe('need_info');
+    expect(added.summary).toMatch(
+      /^Okay, I saved your Aitjunz dresser\. Some Aitjunz dresser models are recalled, so I need your model number\./,
+    );
+    // The open question is on the panel (amber), until the model says yes or no.
+    expect((await call('get_alerts')).data.count).toBe(1);
+  });
+
   it('a brand that sounds like no recalled brand is simply saved', async () => {
     const call = await connect('pHoNeTiCpHoNeTiCpHoNe011');
     const added = await call('add_item', { name: 'dresser', brand: 'Hemnes' });
     expect(added.summary).toMatch(
-      /^Okay, I saved your Hemnes dresser\. What is the model number\?/,
+      // Nothing like it is recalled: no hard questions, just keep watching.
+      /^Okay, I saved your Hemnes dresser\. I found no recalls for Hemnes dresser products like this, so there is nothing more you need to look up\./,
     );
   });
 });

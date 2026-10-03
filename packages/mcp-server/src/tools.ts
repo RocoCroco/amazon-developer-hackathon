@@ -146,15 +146,25 @@ async function checkOnSave(saved: StoredItem, ctx: ToolContext): Promise<Checked
   if (saved.model || saved.year) {
     return (await check(saved, ctx, saved)).structuredContent as Checked;
   }
-  // Brand and product only. Food and medicine have no model: the lot code decides, so a matching food or
-  // drug recall (and an allergy warning) is reported right away. A first look records nothing; only a
-  // food or drug match is checked again for real, so other brand-only items do not raise open questions.
+  // Brand and product only: check before asking for anything else. The model number is hard to find, so
+  // ask for it only when a recall for this brand and kind of product exists; otherwise just keep watching.
+  // A first look records nothing (an ad hoc check); a possible recall is then checked again for real.
   const peek = (await check(saved, ctx)).structuredContent as Checked;
-  const matches = (peek.matches ?? []) as { recall_id: string }[];
-  if (peek.status === 'need_info' && matches.some((m) => m.recall_id.startsWith('fda:'))) {
+  const stillNeeded = (peek.still_needed ?? []) as string[];
+  if (peek.status === 'need_info' && stillNeeded.includes('brand')) {
+    // nothing under this brand, but it sounds like one that has recalls: confirm the brand first
+    return (await brandHeardRight(saved, ctx)) ?? peek;
+  }
+  if (peek.status === 'need_info' || peek.status === 'source_unavailable') {
     return (await check(saved, ctx, saved)).structuredContent as Checked;
   }
-  return brandHeardRight(saved, ctx);
+  const heard = await brandHeardRight(saved, ctx);
+  if (heard) return heard;
+  return {
+    summary: `I found no recalls for ${spokenItem({ name: saved.name, brand: saved.brand })} products like this, so there is nothing more you need to look up. I'll keep watching it.`,
+    status: 'no_recall',
+    still_needed: [],
+  };
 }
 
 /**

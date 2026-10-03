@@ -1,4 +1,4 @@
-import { questionFor, type Clarification, type PeriodMiss } from './matcher/clarify.js';
+import { questionFor, spokenList, type Clarification, type PeriodMiss } from './matcher/clarify.js';
 import type { ConfirmedMatch } from './matcher/confirm.js';
 import type { Item } from './matcher/match.js';
 
@@ -69,12 +69,16 @@ export function spokenCheckSummary(item: Item, matches: ConfirmedMatch[]): strin
   if (best.level === 'strong') {
     return `Your ${what} is recalled. ${hazard}`;
   }
-  const { question } = questionFor(best, matches);
-  // Without a model we can only point at a similar product; with the model known, it may be this one.
-  const intro = best.missing.includes('model')
-    ? 'There is a recall for a similar item'
-    : `There may be a recall for your ${what}`;
-  return `${intro}, and I need one more detail to be sure. ${question}`;
+  const { question, options } = questionFor(best, matches);
+  // Without a model we can only say that some of these are recalled; the model number is hard to find, so
+  // say why it is worth looking for it. Short for the ear: the hazard comes once we know it is this one.
+  if (best.missing.includes('model')) {
+    if (options && options.length > 1) {
+      return `Some ${what} models are recalled: ${spokenList(options)}. Is yours one of them? If you are not sure, the model number is usually on a sticker on the bottom or back.`;
+    }
+    return `Some ${what} models are recalled, so I need your model number. It is usually on a sticker on the bottom or back; if you cannot find it, tell me roughly what year it is.`;
+  }
+  return `There may be a recall for your ${what}, and I need one more detail to be sure. ${question}`;
 }
 
 /** Nothing matched, but the brand is one or two keystrokes from a recalled brand. */

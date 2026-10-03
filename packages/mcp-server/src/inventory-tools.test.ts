@@ -87,7 +87,7 @@ describe('update_item', () => {
   it('adds the model later and then the recall check uses it', async () => {
     const { call } = await connect('uPdAtEuPdAtEuPdAtEuPd3');
     const added = await call('add_item', { name: 'space heater', brand: 'Govee' });
-    expect(added.data.still_needed).toEqual(['model']);
+    expect(added.data.status).toBe('need_info'); // some Govee heaters are recalled: the model decides
 
     const updated = await call('update_item', { item_id: added.data.item_id, model: 'H7131' });
     // Now that the model is known, the update checks recalls right away.

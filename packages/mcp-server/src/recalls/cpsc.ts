@@ -105,6 +105,17 @@ export type FetchLike = (
   url: string,
 ) => Promise<{ ok: boolean; status: number; json(): Promise<unknown> }>;
 
+/** Live lookups give up after this long: a hanging government API must not stall a whole conversation. */
+export const LOOKUP_TIMEOUT_MS = 6_000;
+/** Feed downloads in the daily watcher may take longer. */
+export const FEED_TIMEOUT_MS = 30_000;
+
+/** fetch() that gives up after `ms` (the error then counts as "source unavailable"). */
+export const fetchWithin =
+  (ms: number): FetchLike =>
+  (url) =>
+    fetch(url, { signal: AbortSignal.timeout(ms) });
+
 /**
  * Fetch CPSC recalls with a recall date in [since, until] (YYYY-MM-DD; until optional). `fetchFn` is injectable
  * for tests. We filter on RecallDate: since 2026-10-03 the API answers HTTP 503 to every LastPublishDate
@@ -112,7 +123,7 @@ export type FetchLike = (
  */
 export async function fetchCpscRecalls(
   since: string,
-  fetchFn: FetchLike = (url) => fetch(url),
+  fetchFn: FetchLike = fetchWithin(FEED_TIMEOUT_MS),
   until?: string,
 ): Promise<Recall[]> {
   const range =

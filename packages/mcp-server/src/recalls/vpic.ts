@@ -1,4 +1,4 @@
-import type { FetchLike } from './cpsc.js';
+import { fetchWithin, LOOKUP_TIMEOUT_MS, type FetchLike } from './cpsc.js';
 
 const VPIC_URL = 'https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues';
 
@@ -35,7 +35,7 @@ interface VpicResult {
  */
 export async function decodeVin(
   vin: string,
-  fetchFn: FetchLike = (url) => fetch(url),
+  fetchFn: FetchLike = fetchWithin(LOOKUP_TIMEOUT_MS),
 ): Promise<DecodedVin | undefined> {
   const clean = vin.trim().toUpperCase();
   if (!isValidVinFormat(clean)) return undefined;

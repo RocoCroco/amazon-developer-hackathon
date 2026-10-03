@@ -1,5 +1,5 @@
 import { extractDateRange, extractModelNumbers, extractModelPrefixes, toIsoDate } from './text.js';
-import type { FetchLike } from './cpsc.js';
+import { fetchWithin, LOOKUP_TIMEOUT_MS, type FetchLike } from './cpsc.js';
 import type { Recall, RecallCategory, RecalledProduct, RemedyOption } from './types.js';
 
 const API_URL = 'https://api.nhtsa.gov/recalls/recallsByVehicle';
@@ -95,7 +95,7 @@ export function fromNhtsaVehicleResults(results: NhtsaVehicleResult[]): Recall[]
 /** Recalls for one make/model/year from the NHTSA API. `fetchFn` is injectable for tests. */
 export async function fetchVehicleRecalls(
   vehicle: { make: string; model: string; year: number },
-  fetchFn: FetchLike = (url) => fetch(url),
+  fetchFn: FetchLike = fetchWithin(LOOKUP_TIMEOUT_MS),
 ): Promise<Recall[]> {
   const query = new URLSearchParams({
     make: vehicle.make,

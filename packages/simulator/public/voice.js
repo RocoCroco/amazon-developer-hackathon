@@ -1,6 +1,7 @@
 // Speech recognition engines for the simulator (T10.1). Both report the running transcript of one stretch of
 // listening through the same callbacks, so the conversation logic in app.js does not care which one runs:
-//   start({ onText(text), onEnd(), onError(message) }), stop() to finish, abort() to drop.
+//   start({ onText(text, { final }), onEnd(), onError(message) }), stop() to finish, abort() to drop.
+//   `final` is true when the recognizer considers the last sentence finished (the speaker paused).
 // - TranscribeEngine: the microphone streamed to Amazon Transcribe (en-US, custom vocabulary of recall brands)
 //   over a WebSocket presigned by our server. Better with accents; costs about a cent a minute.
 // - BrowserEngine: the browser's own recognizer (Chrome, Edge), always set to en-US, free.
@@ -166,7 +167,7 @@ export class TranscribeEngine {
       try {
         const message = readTranscribeMessage(event.data, results);
         if (message.error) onError(message.error);
-        else if (message.text !== undefined) onText(message.text);
+        else if (message.text !== undefined) onText(message.text, { final: message.final });
       } catch (error) {
         onError(String(error));
       }
@@ -243,6 +244,7 @@ export class BrowserEngine {
           .join(' ')
           .replace(/\s+/g, ' ')
           .trim(),
+        { final: event.results[event.results.length - 1]?.isFinal === true },
       );
     rec.onerror = (event) => {
       if (event.error !== 'no-speech' && event.error !== 'aborted') onError(event.error);

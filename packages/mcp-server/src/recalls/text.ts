@@ -25,10 +25,21 @@ export function extractModelNumbers(text: string): string[] {
   return [...found];
 }
 
-/** Brand/firm name from a CPSC-style title: "Acme Recalls Widgets Due to ..." -> "Acme". */
+// Verbs that headlines put between the firm and "Recall": "IKEA Reannounces Recall", "Acme Expands Recall".
+const HEADLINE_VERBS =
+  /\s+(re-?announces?|announces?|expands?|issues?|voluntarily|is|has|to|in|with|and|amends?|updates?)$/i;
+
+/**
+ * Brand/firm name from a CPSC-style title: "Acme Recalls Widgets Due to ..." -> "Acme". Headlines that start
+ * with a clause keep only what follows the last comma ("Following an Additional Child Fatality, IKEA
+ * Reannounces Recall of ..." -> "IKEA"), and verbs before "Recall" are dropped.
+ */
 export function firmFromTitle(title: string | null | undefined): string {
   const m = /^(.+?)\s+Recalls?\b/i.exec((title ?? '').trim());
-  return m?.[1]?.trim() ?? '';
+  let firm = (m?.[1] ?? '').split(',').at(-1)?.trim() ?? '';
+  while (HEADLINE_VERBS.test(firm)) firm = firm.replace(HEADLINE_VERBS, '').trim();
+  // Still a sentence rather than a name: better no firm than a wrong one.
+  return firm.split(/\s+/).length > 5 ? '' : firm;
 }
 
 /**

@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { FetchLike } from './cpsc.js';
+import { fetchWithin, FEED_TIMEOUT_MS, LOOKUP_TIMEOUT_MS, type FetchLike } from './cpsc.js';
 import { toIsoDate } from './text.js';
 import type { Recall, RecallCategory, Severity } from './types.js';
 
@@ -145,7 +145,7 @@ export async function fetchOpenFdaRecalls(
   kind: OpenFdaKind,
   since: string,
   until: string,
-  fetchFn: FetchLike = (url) => fetch(url),
+  fetchFn: FetchLike = fetchWithin(FEED_TIMEOUT_MS),
 ): Promise<Recall[]> {
   const records: OpenFdaRecord[] = [];
   for (let page = 0; page < MAX_PAGES; page++) {
@@ -170,7 +170,7 @@ export async function fetchOpenFdaRecalls(
  */
 export async function fetchUndeclaredFoodRecalls(
   days: number,
-  fetchFn: FetchLike = (url) => fetch(url),
+  fetchFn: FetchLike = fetchWithin(FEED_TIMEOUT_MS),
   now: () => Date = () => new Date(),
 ): Promise<Recall[]> {
   const ymd = (d: Date) => d.toISOString().slice(0, 10).replace(/-/g, '');
@@ -194,7 +194,8 @@ export async function fetchUndeclaredFoodRecalls(
 /** fetchUndeclaredFoodRecalls with a small in-process cache (openFDA updates weekly; limits are per IP). */
 export function liveAllergenFeed(
   ttlMs = 6 * 60 * 60 * 1000,
-  fetchFn?: FetchLike,
+  // asked during a conversation: a live lookup, so the short timeout
+  fetchFn: FetchLike = fetchWithin(LOOKUP_TIMEOUT_MS),
 ): (days: number) => Promise<Recall[]> {
   const cache = new Map<number, { at: number; recalls: Recall[] }>();
   return async (days) => {

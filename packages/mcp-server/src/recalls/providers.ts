@@ -1,6 +1,6 @@
 import type { Item } from '../matcher/match.js';
 import type { RecallStore, SourceId } from './cache.js';
-import type { FetchLike } from './cpsc.js';
+import { fetchWithin, LOOKUP_TIMEOUT_MS, type FetchLike } from './cpsc.js';
 import { fetchVehicleRecalls } from './nhtsa.js';
 import { fromOpenFda, type OpenFdaRecord } from './openfda.js';
 import type { RecallProvider, RecallSearch } from './provider.js';
@@ -101,7 +101,7 @@ export class NhtsaVehicleProvider implements RecallProvider {
   private readonly cache = new Map<string, CacheEntry>();
 
   constructor(
-    private readonly fetchFn: FetchLike = (url) => fetch(url),
+    private readonly fetchFn: FetchLike = fetchWithin(LOOKUP_TIMEOUT_MS),
     private readonly ttlMs = 6 * 60 * 60 * 1000,
     private readonly now: () => number = Date.now,
   ) {}
@@ -139,7 +139,7 @@ export class OpenFdaProvider implements RecallProvider {
   private readonly cache = new Map<string, CacheEntry>();
 
   constructor(
-    private readonly fetchFn: FetchLike = (url) => fetch(url),
+    private readonly fetchFn: FetchLike = fetchWithin(LOOKUP_TIMEOUT_MS),
     private readonly ttlMs = 6 * 60 * 60 * 1000,
     private readonly now: () => number = Date.now,
   ) {}

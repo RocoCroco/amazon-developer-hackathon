@@ -44,15 +44,20 @@ describe('clarifying questions through the MCP tool (real recalls)', () => {
       expect(summary).toMatch(/model number/);
       expect(summary).toMatch(/sticker/);
       expect(summary).toMatch(/roughly what year/);
-      expect(data.question).toBe(summary.split('one more detail to be sure. ')[1]);
+      // Some are recalled, so the hard-to-find model number is worth looking for.
+      expect(summary).toMatch(
+        /^Some Evenflo car seat models are recalled, so I need your model number\./,
+      );
+      expect(data.question).toMatch(/model number/);
     });
 
     it('lets the owner recognize their model when the recall names only a few', async () => {
       const { summary, data } = await check({ name: 'window air conditioner', brand: 'Friedrich' });
       expect(data.status).toBe('need_info');
       expect(summary).toMatch(
-        /That recall covers .*Window Air Conditioners\. What is the model number\?/,
+        /^Some Friedrich window air conditioner models are recalled, so I need your model number\./,
       );
+      expect(data.question).toMatch(/That recall covers .*Window Air Conditioners/);
       expect(summary).not.toMatch(/[®™]/); // trademark symbols are not read out
       expect((data.options as string[]).length).toBe(1);
     });

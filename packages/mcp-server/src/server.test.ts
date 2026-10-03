@@ -73,15 +73,17 @@ describe('MCP server over Streamable HTTP', () => {
     await client.close();
   });
 
-  it('registers an item and asks for the missing model', async () => {
+  it('registers an item, sees that some of these are recalled, and only then asks for the model', async () => {
     const client = await connect();
     const { summary, data } = await call(client, 'add_item', {
       name: 'space heater',
       brand: 'Govee',
     });
     expect(summary).toMatch(/saved your Govee space heater/);
-    expect(summary).toMatch(/model number/);
-    expect(data.still_needed).toEqual(['model']);
+    expect(summary).toMatch(
+      /Some Govee space heater models are recalled, so I need your model number/,
+    );
+    expect(data.status).toBe('need_info');
     expect(typeof data.item_id).toBe('string');
     await client.close();
   });

@@ -128,11 +128,15 @@ export function readTranscribeMessage(data, results) {
   }
   if (headers[':event-type'] !== 'TranscriptEvent') return {};
   const event = JSON.parse(body);
+  let final = false;
   for (const result of event.Transcript?.Results ?? []) {
     const text = result.Alternatives?.[0]?.Transcript ?? '';
     results.set(result.ResultId, text);
+    // Transcribe marks a segment final when the speaker paused: a strong sign the sentence is over.
+    final = result.IsPartial === false;
   }
   return {
     text: [...results.values()].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim(),
+    final,
   };
 }
