@@ -41,22 +41,40 @@ for (const [state, { file, shiftY }] of Object.entries(STATES)) {
     console.log(out, Math.round(statSync(out).size / 1024) + ' KB');
   }
 }
-// The page colour around the photo: the mean of its left and right edges (12 px each), the edges a wide
-// window shows. Put the printed value into --photo-edge in styles.css.
+// The page around the photo continues the photo's own edge colours: for each side, the mean colour of the
+// outer 24 px in 8 horizontal bands becomes a top-to-bottom gradient. Put the printed lines into styles.css
+// (--edge-left, --edge-right) and the overall mean into --photo-edge.
 {
   const { data, info } = await sharp(`${SRC}/echo-off.png`)
     .removeAlpha()
     .raw()
     .toBuffer({ resolveWithObject: true });
-  const columns = [...Array(12).keys()].flatMap((i) => [i, info.width - 1 - i]);
-  const sum = [0, 0, 0];
-  for (let y = 0; y < info.height; y++) {
-    for (const x of columns) {
-      for (let c = 0; c < 3; c++) sum[c] += data[(y * info.width + x) * 3 + c];
+  const BANDS = 8;
+  const COLUMNS = 24;
+  const hex = (rgb) => `#${rgb.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('')}`;
+  const total = [0, 0, 0];
+  let count = 0;
+  for (const side of ['left', 'right']) {
+    const stops = [];
+    for (let band = 0; band < BANDS; band++) {
+      const sum = [0, 0, 0];
+      let n = 0;
+      const top = Math.floor((band * info.height) / BANDS);
+      const bottom = Math.floor(((band + 1) * info.height) / BANDS);
+      for (let y = top; y < bottom; y++) {
+        for (let c = 0; c < COLUMNS; c++) {
+          const x = side === 'left' ? c : info.width - 1 - c;
+          for (let k = 0; k < 3; k++) sum[k] += data[(y * info.width + x) * 3 + k];
+          n++;
+        }
+      }
+      for (let k = 0; k < 3; k++) total[k] += sum[k];
+      count += n;
+      stops.push(hex(sum.map((v) => v / n)));
     }
+    console.log(`--edge-${side}: linear-gradient(to bottom, ${stops.join(', ')});`);
   }
-  const mean = sum.map((v) => Math.round(v / (info.height * columns.length)));
-  console.log(`--photo-edge: #${mean.map((v) => v.toString(16).padStart(2, '0')).join('')}`);
+  console.log(`--photo-edge: ${hex(total.map((v) => v / count))};`);
 }
 copyFileSync(`${SRC}/logo.svg`, `${OUT}/logo.svg`);
 console.log('logo.svg copied');

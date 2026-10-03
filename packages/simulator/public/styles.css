@@ -12,7 +12,31 @@
   --photo-ratio: 1.7768;
   --scene-w: min(1672px, 100vw, 100vh * var(--photo-ratio));
   --scene-x: -50%;
-  --photo-edge: #8a7864;
+  /* The photo's own edge colours, top to bottom, left and right side (scripts/build-images.mjs prints them):
+     the page around the photo continues what its edges show, instead of one flat colour. */
+  --edge-left: linear-gradient(
+    to bottom,
+    #818151,
+    #656427,
+    #9c846e,
+    #a78c78,
+    #ac8c75,
+    #936a4e,
+    #926343,
+    #8b552d
+  );
+  --edge-right: linear-gradient(
+    to bottom,
+    #c9d3cf,
+    #cac9b8,
+    #6f6d71,
+    #2c2c2e,
+    #8c817e,
+    #907c73,
+    #765f54,
+    #6c564b
+  );
+  --photo-edge: #8b7864;
   /* Where the photo starts (0 when it fills the width), and how far inside it the chat and the panel sit,
      clear of its feathered edges. */
   --photo-left: max(0px, (100vw - var(--scene-w)) / 2);
@@ -66,6 +90,30 @@ button {
   height: 100dvh;
   overflow: hidden;
   color: #fff;
+  /* its own stacking context, so the edge colours (z-index -1) paint above the page background */
+  isolation: isolate;
+}
+
+/* Left and right edge colours of the photo, each fading out towards the middle, where they meet under it. */
+.stage::before,
+.stage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.stage::before {
+  background: var(--edge-left);
+  -webkit-mask-image: linear-gradient(to right, #000 30%, transparent 70%);
+  mask-image: linear-gradient(to right, #000 30%, transparent 70%);
+}
+
+.stage::after {
+  background: var(--edge-right);
+  -webkit-mask-image: linear-gradient(to left, #000 30%, transparent 70%);
+  mask-image: linear-gradient(to left, #000 30%, transparent 70%);
 }
 
 .scene {
