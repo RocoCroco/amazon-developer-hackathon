@@ -1004,9 +1004,26 @@ demoButton.addEventListener('click', async () => {
   }
 });
 
+// ---- credits: a logo replaces the text when its file exists (img/logo-aws.svg or .png, img/logo-alexa...) ----------
+
+function showLogos() {
+  for (const mark of document.querySelectorAll('.credit-mark')) {
+    const [first, ...rest] = ['svg', 'png'].map((ext) => `/img/${mark.dataset.logo}.${ext}`);
+    const tryLoad = (src, others) => {
+      const img = document.createElement('img');
+      img.alt = mark.dataset.name;
+      img.onload = () => mark.replaceChildren(img);
+      img.onerror = () => others.length > 0 && tryLoad(others[0], others.slice(1));
+      img.src = src;
+    };
+    tryLoad(first, rest);
+  }
+}
+
 // ---- start --------------------------------------------------------------------------------------------------------------
 
 updateHint();
+showLogos();
 
 fetch('/api/config')
   .then((res) => res.json())

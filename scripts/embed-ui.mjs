@@ -26,9 +26,9 @@ const assets = Object.fromEntries(
 // Photos are embedded as base64 text (flagged "base64") and decoded when the Lambda starts.
 for (const name of readdirSync('packages/simulator/public/img')) {
   const file = `packages/simulator/public/img/${name}`;
-  if (name.endsWith('.webp')) {
+  if (name.endsWith('.webp') || name.endsWith('.png')) {
     assets[`/img/${name}`] = {
-      contentType: 'image/webp',
+      contentType: name.endsWith('.png') ? 'image/png' : 'image/webp',
       body: readFileSync(file).toString('base64'),
       base64: true,
     };

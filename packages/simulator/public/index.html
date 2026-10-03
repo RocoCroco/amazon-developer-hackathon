@@ -46,10 +46,7 @@
       <aside class="panel" id="panel" aria-label="Recall Guardian">
         <header class="panel-head">
           <img class="logo" src="/img/logo.svg" alt="" width="46" height="50" />
-          <div class="brand">
-            <h1>Recall Guardian</h1>
-            <p class="credit">Built on AWS · Made for Alexa+</p>
-          </div>
+          <h1>Recall Guardian</h1>
           <button
             id="menu-button"
             class="gear"
@@ -158,6 +155,17 @@
       <p id="hint" class="hint"></p>
       <p id="notice" class="notice" role="status" hidden></p>
       <p id="status" class="status" aria-live="polite"></p>
+
+      <!-- Logos appear when img/logo-aws.(svg|png) and img/logo-alexa.(svg|png) exist; text otherwise. -->
+      <footer class="credits" aria-label="Credits">
+        <span class="credit"
+          >Built on <span class="credit-mark" data-logo="logo-aws" data-name="AWS">AWS</span></span
+        >
+        <span class="credit"
+          >Made for
+          <span class="credit-mark" data-logo="logo-alexa" data-name="Alexa+">Alexa+</span></span
+        >
+      </footer>
 
       <form id="composer" class="composer" autocomplete="off">
         <button

@@ -485,12 +485,8 @@ button {
   flex: none;
 }
 
-.brand {
-  flex: 1;
-  min-width: 0;
-}
-
 .panel-head h1 {
+  flex: 1;
   margin: 0;
   font-size: 1.55rem;
   font-weight: 700;
@@ -498,14 +494,44 @@ button {
   color: var(--navy);
 }
 
-/* A plain-text credit, not logos: third-party logos need permission. */
-.credit {
-  margin: 1px 0 0;
+/* Credits at the bottom of the screen, starting where the "Recall Guardian" letters start (panel padding 10px +
+   logo 46px + gap 14px), on the same line as the composer. */
+.credits {
+  position: absolute;
+  right: var(--inset-right);
+  bottom: clamp(18px, 7vh, 64px);
+  width: min(380px, calc(100vw - 28px));
+  height: 52px;
+  padding-left: 70px;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  color: #fff;
   font-size: 0.78rem;
   font-weight: 600;
   letter-spacing: 0.02em;
-  color: var(--navy);
-  opacity: 0.72;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+.credit {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  opacity: 0.92;
+}
+
+.credit-mark {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.credit-mark img {
+  display: block;
+  height: 22px;
+  width: auto;
+  filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.4));
 }
 
 .gear {
@@ -1066,8 +1092,9 @@ button {
     font-size: 1.2rem;
   }
 
-  .credit {
-    font-size: 0.7rem;
+  /* No room next to the composer on a phone. */
+  .credits {
+    display: none;
   }
 
   .convo {
