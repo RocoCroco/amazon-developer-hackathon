@@ -59,6 +59,11 @@ Target: thin end-to-end slice (Phase 1) working by ~day 7 (Oct 8), then widen.
 - [x] T10.4 Gear icon instead of the chevron next to the logo.
 - [x] T10.5 Messaging-app bubbles: rounded with a small tail, subtle spring entrance, typing indicator while Alexa thinks, Alexa's words revealed in sync with the voice, the user's words appearing live while talking. **Done when:** browser tests updated; deploy and give the human the URL.
 
+## Phase 11 — Submission polish
+- [!] T11.1 Open Source mini challenge: the rules ask for a separate open-source project (or a contribution to another public repo), not just this repo made public. Options in docs/challenges.md (browser client for Transcribe streaming; US recall data normalizer; MCP-on-Lambda example). Needs the human's choice (BLOCKERS B4).
+- [x] T11.2 Documentation per challenge and architecture (docs/challenges.md, docs/architecture.md, docs/rules.md with the exact wording).
+- [x] T11.3 Fixes from the third voice test: a confirmed brand always reaches the server (next_step), no extra questions after "I don't know", voice picker in the settings, Claude second opinion wired into the deployed server.
+
 ## Phase 7 — Release
 - [x] T7.1 Final secret scan of the whole repo and git history (e.g. gitleaks or a manual regex scan); fix anything found. **Done when:** scan is clean.
 - [ ] T7.2 Make the repo public (or share with the judging team: rules allow private-shared; see docs/rules.md) — **only after T7.1 and only right before submission.** Needs human go-ahead: write in BLOCKERS.md and leave `[!]` for the human to flip.

@@ -3,16 +3,12 @@
 _Last updated: 2026-10-03_
 
 ## Current task
-None open in Phases 0-10. Remaining: human steps (below) and stretch S1-S3.
+Phase 11 (submission polish). Open: T11.1 Open Source project (waiting for the human's choice, B4).
 
-## Done (Phase 10, second test feedback)
-- T10.1 speech: en-US forced; Amazon Transcribe streaming (presigned WebSocket from the simulator Lambda, our own
-  event-stream codec, custom vocabulary "recall-guardian-brands" built by scripts/build-vocabulary.mjs, daily cap 400
-  streams) with the browser recognizer as fallback; charitable reading of noisy transcripts in the prompt; costs.
-- T10.2 follow-up mode (wake word starts a conversation; 8 s follow-up; "thanks"/silence ends it).
-- T10.3 photo edges feathered into a colour sampled from the photo; T10.4 gear icon; T10.5 bubbles with tails,
-  spring entrance, typing dots, words revealed with the voice, live user words.
-- CPSC cache: full local backfill done (CPSC rejects recall-date queries before mid-2011).
+## Done recently
+- Third voice test fixes (confirmed brands applied, no insisting, voice picker), second opinion live in the MCP server.
+- docs/architecture.md, docs/challenges.md, docs/rules.md (exact wording: edited promotional videos are fine if
+  they show real footage of the project working; no unlicensed music or third-party trademarks).
 
 ## Next step
 If continuing: stretch S1 (per-household OAuth). Keep the CPSC copy fresh before judging if the daily sync from
