@@ -85,7 +85,7 @@ describe('clarifying questions through the MCP tool (real recalls)', () => {
       expect(data.still_needed).toEqual(['brand']);
       expect(data.options).toContain('Evenflo');
       expect(summary).toMatch(/could not find any recalls under the brand Evenfloe/);
-      expect(summary).toMatch(/Did you mean Evenflo\?/);
+      expect(summary).toMatch(/Do you mean Evenflo, E-V-E-N-F-L-O\?/);
     });
 
     it('does not suggest alternatives for a real brand whose product is simply not recalled', async () => {

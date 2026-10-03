@@ -2,7 +2,8 @@ import type { Recall } from '../recalls/types.js';
 import type { ConfirmedMatch } from './confirm.js';
 import { findMatches, matchItem, type Item } from './match.js';
 import { cleanForSpeech } from '../voice.js';
-import { containsPhrase, normalizeBrand } from './normalize.js';
+import { containsPhrase, normalizeBrand, productTokens } from './normalize.js';
+import { soundDifference, spellOut } from './phonetic.js';
 
 /**
  * What to ask the owner when we cannot say yes or no. Every question is short, speakable, and answerable
@@ -159,28 +160,60 @@ function knownBrands(recalls: Recall[]): Map<string, { display: string; count: n
   return brands;
 }
 
+/** Recalls about the same kind of product ("8-drawer dresser" -> recalls that mention dressers). */
+function sameKindOfProduct(productName: string, recalls: Recall[]): Recall[] {
+  const words = productTokens(productName).filter((w) => w.length >= 3 && !/\d/.test(w));
+  if (words.length === 0) return recalls;
+  return recalls.filter((r) => {
+    const text = ` ${productTokens(`${r.title} ${r.products.map((p) => p.name).join(' ')}`).join(' ')} `;
+    return words.some((w) => text.includes(` ${w} `));
+  });
+}
+
+/** Brands that sound this different or less (see phonetic.ts) are offered as "did you mean". */
+const MAX_SOUND_DIFFERENCE = 0.3;
+const MAX_SUGGESTIONS = 2;
+
+/** "Aitjunz, A-I-T-J-U-N-Z": unusual one-word brands are spelled back, so the owner can confirm or correct. */
+function sayAndSpell(brand: string): string {
+  return /^[a-z0-9]{3,12}$/i.test(brand) ? `${brand}, ${spellOut(brand)}` : brand;
+}
+
 /**
- * "I could not find that brand. Did you mean Evenflo?" for a brand that matches nothing but is one or two
- * keystrokes away from a brand that appears in recalls. Never picks one silently.
+ * "Do you mean Aitjunz, A-I-T-J-U-N-Z?" for a brand that matches no recalled brand but is close to one:
+ * one or two keystrokes away (a typo), or sounding alike (speech recognition heard "iTunes" or "8th June").
+ * Never picks one silently: the owner confirms, or spells the brand letter by letter.
  */
-export function suggestBrands(brand: string, recalls: Recall[]): Clarification | undefined {
+export function suggestBrands(
+  brand: string,
+  recalls: Recall[],
+  productName?: string,
+): Clarification | undefined {
   const wanted = squash(normalizeBrand(brand));
   if (wanted.length < 4) return undefined;
   const allowed = wanted.length >= 8 ? 2 : 1;
 
-  const known = knownBrands(recalls);
+  const known = knownBrands(productName ? sameKindOfProduct(productName, recalls) : recalls);
   if (known.has(normalizeBrand(brand))) return undefined; // the brand exists: the product just is not recalled
-  const near = [...known.entries()]
-    .map(([key, info]) => ({ info, distance: editDistance(wanted, squash(key)) }))
-    .filter((c) => c.distance > 0 && c.distance <= allowed)
-    .sort((a, b) => a.distance - b.distance || b.info.count - a.info.count)
-    .slice(0, 3)
+  const ranked = [...known.entries()]
+    .map(([key, info]) => {
+      const typo = editDistance(wanted, squash(key));
+      const sound = soundDifference(brand, info.display);
+      return { info, typo, sound, score: Math.min(typo <= allowed ? typo / 10 : 1, sound) };
+    })
+    .filter((c) => c.typo > 0 && (c.typo <= allowed || c.sound <= MAX_SOUND_DIFFERENCE))
+    .sort((a, b) => a.score - b.score || b.info.count - a.info.count);
+  // A clear winner is offered alone; a second option only when it is about as close.
+  const best = ranked[0]?.score ?? 1;
+  const near = ranked
+    .filter((c) => c.score <= best + 0.08)
+    .slice(0, MAX_SUGGESTIONS)
     .map((c) => c.info.display);
   if (near.length === 0) return undefined;
   return {
     kind: 'brand',
     options: near,
-    question: `Did you mean ${spokenList(near)}?`,
+    question: `Do you mean ${spokenList(near.map(sayAndSpell))}? If not, you can spell the brand for me, letter by letter.`,
   };
 }
 

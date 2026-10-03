@@ -9,6 +9,7 @@ import {
 } from './matcher/clarify.js';
 import { confirmMatches, type ConfirmedMatch } from './matcher/confirm.js';
 import { findMatches, type Item } from './matcher/match.js';
+import { unspell } from './matcher/phonetic.js';
 import { recordAlerts } from './household-check.js';
 import { searchRecalls } from './recalls/provider.js';
 import { registerAlertTools } from './tools-alerts.js';
@@ -77,7 +78,7 @@ async function check(item: Item, ctx: ToolContext, saved?: StoredItem) {
   }
 
   if (!best) {
-    const suggestion = suggestBrands(item.brand, candidates);
+    const suggestion = suggestBrands(item.brand, candidates, item.name);
     if (suggestion) {
       return reply(spokenBrandNotFound(item, suggestion), {
         status: 'need_info',
@@ -121,9 +122,27 @@ async function check(item: Item, ctx: ToolContext, saved?: StoredItem) {
  * raises its alert, in the same turn it is registered. Without those details we keep asking for them.
  */
 async function checkOnSave(saved: StoredItem, ctx: ToolContext) {
-  if (!saved.brand || !(saved.model || saved.year)) return undefined;
+  if (!saved.brand) return undefined;
+  if (!(saved.model || saved.year)) return brandHeardRight(saved, ctx);
   const result = await check(saved, ctx, saved);
   return result.structuredContent as { summary: string; status: string } & Record<string, unknown>;
+}
+
+/**
+ * Before asking for the model, make sure we heard the brand right: speech recognition writes unusual brands as
+ * common words ("Aitjunz" -> "iTunes"). When the brand matches no recalled brand for this kind of product but
+ * sounds like one, ask "Do you mean Aitjunz, A-I-T-J-U-N-Z?" now, instead of after the owner found the model.
+ */
+async function brandHeardRight(saved: StoredItem, ctx: ToolContext) {
+  const { recalls } = await searchRecalls(ctx.recalls, saved);
+  const suggestion = suggestBrands(saved.brand ?? '', recalls, saved.name);
+  if (!suggestion) return undefined;
+  return {
+    summary: `Just to be sure I heard the brand right: ${suggestion.question.replace(/^Do you mean/, 'do you mean')}`,
+    status: 'need_info',
+    still_needed: ['brand', 'model'],
+    options: suggestion.options,
+  };
 }
 
 export function registerTools(server: McpServer, ctx: ToolContext): void {
@@ -137,7 +156,9 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
         'with brand and model (or year) it also checks recalls right away and returns the check status.',
       inputSchema: itemFields,
     },
-    async (input) => {
+    async (fields) => {
+      // "A I T J U N Z": the owner spelled the brand letter by letter.
+      const input = fields.brand ? { ...fields, brand: unspell(fields.brand) } : fields;
       const item = await ctx.store.addItem(ctx.householdId, input);
       const checked = await checkOnSave(item, ctx);
       if (checked) {

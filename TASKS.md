@@ -81,7 +81,7 @@ Target: thin end-to-end slice (Phase 1) working by ~day 7 (Oct 8), then widen.
 - [x] T9.7 Settings button that opens a pop-up dialog (demo actions, speak replies, hands-free).
 - [x] T9.8 Thinking = soft breathing blue glow over the ring of the lit photo (no photo swap); all ring transitions soft. **Done when:** screenshots reviewed at desktop + phone, browser tests updated and green. Then deploy B and share the URL.
 ### C. Voice
-- [ ] T9.9 Phonetic brand matching in the MCP server: heard brand compared by sound with brands in the recall data; Alexa confirms with spelling ("Do you mean Aitjunz, A-I-T-J-U-N-Z?"); the user can spell letter by letter. **Done when:** unit tests with realistic misrecognitions pass.
+- [x] T9.9 Phonetic brand matching in the MCP server: heard brand compared by sound with brands in the recall data; Alexa confirms with spelling ("Do you mean Aitjunz, A-I-T-J-U-N-Z?"); the user can spell letter by letter. **Done when:** unit tests with realistic misrecognitions pass.
 - [ ] T9.10 Hands-free mode: continuous listening after one mic permission, wake word "Alexa", silence detection ends the request, paused while Alexa speaks, auto-restart when Chrome stops recognition; tap-to-talk fallback; clear message without speech recognition. **Done when:** browser tests with a stubbed recognizer pass.
 - [ ] T9.11 Persona: normal but limited Alexa; off-topic requests get a brief polite answer plus a reminder that this is a Recall Guardian simulation. **Done when:** prompt updated and tested (mock brain + one live check). Then deploy C and share the URL.
 ### D. Polish to win

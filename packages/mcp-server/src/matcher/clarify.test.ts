@@ -111,7 +111,9 @@ describe('ambiguous or misspelled brand', () => {
     expect(suggestBrands('Evenfloe', corpus)?.options).toContain('Evenflo');
     expect(suggestBrands('Gracco', corpus)?.options).toContain('Graco');
     expect(suggestBrands('Britex', corpus)?.options).toContain('Britax');
-    expect(suggestBrands('Evenfloe', corpus)?.question).toMatch(/^Did you mean/);
+    expect(suggestBrands('Evenfloe', corpus)?.question).toMatch(
+      /^Do you mean Evenflo, E-V-E-N-F-L-O\?/,
+    );
   });
 
   it('does not suggest anything for a brand that exists, a far-off brand, or a tiny string', () => {
@@ -124,7 +126,9 @@ describe('ambiguous or misspelled brand', () => {
   it('allows two slips only in long brand names', () => {
     expect(suggestBrands('Evenflooo', corpus)?.options).toContain('Evenflo'); // 9 chars, distance 2
     expect(suggestBrands('Evenfl', corpus)?.options).toContain('Evenflo'); // 6 chars, one letter short
-    expect(suggestBrands('Evenf', corpus)).toBeUndefined(); // 5 chars, two letters short: too far
+    // 5 chars, two letters short: too far for a typo, but it still sounds like Evenflo, so we ask.
+    expect(suggestBrands('Evenf', corpus)?.options).toEqual(['Evenflo']);
+    expect(suggestBrands('Evxyz', corpus)).toBeUndefined();
   });
 
   it('asks which brand when a short name is part of several different recalled brands', () => {

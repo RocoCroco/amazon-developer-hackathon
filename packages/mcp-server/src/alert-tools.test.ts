@@ -203,3 +203,47 @@ describe('other situations', () => {
     ).toBe('not_found');
   });
 });
+
+describe('a brand misheard by speech recognition (the human tester said "Aitjunz", the browser wrote "8th June")', () => {
+  it('asks to confirm by sound and spelling, accepts a spelled correction, then finds the recall', async () => {
+    const call = await connect('pHoNeTiCpHoNeTiCpHoNe009');
+    const added = await call('add_item', { name: '8-drawer dresser', brand: '8th June' });
+    expect(added.data.status).toBe('need_info');
+    expect(added.data.options).toEqual(['Aitjunz']);
+    expect(added.summary).toBe(
+      'Okay, I saved your 8th June 8-drawer dresser. Just to be sure I heard the brand right: do you mean ' +
+        'Aitjunz, A-I-T-J-U-N-Z? If not, you can spell the brand for me, letter by letter.',
+    );
+
+    // The owner spells it; the recognizer writes single letters.
+    const spelled = await call('update_item', {
+      item_id: added.data.item_id,
+      brand: 'A I T J U N Z',
+    });
+    expect(spelled.data.brand).toBe('AITJUNZ');
+    expect(spelled.summary).toMatch(/What is the model number\?/);
+
+    const model = await call('update_item', { item_id: added.data.item_id, model: 'LDQMFJ8D-BK' });
+    expect(model.data.status).toBe('recalled');
+    expect(model.summary).toMatch(/is recalled/);
+  });
+
+  it('with the model already given, check_item asks the same question instead of "no recalls"', async () => {
+    const call = await connect('pHoNeTiCpHoNeTiCpHoNe010');
+    const res = await call('check_item', {
+      name: 'dresser',
+      brand: 'iTunes',
+      model: 'LDQMFJ8D-BK',
+    });
+    expect(res.data.status).toBe('need_info');
+    expect(res.summary).toMatch(/Do you mean Aitjunz, A-I-T-J-U-N-Z\?/);
+  });
+
+  it('a brand that sounds like no recalled brand is simply saved', async () => {
+    const call = await connect('pHoNeTiCpHoNeTiCpHoNe011');
+    const added = await call('add_item', { name: 'dresser', brand: 'Hemnes' });
+    expect(added.summary).toMatch(
+      /^Okay, I saved your Hemnes dresser\. What is the model number\?/,
+    );
+  });
+});

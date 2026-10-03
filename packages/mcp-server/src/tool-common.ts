@@ -31,7 +31,12 @@ export function reply(summary: string, details: Record<string, unknown>): CallTo
 
 export const itemFields = {
   name: z.string().min(1).describe('What the product is, e.g. "car seat" or "space heater"'),
-  brand: z.string().optional().describe('Who makes it, e.g. "Graco"'),
+  brand: z
+    .string()
+    .optional()
+    .describe(
+      'Who makes it, e.g. "Graco". If the owner spells it letter by letter, pass the letters as heard ("A I T J U N Z").',
+    ),
   model: z.string().optional().describe('Model number or name from the sticker, if known'),
   year: z.number().int().min(1950).max(2100).optional().describe('Year made or bought, if known'),
   month: z

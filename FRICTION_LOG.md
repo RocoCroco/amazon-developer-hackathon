@@ -95,3 +95,9 @@ Format: what I tried / what I expected / what happened / how I solved it.
 - Expected: matches.
 - Happened: with `core.autocrlf=true`, Git rewrote touched files with CRLF; search strings with `\n` no longer matched, and one edit silently did nothing (String.replace does not fail on a miss).
 - Solved: `.gitattributes` with `eol=lf`, all tracked text files normalized to LF, and the edit helper now throws when a search string is missing.
+
+## F16 - "Aitjunz" could never be matched, even when spelled right (2026-10-03)
+- Tried: tests for phonetic brand matching against the real CPSC record of the human's example (recall 10998, Aitjunz 8-drawer dressers).
+- Expected: the recall lists "Aitjunz" as a brand and "LDQMFJ8D-BK" as a model.
+- Happened: brands were ["Yuyitop", "LDQMFJ8D-BR,", ...]: the recalling firm is not the brand on the product, and the quoted SKUs ("SKU "LDQMFJ8D-BR," ... is printed on the packaging") were read as brand names because the sentence says "printed"; the models list was empty.
+- Solved: quoted codes (letters + digits, no spaces) are never brands and become models; the sold brand is taken from the product name when the title agrees ("Yuyitop Recalls Aitjunz 8-Drawer Dressers"). The 1,313-recall evaluation still scores the same.

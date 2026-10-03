@@ -1,4 +1,11 @@
-import { extractModelNumbers, firmFromTitle, quotedBrands, toIsoDate } from './text.js';
+import {
+  extractModelNumbers,
+  firmFromTitle,
+  quotedBrands,
+  toIsoDate,
+  brandFromProduct,
+  quotedCodes,
+} from './text.js';
 import type { Recall, RemedyOption } from './types.js';
 
 const BASE_URL = 'https://www.saferproducts.gov/RestWebServices/Recall';
@@ -41,20 +48,28 @@ function companyName(raw: string): string {
 
 export function fromCpsc(raw: CpscRecall): Recall {
   const description = raw.Description ?? '';
+  const skus = quotedCodes(description);
   const products = (raw.Products ?? []).map((p) => {
     const name = p.Name ?? '';
-    const models = new Set(extractModelNumbers(`${name}. ${description}`));
+    const models = new Set([...extractModelNumbers(`${name}. ${description}`), ...skus]);
     if (p.Model) models.add(p.Model);
     return { name, models: [...models] };
   });
   if (products.length === 0) {
-    products.push({ name: raw.Title, models: extractModelNumbers(description) });
+    products.push({
+      name: raw.Title,
+      models: [...new Set([...extractModelNumbers(description), ...skus])],
+    });
   }
 
   const brands = new Set<string>();
   const firm = firmFromTitle(raw.Title);
   if (firm) brands.add(firm);
   for (const b of quotedBrands(description)) brands.add(b);
+  for (const p of raw.Products ?? []) {
+    const sold = brandFromProduct(raw.Title ?? '', p.Name ?? '');
+    if (sold) brands.add(sold);
+  }
   for (const c of [...(raw.Manufacturers ?? []), ...(raw.Importers ?? [])]) {
     if (c.Name) brands.add(companyName(c.Name));
   }

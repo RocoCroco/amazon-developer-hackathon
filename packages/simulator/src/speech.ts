@@ -20,7 +20,8 @@ const escapeXml = (s: string) =>
  * lowercase letter ("Extend2Fit", "SnugRide35") are product names and are read normally.
  */
 const CODE =
-  /\b(?=[A-Z0-9-]*\d)(?=[A-Z0-9-]*[A-Z])(?![A-Za-z0-9-]*[a-z])[A-Z0-9]+(?:-[A-Z0-9]+)*\b/g;
+  /\b(?=[A-Z0-9-]*\d)(?=[A-Z0-9-]*[A-Z])(?![A-Za-z0-9-]*[a-z])[A-Z0-9]+(?:-[A-Z0-9]+)*\b|\b[A-Z0-9](?:-[A-Z0-9]){2,}\b/g;
+// The second alternative is a brand spelled back letter by letter: "A-I-T-J-U-N-Z".
 
 /** Words that contain a digit but are ordinary: "2nd", "3rd", "10th"... */
 const ORDINAL = /^\d+(st|nd|rd|th)$/i;

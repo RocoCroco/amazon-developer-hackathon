@@ -11,6 +11,10 @@ describe('toSsml', () => {
       '<speak>Your Govee <say-as interpret-as="characters">H7131</say-as> space heater is recalled.</speak>',
     );
     expect(toSsml('Model KCVQ08B10A.')).toContain('>KCVQ08B10A</say-as>');
+    // A brand spelled back for confirmation is read letter by letter too.
+    expect(toSsml('Do you mean Aitjunz, A-I-T-J-U-N-Z?')).toBe(
+      '<speak>Do you mean Aitjunz, <say-as interpret-as="characters">AITJUNZ</say-as>?</speak>',
+    );
   });
 
   it('drops hyphens inside a spelled code', () => {

@@ -44,10 +44,56 @@ export function quotedBrands(text: string): string[] {
       continue;
     }
     for (const m of sentence.matchAll(/["“]([A-Z][^"”]{1,30})["”]/g)) {
-      if (m[1]) found.add(m[1].trim());
+      const value = m[1]?.trim().replace(/[,.;:]+$/, '');
+      // `SKU "LDQMFJ8D-BK," is printed on the packaging` quotes a code, not a brand.
+      if (value && !looksLikeCode(value)) found.add(value);
     }
   }
   return [...found];
+}
+
+/** "LDQMFJ8D-BK", "H7131", "SR-100": letters and digits mixed, no spaces. */
+function looksLikeCode(value: string): boolean {
+  return /\d/.test(value) && /[A-Za-z]/.test(value) && !/\s/.test(value);
+}
+
+/**
+ * Codes quoted in sentences about SKUs, models or item numbers, e.g.
+ * `SKU "LDQMFJ8D-BR," or "LDQMFJ8D-BK" is printed on the packaging` -> ['LDQMFJ8D-BR', 'LDQMFJ8D-BK'].
+ */
+export function quotedCodes(text: string): string[] {
+  const found = new Set<string>();
+  for (const sentence of text.split(/(?<=[.!?])\s+(?=[A-Z])/)) {
+    if (!/\b(sku|skus|model|models|item|items|upc|style|part)\b/i.test(sentence)) continue;
+    for (const m of sentence.matchAll(/["“]([^"”]{2,30})["”]/g)) {
+      const value = m[1]?.trim().replace(/[,.;:]+$/, '');
+      if (value && looksLikeCode(value)) found.add(value);
+    }
+  }
+  return [...found];
+}
+
+// Words that start product names but are not brands ("Children's Pajamas", "Portable Heaters").
+const NOT_BRANDS = new Set(
+  (
+    'all certain some select the new children childrens kids baby babies infant infants toddler toddlers ' +
+    'youth adult adults women womens men mens girls boys portable electric gas wooden wood plastic glass ' +
+    'metal steel folding outdoor indoor battery rechargeable magnetic water bath window pet dog cat ' +
+    'smart mini large small dressers dresser chests crib cribs high bunk bed beds space'
+  ).split(' '),
+);
+
+/**
+ * The brand a product is sold under, when it differs from the recalling firm:
+ * title "Yuyitop Recalls Aitjunz 8-Drawer Dressers Due to ..." + product "Aitjunz 8-Drawer Dressers"
+ * -> "Aitjunz". Both must agree, and generic words are never taken for brands.
+ */
+export function brandFromProduct(title: string, productName: string): string | undefined {
+  const afterRecalls = /\bRecalls?\s+([A-Z][A-Za-z'’&-]{2,})\s/.exec(title)?.[1];
+  const first = /^([A-Z][A-Za-z'’&-]{2,})\s/.exec(productName.trim())?.[1];
+  if (!afterRecalls || afterRecalls !== first) return undefined;
+  if (NOT_BRANDS.has(first.toLowerCase().replace(/['’]/g, ''))) return undefined;
+  return first;
 }
 
 const MONTHS = [
