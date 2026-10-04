@@ -47,10 +47,20 @@ export interface ModelContext {
   brandWords: Set<string>;
   /** Normalized prose of the recall, for the "text" evidence. */
   normalizedText: string;
+  /**
+   * Normalized title and product names only. A model name without digits ("Tread Plus") must be named here:
+   * prose also mentions other products ("this product is different than the Peloton Tread+").
+   */
+  namesText?: string;
 }
 
 export function brandWordSet(brands: string[]): Set<string> {
-  return new Set(brands.flatMap((b) => normalizeBrand(b).split(' ')).filter(Boolean));
+  // Both the canonical brand ("fisherprice") and its words as written ("fisher", "price").
+  return new Set(
+    brands
+      .flatMap((b) => [...normalizeBrand(b).split(' '), ...normalizeText(b).split(' ')])
+      .filter(Boolean),
+  );
 }
 
 /** Evidence that `itemModel` is one of the models in `listed` (a product line's models and prefixes). */
@@ -85,8 +95,8 @@ export function modelEvidence(
 
   const phrase = normalizeText(itemModel);
   const distinctive = hasDigit(wanted) || phrase.split(' ').length >= 2;
-  if (distinctive && wanted.length >= 4 && ` ${ctx.normalizedText} `.includes(` ${phrase} `))
-    return 'text';
+  const where = hasDigit(wanted) ? ctx.normalizedText : (ctx.namesText ?? ctx.normalizedText);
+  if (distinctive && wanted.length >= 4 && ` ${where} `.includes(` ${phrase} `)) return 'text';
 
   return partial ? 'partial' : 'none';
 }

@@ -7,7 +7,7 @@ import {
   type ModelEvidence,
 } from './model.js';
 import {
-  containsPhrase,
+  brandInText,
   dropCorporate,
   normalizeBrand,
   normalizeText,
@@ -94,6 +94,10 @@ function formsConflict(wanted: string[], available: Set<string>): boolean {
   const recallForms = [...available].filter((t) => FORMS.has(t));
   return recallForms.length > 0 && !itemForms.some((f) => available.has(f));
 }
+
+/** Recall wording that covers every unit: "All models of ...", "This recall involves all Rock 'n Play Sleepers". */
+const ALL_UNITS =
+  /\ball (?:models?|units|sizes|colou?rs|styles|versions)\b|\bthis recall (?:involves|includes) all\b|\ball [^.|]{1,60}\bare (?:included|being recalled)\b/i;
 
 /** First and last day (ISO) of the month, or of the whole year when the month is unknown. */
 function itemPeriod(year: number, month?: number): { start: string; end: string } {
@@ -226,7 +230,7 @@ function matchLine(
  */
 export function matchItem(item: Item, recall: Recall): Match | null {
   const brand = item.brand ? normalizeBrand(item.brand) : '';
-  if (!brand || !containsPhrase(brandHaystack(recall), brand)) return null;
+  if (!brand || !brandInText(brandHaystack(recall), brand)) return null;
 
   const lines: RecalledProduct[] = recall.products.length
     ? recall.products
@@ -235,6 +239,7 @@ export function matchItem(item: Item, recall: Recall): Match | null {
   const ctx: ModelContext = {
     brandWords: brandWordSet(recall.brands),
     normalizedText: normalizeText(`${recall.title} ${recall.summary}`),
+    namesText: normalizeText(`${recall.title} ${lines.map((l) => l.name).join(' ')}`),
   };
   const itemBrandWords = new Set(productTokens(brand));
 
@@ -273,10 +278,17 @@ export function matchItem(item: Item, recall: Recall): Match | null {
   // Food and drug recalls are identified by lot or date code, which we only know from the label.
   if (recall.category === 'food' || recall.category === 'drug') missing.add('lot');
 
+  // "All models of Rock 'n Play Sleepers": every unit of the product is recalled, so brand and product decide.
+  const everyUnit =
+    recall.category === 'consumer' &&
+    !anyListed &&
+    ALL_UNITS.test(`${lines.map((l) => l.name).join(' | ')} | ${recall.summary}`);
+  if (everyUnit) reasons.push('the recall covers all models');
+
   return {
     recall,
     level:
-      missing.size === 0 && isConfident(recall.category, best.evidence, verified)
+      missing.size === 0 && (isConfident(recall.category, best.evidence, verified) || everyUnit)
         ? 'strong'
         : 'possible',
     score: Math.min(best.score, 1),

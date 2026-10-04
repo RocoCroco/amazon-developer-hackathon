@@ -162,3 +162,9 @@ Format: what I tried / what I expected / what happened / how I solved it.
 ## F27 - "An eight-drawer dresser" became brand "eight-drawer" (2026-10-04, demo rehearsal)
 - Happened: 1 time in 8, Claude called add_item with brand "eight-drawer", so instead of "Who makes it?" Alexa asked for a model number.
 - Solved in the server, for any assistant: a "brand" made only of descriptive words (numbers, drawer, white, wooden, double...) goes back into the product name and the tool asks who makes it ("8th June" stays a brand). The video line also says just "a dresser".
+
+## F28 - Two famous recalls came back "no recalls" (2026-10-04, found while choosing a demo item)
+- Tried: "we got a second-hand Fisher-Price Rock n Play sleeper" and "a Peloton Tread Plus" on the deployed system.
+- Expected: both recalled (CPSC 2019 and 2021, after deaths).
+- Happened: Alexa said they were clear. Three separate bugs: (1) the owner's brand "Fisher-Price" is normalized to the alias "fisherprice" but recall text to "fisher price", so no hyphenated brand ever matched; (2) "+" was dropped, so "Tread+" could not be told from the separate "Tread" recall, and a model name was matched against prose that mentioned the other product ("this product is different than the Peloton Tread+"); (3) for items with brand but no model, the save step treated any status other than "need info" as "no recalls", which became wrong once an "All models of ..." recall could be confirmed without a model.
+- Solved: aliases applied to recall text too; "+" is the word "plus"; model names without digits must appear in the title or product names; "all models" recalls are confirmed by brand and product; the save step only says "no recalls" on an explicit no_recall. Real CPSC records added as fixtures with matcher and tool tests (the tool test fails without the fix). The matcher evaluation and the blind challenge set are unchanged.

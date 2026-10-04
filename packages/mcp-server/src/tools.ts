@@ -155,7 +155,9 @@ async function checkOnSave(saved: StoredItem, ctx: ToolContext): Promise<Checked
     // nothing under this brand, but it sounds like one that has recalls: confirm the brand first
     return (await brandHeardRight(saved, ctx)) ?? peek;
   }
-  if (peek.status === 'need_info' || peek.status === 'source_unavailable') {
+  // Only an explicit "no recall" may end here quietly. Anything else (recalled: "All models of ..." needs no
+  // model; need_info; outside_period; source_unavailable) is checked for real and reported.
+  if (peek.status !== 'no_recall') {
     return (await check(saved, ctx, saved)).structuredContent as Checked;
   }
   const heard = await brandHeardRight(saved, ctx);

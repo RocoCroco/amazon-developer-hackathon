@@ -19,18 +19,44 @@ const BRAND_ALIASES: Record<string, string> = {
   'fisher price': 'fisherprice',
   'fisher-price': 'fisherprice',
   'black decker': 'blackdecker',
+  'black plus decker': 'blackdecker',
 };
 
-/** Lowercase, strip accents/punctuation, collapse whitespace. Apostrophes are dropped, not split. */
+/**
+ * Lowercase, strip accents/punctuation, collapse whitespace. Apostrophes are dropped, not split. A "+" is a
+ * word: "Tread+" is "tread plus", a different product from the "Tread".
+ */
 export function normalizeText(value: string): string {
   return value
     .normalize('NFKD')
     .replace(/[̀-ͯ]/g, '')
     .toLowerCase()
     .replace(/['’]/g, '')
+    .replace(/\+/g, ' plus ')
     .replace(/[^a-z0-9]+/g, ' ')
     .trim();
 }
+
+/** Normalized text with the multi-word brand aliases joined ("fisher price" -> "fisherprice"). */
+export function applyBrandAliases(normalized: string): string {
+  let text = ` ${normalized} `;
+  for (const [alias, canonical] of Object.entries(BRAND_ALIASES)) {
+    if (alias.includes(' ')) text = text.split(` ${alias} `).join(` ${canonical} `);
+  }
+  return text.trim();
+}
+
+/**
+ * Whether a normalized brand appears in normalized recall text, also when the brand has a canonical alias:
+ * the owner's "Fisher-Price" is "fisherprice", the recall text says "fisher price".
+ */
+export function brandInText(haystack: string, brand: string): boolean {
+  if (containsPhrase(haystack, brand)) return true;
+  // Rewriting the text only helps for a canonical alias ("fisherprice"), and it is the slow part.
+  return ALIAS_TARGETS.has(brand) && containsPhrase(applyBrandAliases(haystack), brand);
+}
+
+const ALIAS_TARGETS = new Set(Object.values(BRAND_ALIASES));
 
 /** Removes corporate filler (inc, llc, the, and...) from already normalized text. */
 export function dropCorporate(normalized: string): string {

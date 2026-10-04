@@ -19,9 +19,14 @@ beforeAll(async () => {
       readFileSync(new URL('../test/fixtures/cpsc-space-heater.json', import.meta.url), 'utf8'),
     ) as CpscRecall[]
   ).map(fromCpsc);
+  const famous = (
+    JSON.parse(
+      readFileSync(new URL('../test/fixtures/cpsc-famous-recalls.json', import.meta.url), 'utf8'),
+    ) as CpscRecall[]
+  ).map(fromCpsc);
   const s = await startNodeServer({
     store: new InMemoryItemStore(),
-    recalls: new StaticRecallProvider([...heaters, ...loadCorpus()]),
+    recalls: new StaticRecallProvider([...heaters, ...famous, ...loadCorpus()]),
   });
   url = s.url;
   stop = s.close;
@@ -80,6 +85,29 @@ describe('list_items', () => {
       'You have seven items: an Acme thing0, an Acme thing1, an Acme thing2, an Acme thing3, and three more.',
     );
     expect(spokenInventory(items.slice(0, 1))).toBe('You have one item: an Acme thing0.');
+  });
+});
+
+describe('add_item with brand and product only (F28: these came back "no recalls")', () => {
+  it('reports a recall of every model right away: no model number is needed', async () => {
+    const { call } = await connect('fAmOuSrOcKnPlAyfAmOuS6');
+    const added = await call('add_item', { name: 'Rock n Play sleeper', brand: 'Fisher-Price' });
+    expect(added.data.status).toBe('recalled');
+    expect(added.summary).toMatch(/is recalled/);
+    expect(added.summary).not.toMatch(/no recalls/i);
+  });
+
+  it('a Peloton Tread Plus is recalled; a Peloton without a model is asked for it', async () => {
+    const { call } = await connect('fAmOuSpElOtOnfAmOuSpE7');
+    const plus = await call('add_item', {
+      name: 'treadmill',
+      brand: 'Peloton',
+      model: 'Tread Plus',
+    });
+    expect(plus.data.status).toBe('recalled');
+    const unknown = await call('add_item', { name: 'treadmill', brand: 'Peloton' });
+    expect(unknown.data.status).toBe('need_info');
+    expect(unknown.summary).not.toMatch(/no recalls/i);
   });
 });
 

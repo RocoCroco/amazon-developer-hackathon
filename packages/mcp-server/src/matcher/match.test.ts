@@ -223,3 +223,37 @@ describe('deterministic matcher', () => {
     });
   });
 });
+
+// Found by trying famous recalls on the deployed system (2026-10-04): both were answered "no recalls".
+describe('famous recalls that once came back clear (F28)', () => {
+  const famous = load('cpsc-famous-recalls.json');
+  const byTitle = (re: RegExp) => famous.find((r) => re.test(r.title))!;
+  const rockNPlay2019 = byTitle(/Recalls Rock 'n Play Sleepers Due to Reports of Deaths/);
+  const treadPlus = byTitle(/Tread\+ Treadmills/);
+  const tread = byTitle(/Recalls Tread Treadmills/);
+
+  it('matches a hyphenated brand: the owner says "Fisher-Price", the recall text says "Fisher-Price"', () => {
+    for (const brand of ['Fisher-Price', 'Fisher Price', 'fisher price']) {
+      const m = matchItem({ name: 'Rock n Play sleeper', brand }, rockNPlay2019);
+      expect(m?.level, brand).toBe('strong'); // "All Models of Rock 'n Play Sleeper"
+      expect(m?.reasons).toContain('the recall covers all models');
+    }
+  });
+
+  it('tells the Tread+ from the Tread, even though the Tread notice mentions the Tread+', () => {
+    for (const model of ['Tread+', 'Tread Plus', 'tread plus']) {
+      expect(
+        matchItem({ name: 'treadmill', brand: 'Peloton', model }, treadPlus)?.level,
+        model,
+      ).toBe('strong');
+      expect(matchItem({ name: 'treadmill', brand: 'Peloton', model }, tread), model).toBeNull();
+    }
+    // Without the model both are possible, and the model is what to ask.
+    expect(matchItem({ name: 'treadmill', brand: 'Peloton' }, tread)?.missing).toEqual(['model']);
+  });
+
+  it('keeps "+" as a word and joins brand aliases in recall text', () => {
+    expect(normalizeText('Tread+')).toBe('tread plus');
+    expect(normalizeBrand('Black+Decker')).toBe('blackdecker');
+  });
+});
