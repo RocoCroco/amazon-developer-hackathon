@@ -53,17 +53,19 @@ Problems met and solved: FRICTION_LOG.md (CPSC refusing AWS traffic, Transcribe'
 > "Create a new, additional open-source project or contribute to an existing public repository during the
 > hackathon window, alongside a primary track submission"
 
-**Chosen: the Open Recall Format**, an open, owner-side recall data format with converters for official feeds. Research and design: docs/open-recall-format.md. **Status: published.** Repository: https://github.com/RocoCroco/open-recall-format (Apache-2.0, release v0.1.0, tests run in GitHub Actions). Contribution to an existing repository: the schema.org `ProductRecall` proposal on https://github.com/schemaorg/schemaorg/issues/3229#issuecomment-5979280862. Publishing this repo is not enough; it has to be a separate project (or a contribution
-to someone else's repository). Candidates, from things we built and that do not exist yet:
+**Our entry: the Open Recall Format**, a new, separate open-source project created during the hackathon window:
+an open, owner-side data format for product recalls, with converters for seven official recall sources, a reference
+checker, a CLI and 75 tests on real government records.
 
-1. **A tiny browser client for Amazon Transcribe streaming** (`eventstream.js` + `voice.js` + the presigner):
-   no AWS SDK in the browser, no credentials on the page, a pre-roll buffer for wake words. FEEDBACK.md notes that
-   AWS has no minimal browser example; this fills exactly that gap. Smallest effort.
-2. **A normalizer for US recall data** (CPSC, NHTSA API and bulk file, openFDA) into one schema, with the data
-   quirks we found (headline-style firm names, "N/A" recall numbers, SKUs quoted as brands, CPSC date queries).
-   Most reusable for other developers.
-3. **A contribution to an existing repo**, for example an example of a stateless Streamable HTTP MCP server on AWS
-   Lambda Function URLs for the MCP TypeScript SDK.
+- Repository: https://github.com/RocoCroco/open-recall-format (Apache-2.0 code, CC BY 4.0 specification; release
+  v0.1.0; tests run in GitHub Actions)
+- Contribution to an existing public repository: a concrete schema.org `ProductRecall` proposal on
+  https://github.com/schemaorg/schemaorg/issues/3229#issuecomment-5979280862
+- Research and first design: docs/open-recall-format.md; Devpost fields and text: docs/devpost-submission.md
+
+Why a separate project: the rule asks for a *new, additional* open-source project (or a contribution to someone
+else's repository). Making this Recall Guardian repository public would not count on its own; the Open Recall Format
+is that additional project, and Recall Guardian is its first use case.
 
 ## Judging criteria: what to show for each
 
