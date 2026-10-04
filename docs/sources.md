@@ -28,6 +28,19 @@ https://www.cpsc.gov/s3fs-public/Recall_Effectiveness_Workshop_Report-2018.pdf
 > "The 'Recall Data' presentation demonstrated that direct notice has a substantial impact on consumer return
 > rates. Stakeholders noted that improved product registration methods (e.g., retailer opt-in at checkout, **home
 > voice assistants**, photo texting, QR codes, and incentives) could lead to higher consumer participation."
+> (PDF page 4; this is what *stakeholders* said at the workshop.)
+
+And CPSC's own follow-up, in the same report (PDF page 5, "Collaborating on ways to improve direct notice to
+consumers"; re-read 2026-10-04):
+
+> "Direct notice recalls have proven to be the most effective recalls. We intend to work with consumer and
+> industry stakeholders on registration methods or other improvements (e.g., retailer opt-in at checkout, **home
+> voice assistants**, photo texting, QR codes, and incentives for product registration) to promote direct notice
+> recalls."
+
+What this supports: the CPSC **listed home voice assistants** among the registration methods it intends to work on
+to promote direct notice. It does not say voice assistants are proven to help, and the "could lead to higher
+participation" sentence is the stakeholders', not the agency's. The video (line 4.3) uses the page 5 quote.
 
 Safe phrasing: *"CPSC data shows only about 6% of consumers act on a recall announced by press release, versus about
 50% when owners are notified directly. The agency's own workshop report names home voice assistants as one way to
