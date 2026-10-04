@@ -3,11 +3,11 @@
 **Project name:** Recall Guardian
 **Tagline:** Amazon already protects what you buy on Amazon. Recall Guardian protects everything else in your home.
 **Track:** Alexa+ (self-hosted MCP server, spec 2025-11-25, Streamable HTTP)
-**Mini challenges to consider:** AWS Builder (serverless on AWS, Bedrock, Polly, CDK). Open Source (needs the repo to be public; see the checklist).
+**Mini challenges:** AWS Builder (serverless on AWS, Bedrock, Polly, Transcribe, CDK) and Open Source (the Open Recall Format, see the last section).
 
 **Links**
 - Demo video: _(YouTube/Vimeo link, filled in by the human)_
-- Live simulator: https://6aqlg4s33zg7tgjhoqsetxjqyi0pctry.lambda-url.us-east-1.on.aws/ (in Chrome or Edge allow the microphone once and say "Alexa, we got a second-hand Govee space heater, model H7131", or type it; the settings behind the chevron have "Load sample family" and "Simulate new recall")
+- Live simulator: https://6aqlg4s33zg7tgjhoqsetxjqyi0pctry.lambda-url.us-east-1.on.aws/ (in Chrome or Edge allow the microphone once and say "Alexa, we got a second-hand Govee space heater, model H7131", or type it; the settings behind the gear icon have "Load sample family" and "Simulate new recall")
 - Code: _(GitHub URL; MIT license)_
 
 ---
@@ -44,9 +44,9 @@ tools ("Where is the sticker? Do you know roughly which month it was made?") ins
 
 - **A real MCP server:** TypeScript, the official `@modelcontextprotocol/sdk`, MCP spec **2025-11-25**, **Streamable HTTP** (stateless, JSON responses), on AWS Lambda behind a public HTTPS URL, with eleven tools (`add_item`, `list_items`, `update_item`, `remove_item` with confirmation, `check_item`, `check_household`, `get_alerts`, `get_remedy`, `resolve_alert`, `update_allergies`, `recent_allergen_recalls`). Every response leads with one short spoken sentence; a test drives all eleven tools and enforces voice-first rules. Brand mishearing is solved in the server (sound-alike matching against recall brands), so it helps any voice front end, not just ours.
 - **The matcher is the technical core:** deterministic normalization (brand aliases, model codes, per-product model years, production windows with month precision) plus a Claude second opinion on Amazon Bedrock that can only make an answer *more* careful. Evaluated on **1,313 real recalls**: 77 hand-labeled and 478 generated items score 100%, but those labels were partly reconciled with the matcher, so we added a **blind challenge set of 40 messy descriptions** (misheard brands, partial model codes, "stove" for "range", no brand, 14 hard negatives). Blind first run: **0 false alarms, 21 of 26 recalled items handled safely**; after two general fixes 26 of 26. All of it, including what is still not ideal, is in docs/matcher-results.md.
-- **Outage-proof data:** CPSC's API went down for hours while we built this (and still often refuses requests from AWS). A naive design said "no recalls" during the outage, the worst possible answer. Now every source reports when it is down, the server keeps a copy of CPSC since 2008 in DynamoDB, and if no source can answer, Alexa says it could not check.
+- **Outage-proof data:** CPSC's API went down for hours while we built this (and still often refuses requests from AWS). A naive design said "no recalls" during the outage, the worst possible answer. Now every source reports when it is down, the server keeps a copy of every CPSC recall since mid-2011 in DynamoDB, and if no source can answer, Alexa says it could not check.
 - **Daily watcher:** EventBridge -> Lambda. Incremental sync of four official feeds (including streaming the 15 MB NHTSA zip without buffering it), matching only new or revised recalls, deduplicated alerts that never resurrect a closed one.
-- **Alexa+ simulator (the demo surface):** the real Alexa+ MCP toolkit may not be available to us, so a web app simulates it: Claude on Bedrock is the "Alexa+ brain" and is a **real MCP client** of our server; Web Speech API for the microphone with a wake word ("Alexa"), silence detection and pause-while-speaking, like a real Echo; **Amazon Polly** neural voice, with model codes spelled out through SSML. It is stateless on Lambda (conversations and daily spending caps live in DynamoDB), with a "Simulate new recall" button that really invokes the deployed watcher.
+- **Alexa+ simulator (the demo surface):** the real Alexa+ MCP toolkit may not be available to us, so a web app simulates it: Claude on Bedrock is the "Alexa+ brain" and is a **real MCP client** of our server; Amazon Transcribe streaming (with a custom vocabulary of recall brands) for the microphone, the browser recognizer for the wake word ("Alexa"), end-of-speech detection, follow-up listening and pause-while-speaking, like a real Echo; **Amazon Polly** neural voice, with model codes spelled out through SSML. It is stateless on Lambda (conversations and daily spending caps live in DynamoDB), with a "Simulate new recall" button that really invokes the deployed watcher.
 - **Serverless on AWS, in CDK:** Lambda, DynamoDB on-demand, EventBridge, Bedrock, Polly, Transcribe. About **$12 a month** at demo usage (docs/costs.md), with a CDK test that fails if a resource with an hourly price appears.
 
 ## Challenges we ran into
@@ -75,4 +75,37 @@ TypeScript, Model Context Protocol (official SDK, Streamable HTTP), AWS Lambda, 
 
 ## Product feedback and friction log
 
-Per-tool feedback for every SDK, API and service used: FEEDBACK.md. Friction log (what we tried, what we expected, what happened, how we solved it): FRICTION_LOG.md (19 entries).
+Per-tool feedback for every SDK, API and service used: FEEDBACK.md. Friction log (what we tried, what we expected, what happened, how we solved it): FRICTION_LOG.md (25 entries).
+
+---
+
+## Open Source mini challenge (form fields)
+
+The rules ask for: "contribution URL, project repository URL, GitHub username, and a description of what you did,
+how it works, and why it matters."
+
+- **Project repository URL:** https://github.com/RocoCroco/open-recall-format
+- **Contribution URL:** https://github.com/RocoCroco/open-recall-format/releases/tag/v0.1.0
+- **GitHub username:** RocoCroco
+- **Also mention:** the schema.org proposal https://github.com/schemaorg/schemaorg/issues/3229#issuecomment-5979280862
+
+**Description (paste-ready):**
+
+**What I did:** I created the Open Recall Format, a new open-source project: an open draft standard for product
+recall data, written from the owner's side, with working code. The project includes the specification, a JSON
+Schema, shared vocabularies (hazards, allergens, actions, remedies), converters for seven official recall sources (US
+CPSC, NHTSA and FDA; Canada; EU Safety Gate; France RappelConso; UK OPSS), a reference checker, a CLI, and 75 tests on
+real government records. I also posted a concrete `ProductRecall` proposal on schema.org's recall issue, open since
+2022 (https://github.com/schemaorg/schemaorg/issues/3229#issuecomment-5979280862).
+
+**How it works:** each converter turns an agency's own data into one record shape. The affected units become data a
+program can check: model numbers, barcodes, lot codes, serial ranges, production and use-by dates, vehicle model
+years. Each record also says where the code is printed on the product, what the owner should do first, and what
+remedy they get. The checker answers "affected", "possibly affected" (plus the exact question to ask the owner),
+"not affected" or "unrelated", and it never turns "unknown" into "not recalled".
+
+**Why it matters:** only about 6% of consumers act on a recall announced by press release, and about 50% when they
+are told directly. Telling people directly needs software that knows whether the unit in their home is affected.
+Today every agency publishes in a different shape, and the identifiers are often hidden in prose: in all 134 CPSC
+recalls from January to April 2025, the structured model field is empty. Recall Guardian, my Alexa+ entry, is the
+first use case: an assistant that can warn a family about anything they own, not only what they bought online.
