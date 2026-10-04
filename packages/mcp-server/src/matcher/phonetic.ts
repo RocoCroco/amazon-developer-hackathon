@@ -39,6 +39,53 @@ export function unspell(value: string): string {
   return value;
 }
 
+// Words that describe a product rather than say who makes it.
+const DESCRIPTOR_WORDS = new Set(
+  (
+    'one two three four five six seven eight nine ten eleven twelve ' +
+    'drawer door shelf shelve tier piece seat seater inch in ft foot feet gallon quart cup liter litre oz lb ' +
+    'pack count set pair compartment burner speed slot layer level step person wheel way ' +
+    'white black gray grey brown blue red green pink beige cream natural yellow purple silver gold ' +
+    'wooden wood metal plastic glass steel bamboo oak pine walnut fabric leather ' +
+    'small large mini big tall short double twin full queen king compact portable new used old second hand electric'
+  ).split(' '),
+);
+
+/**
+ * "eight-drawer", "6 drawer", "white", "wooden": a description, not a brand. The assistant sometimes reads
+ * "an eight-drawer dresser" as brand + product; the server then asks who makes it instead.
+ */
+export function isDescriptiveBrand(brand: string): boolean {
+  const words = brand
+    .toLowerCase()
+    .split(/[\s-]+/)
+    .filter(Boolean);
+  return (
+    words.length > 0 &&
+    words.every(
+      (w) =>
+        /^\d+$/.test(w) || DESCRIPTOR_WORDS.has(w) || DESCRIPTOR_WORDS.has(w.replace(/s$/, '')),
+    )
+  );
+}
+
+/**
+ * Item fields as the server keeps them: a brand spelled letter by letter is joined ("A I T J U N Z" -> AITJUNZ),
+ * and a descriptive "brand" moves back into the name ("eight-drawer" + "dresser" -> "eight-drawer dresser").
+ */
+export function cleanBrandField<T extends { brand?: string; name?: string }>(fields: T): T {
+  if (!fields.brand) return fields;
+  const brand = unspell(fields.brand);
+  if (!isDescriptiveBrand(brand)) return { ...fields, brand };
+  const rest: Omit<T, 'brand'> & { brand?: string } = { ...fields };
+  delete rest.brand;
+  const name =
+    rest.name && !rest.name.toLowerCase().includes(brand.toLowerCase())
+      ? `${brand} ${rest.name}`
+      : rest.name;
+  return { ...rest, ...(name ? { name } : {}) } as T;
+}
+
 /** "Aitjunz" -> "A-I-T-J-U-N-Z", for Alexa to read a brand back letter by letter. */
 export function spellOut(brand: string): string {
   return brand

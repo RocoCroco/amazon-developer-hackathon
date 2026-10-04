@@ -10,7 +10,7 @@ import {
 import { confirmMatches, type ConfirmedMatch } from './matcher/confirm.js';
 import { allergiesHit, allergyNote } from './matcher/allergens.js';
 import { findMatches, type Item } from './matcher/match.js';
-import { unspell } from './matcher/phonetic.js';
+import { cleanBrandField } from './matcher/phonetic.js';
 import { recordAlerts } from './household-check.js';
 import { searchRecalls } from './recalls/provider.js';
 import { registerAlertTools } from './tools-alerts.js';
@@ -200,8 +200,8 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       inputSchema: itemFields,
     },
     async (fields) => {
-      // "A I T J U N Z": the owner spelled the brand letter by letter.
-      const input = fields.brand ? { ...fields, brand: unspell(fields.brand) } : fields;
+      // A spelled brand is joined; a description given as the brand ("eight-drawer") goes back into the name.
+      const input = cleanBrandField(fields);
       const item = await ctx.store.addItem(ctx.householdId, input);
       const checked = await checkOnSave(item, ctx);
       if (checked) {

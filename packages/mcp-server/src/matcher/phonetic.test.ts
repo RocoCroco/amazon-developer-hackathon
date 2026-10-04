@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { loadCorpus } from '../../test/corpus.js';
 import { suggestBrands } from './clarify.js';
 import { findMatches } from './match.js';
-import { soundDifference, soundKey, spellOut, unspell } from './phonetic.js';
+import {
+  cleanBrandField,
+  isDescriptiveBrand,
+  soundDifference,
+  soundKey,
+  spellOut,
+  unspell,
+} from './phonetic.js';
 
 const corpus = loadCorpus();
 const aitjunz = corpus.find((r) => r.id === 'cpsc:10998')!;
@@ -14,6 +21,25 @@ describe('sound keys', () => {
     expect(soundKey('8th June')).toBe('atjun');
     expect(soundKey('iTunes')).toBe('ituns');
     expect(soundKey('Chicco')).toBe('jiko');
+  });
+
+  it('tells descriptions from brands', () => {
+    for (const d of ['eight-drawer', '6 drawer', 'White', 'wooden', 'double', 'two-door']) {
+      expect(isDescriptiveBrand(d), d).toBe(true);
+    }
+    for (const b of ['8th June', 'Graco', 'Black+Decker', 'Little Tikes', 'IKEA', 'iTunes']) {
+      expect(isDescriptiveBrand(b), b).toBe(false);
+    }
+    expect(cleanBrandField({ name: 'dresser', brand: 'eight-drawer' })).toEqual({
+      name: 'eight-drawer dresser',
+    });
+    expect(cleanBrandField({ name: 'white dresser', brand: 'white' })).toEqual({
+      name: 'white dresser',
+    });
+    expect(cleanBrandField({ name: 'dresser', brand: 'A I T J U N Z' })).toEqual({
+      name: 'dresser',
+      brand: 'AITJUNZ',
+    });
   });
 
   it('spells brands back and joins brands spelled letter by letter', () => {

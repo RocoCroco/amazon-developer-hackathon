@@ -15,7 +15,8 @@
     "format": "prettier --write .",
     "typecheck": "tsc -p tsconfig.json",
     "test:live": "node scripts/test-live.mjs",
-    "e2e:deployed": "node scripts/smoke-deployed.mjs && node scripts/verify-watcher.mjs && node scripts/verify-simulator.mjs"
+    "e2e:deployed": "node scripts/smoke-deployed.mjs && node scripts/verify-watcher.mjs && node scripts/verify-simulator.mjs",
+    "rehearse:demo": "node scripts/rehearse-demo.mjs"
   },
   "devDependencies": {
     "@aws-sdk/client-s3": "^3.1146.0",

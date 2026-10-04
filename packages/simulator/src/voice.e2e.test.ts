@@ -225,6 +225,17 @@ describe('household panel and proactive messages', () => {
     // It is announced once, not on every poll.
     await page.waitForTimeout(5000);
     await hasCount(proactive, 1);
+
+    // The answer to the warning carries it, so the model knows what "yes" means; only once.
+    const bodies: string[] = [];
+    page.on('request', (r) => {
+      if (r.url().endsWith('/api/chat')) bodies.push(r.postData() ?? '');
+    });
+    await type(page, 'Yes, walk me through it.');
+    await type(page, 'Thanks.');
+    const [answer, later] = bodies.map((b) => JSON.parse(b) as { announced?: string });
+    expect(answer?.announced).toMatch(/^Heads up: your Zzyzx space heater has a recall\./);
+    expect(later?.announced).toBeUndefined();
     await page.close();
   }, 60_000);
 

@@ -14,6 +14,7 @@ Rules:
 - The model number is hard to find, so never ask for it on your own: add_item and update_item check first and only ask for it when some models of that brand and product are recalled. If the user says they do not know the model, accept it at once: do not ask for the year or anything else, just say the item is saved and that you will keep watching it (they can tell you the model later).
 - To check one product use check_item; to check everything they own use check_household. Only say something is recalled when the tool status is "recalled". If the status is "need_info", ask the question the tool gives, in your own short words. If it is "outside_period", explain that it does not look affected and invite a correction. If it is "no_recall", say so calmly. If it is "source_unavailable", never say it is clear: say you could not reach the recall database right now and will check again.
 - When something is recalled, give the safety action first (for example stop using it), then offer to walk through the fix with get_remedy. Use get_alerts for "what do I need to deal with", and resolve_alert once the user says they fixed it, stopped using it, or that it is not affected. After resolve_alert, first confirm in one short sentence that the alert is closed; mention what is still open only if there is something left.
+- A user message may start with a line in square brackets: "[You said this on your own just before, ...]". That is a warning you spoke unprompted about a new recall; the words after it answer that warning. For "yes, walk me through it", call get_alerts to find that recall's alert, then get_remedy, and give the safety action first.
 - remove_item asks first: tell the user what will be removed and call it again with confirm=true only after they clearly say yes.
 - Say model codes exactly as given; never read web addresses aloud; phone numbers as the tool spells them.
 - Never invent recalls, model numbers or phone numbers. Use only what the tools return.`;
@@ -66,12 +67,17 @@ export class Session {
     return this.turns;
   }
 
-  async say(userText: string): Promise<TurnResult> {
+  /**
+   * One user turn. `announced` is what Alexa said on her own since the last turn (a proactive recall warning
+   * spoken by the page), so that "yes, walk me through it" is understood as an answer to it.
+   */
+  async say(userText: string, announced?: string): Promise<TurnResult> {
     if (this.turns >= this.limits.maxTurns) throw new TurnLimitError();
     this.turns += 1;
 
     const startLength = this.messages.length;
-    this.messages.push({ role: 'user', content: [{ type: 'text', text: userText }] });
+    const text = announced ? `${announcedNote(announced)}\n${userText}` : userText;
+    this.messages.push({ role: 'user', content: [{ type: 'text', text }] });
     const toolCalls: ToolTrace[] = [];
 
     try {
@@ -135,6 +141,11 @@ export class Session {
   close(): Promise<void> {
     return this.mcp.close();
   }
+}
+
+/** How a proactive announcement is put in front of the user's next words (see SYSTEM_PROMPT). */
+export function announcedNote(announced: string): string {
+  return `[You said this on your own just before, because the daily watcher found a new recall: "${announced.replace(/\s+/g, ' ').slice(0, 400)}"]`;
 }
 
 /** The last tool's spoken summary (its first line), or a plain request to repeat. */

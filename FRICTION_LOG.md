@@ -152,3 +152,13 @@ Format: what I tried / what I expected / what happened / how I solved it.
 - Found while mapping sources for the Open Recall Format: the recallsByVehicle API sends `ReportReceivedDate` as `28/05/2020` (campaign 20V314000). We parsed slash dates as month first, so most vehicle recalls got an impossible date (`2020-28-05`), and our test fixture `04/11/2020` (campaign 20V682000, received in November) "passed" as April 11.
 - Lesson: a fixture can only confirm a format if a value in it is unambiguous; check with a day above 12.
 - Solved: day-first parsing for slash dates, tests with `28/05/2020`.
+
+## F26 - "Yes, walk me through it" answered the wrong question (2026-10-04, demo rehearsal)
+- Tried: rehearsing the new video script in text mode against the deployed system (scripts/rehearse-demo.mjs).
+- Expected: after the proactive "Heads up: your car seat has a recall. Want me to walk you through the fix?", the answer "yes" walks through the car seat fix.
+- Happened: Claude answered about the ice-cream lot code it had asked for earlier. The proactive warning is built and spoken by the page, so it never reached the model's conversation.
+- Solved: the page sends what it announced with the next message (`announced`), and the server puts it in front of the user's words as the assistant's own earlier words; the system prompt says how to read it. Browser test checks the page sends it once; 4 rehearsals in a row passed.
+
+## F27 - "An eight-drawer dresser" became brand "eight-drawer" (2026-10-04, demo rehearsal)
+- Happened: 1 time in 8, Claude called add_item with brand "eight-drawer", so instead of "Who makes it?" Alexa asked for a model number.
+- Solved in the server, for any assistant: a "brand" made only of descriptive words (numbers, drawer, white, wooden, double...) goes back into the product name and the tool asks who makes it ("8th June" stays a brand). The video line also says just "a dresser".

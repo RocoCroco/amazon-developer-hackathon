@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { MODEL_QUESTION, spokenList } from './matcher/clarify.js';
-import { unspell } from './matcher/phonetic.js';
+import { cleanBrandField } from './matcher/phonetic.js';
 import type { Item } from './matcher/match.js';
 import type { StoredItem } from './store.js';
 import { itemFields, reply, type ToolContext } from './tool-common.js';
@@ -79,8 +79,8 @@ export function registerInventoryTools(
       annotations: { idempotentHint: true },
     },
     async ({ item_id, ...fields }) => {
-      // "A I T J U N Z": the owner spelled the brand letter by letter.
-      const patch = fields.brand ? { ...fields, brand: unspell(fields.brand) } : fields;
+      // A spelled brand is joined; a description given as the brand ("white") is not taken as one.
+      const patch = cleanBrandField(fields);
       const item = await ctx.store.updateItem(ctx.householdId, item_id, patch);
       if (!item) {
         return reply("I couldn't find that item in your household.", { status: 'not_found' });

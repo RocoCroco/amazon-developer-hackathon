@@ -31,6 +31,8 @@ let busy = false;
 let listening = false;
 let speaking = false;
 const knownAlerts = new Set();
+/** A proactive warning Alexa spoke since the last turn; sent with the next message (see send). */
+let pendingAnnouncement = '';
 
 let statusTimer = 0;
 
@@ -378,6 +380,7 @@ async function refreshState({ announce }) {
           ? `Heads up: your ${top.item} has a recall. ${top.allergy_note ?? firstSentence(top.hazard || top.title)} Want me to walk you through the fix?`
           : `Heads up: your ${top.item} may be part of a food recall. ${top.allergy_note} Can you check the lot code on the package with me?`;
       const li = bubble('alexa proactive', text);
+      pendingAnnouncement = text;
       // A question was asked: like any reply, keep listening for the answer afterwards.
       await speak(text, li);
       voice.afterReply(true);
@@ -883,11 +886,14 @@ async function send(message, userBubble = null, { voice: byVoice = false } = {})
   setBusy(true);
   let replyBubble = null;
   let reply = '';
+  // What Alexa said on her own since the last turn goes along, so the answer to it is understood.
+  const announced = pendingAnnouncement;
+  pendingAnnouncement = '';
   try {
     const res = await fetch('/api/chat', {
       method: 'POST',
       headers: jsonHeaders,
-      body: JSON.stringify({ sessionId, message }),
+      body: JSON.stringify(announced ? { sessionId, message, announced } : { sessionId, message }),
     });
     const data = await res.json();
     if (!res.ok) {

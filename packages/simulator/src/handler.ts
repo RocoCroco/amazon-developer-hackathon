@@ -150,7 +150,9 @@ export function createSimulatorHandler(
       try {
         return json(200, {
           sessionId: stored.id,
-          ...(await withSession(stored, (session) => session.say(message))),
+          ...(await withSession(stored, (session) =>
+            session.say(message, asString(body.announced).trim().slice(0, 600) || undefined),
+          )),
         });
       } catch (error) {
         if (error instanceof TurnLimitError) {

@@ -101,6 +101,18 @@ describe('update_item', () => {
     expect(check.data.status).toBe('recalled');
   });
 
+  it('does not take a description for a brand ("an eight-drawer dresser", seen live)', async () => {
+    const { call } = await connect('dEsCrIpTiVeBrAnDdEsCr5');
+    const added = await call('add_item', { name: 'dresser', brand: 'eight-drawer' });
+    expect(added.summary).toBe('Okay, I saved your eight-drawer dresser. Who makes it?');
+    expect(added.data.still_needed).toEqual(['brand', 'model']);
+    const updated = await call('update_item', { item_id: added.data.item_id, brand: 'white' });
+    expect(updated.summary).toMatch(/Who makes it\?/);
+    // "8th June" is how speech recognition writes a real brand: it stays a brand.
+    const heard = await call('update_item', { item_id: added.data.item_id, brand: '8th June' });
+    expect(heard.summary).toMatch(/do you mean Aitjunz, A-I-T-J-U-N-Z\?/);
+  });
+
   it('keeps asking for what is still missing', async () => {
     const { call } = await connect('uPdAtEmIsSiNgUpDaTeMi4');
     const added = await call('add_item', { name: 'car seat' });

@@ -185,6 +185,19 @@ describe('an empty answer from the model (seen live on Bedrock after add_item)',
     expect((await session.say('The brand is Aitjunz.')).reply).toBe('Noted.');
   });
 
+  it("puts a proactive warning in front of the answer to it, as the assistant's own words", async () => {
+    const llm = new ScriptedLlm([say('Stop using the car seat now.'), say("You're welcome.")]);
+    const session = new Session(llm, fakeMcp);
+    await session.say('Yes, walk me through it.', 'Heads up: your Chicco car seat has a recall.');
+    const first = session.messages[0]?.content[0];
+    expect(first).toEqual({
+      type: 'text',
+      text: '[You said this on your own just before, because the daily watcher found a new recall: "Heads up: your Chicco car seat has a recall."]\nYes, walk me through it.',
+    });
+    await session.say('Thanks.');
+    expect(session.messages[2]?.content[0]).toEqual({ type: 'text', text: 'Thanks.' });
+  });
+
   it('repairs an empty message saved by an older version', () => {
     const session = new Session(new ScriptedLlm([]), fakeMcp, undefined, {
       messages: [
