@@ -14,7 +14,7 @@
 - Check occasionally: `aws lambda get-account-settings --region us-east-1 --query AccountLimit` and `aws service-quotas list-requested-service-quota-change-history-by-quota --service-code lambda --quota-code L-B99A9384 --region us-east-1`.
 - When approved: set reserved concurrency in infra/lib/recall-guardian-stack.ts (MCP function, e.g. 20; simulator function; keep the watcher at 1), redeploy, add an infra test, note it in FRICTION_LOG F5.
 
-## B4 - Open Source mini challenge needs a separate project (2026-10-03)
+## B4 - Open Source mini challenge needs a separate project (2026-10-03) - RESOLVED 2026-10-04: published at https://github.com/RocoCroco/open-recall-format
 - What: the rules (docs/rules.md) ask for "a new, additional open-source project or contribute to an existing public repository during the hackathon window". Making this repo public does not qualify.
 - Why it needs you: it is a product choice (which project, under whose GitHub account, published publicly).
 - Options (docs/challenges.md): (1) a small browser client for Amazon Transcribe streaming, (2) a US recall data normalizer (CPSC, NHTSA, openFDA), (3) a contribution to another repo (e.g. an MCP-on-Lambda example).
