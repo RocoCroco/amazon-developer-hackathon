@@ -12,8 +12,9 @@ const MIME: Record<string, string> = {
   '.css': 'text/css; charset=utf-8',
   '.webp': 'image/webp',
   '.svg': 'image/svg+xml',
+  '.png': 'image/png',
 };
-const BINARY = new Set(['.webp']);
+const BINARY = new Set(['.webp', '.png']);
 
 /** Reads the page (index.html, app.js, styles.css and img/) from a folder into the handler's asset map. */
 export async function loadAssets(dir: string, prefix = ''): Promise<Record<string, Asset>> {

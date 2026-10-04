@@ -531,7 +531,8 @@ button {
   display: block;
   height: 22px;
   width: auto;
-  filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.4));
+  /* Any colour logo shows in white, like the text around it. */
+  filter: brightness(0) invert(1) drop-shadow(0 1px 4px rgba(0, 0, 0, 0.4));
 }
 
 .gear {
