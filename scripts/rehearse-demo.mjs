@@ -1,4 +1,4 @@
-// Rehearses the demo recording script (docs/video-script.md, part 2) against the DEPLOYED simulator in text mode:
+// Rehearses the demo recording script (docs/process/video-script.md, part 2) against the DEPLOYED simulator in text mode:
 // the same API calls the page makes, with real Claude on Bedrock and the real watcher. Costs a few cents per run.
 // Usage: node scripts/rehearse-demo.mjs [runs] [url]
 // The brand and model lines are sent the way Amazon Transcribe usually writes them ("8th June", spaced letters).

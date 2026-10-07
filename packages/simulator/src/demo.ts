@@ -28,7 +28,7 @@ export interface SeedRecall {
 export type WatcherInvoker = (seed: SeedRecall[]) => Promise<{ alertsCreated: number }>;
 
 /**
- * The sample family of the demo story (docs/video-script.md): a second-hand heater with a REAL, existing
+ * The sample family of the demo story (docs/process/video-script.md): a second-hand heater with a REAL, existing
  * CPSC recall, and a hand-me-down car seat that has no recall in the official data, so the simulated recall
  * of the story is the only alert it ever gets.
  */

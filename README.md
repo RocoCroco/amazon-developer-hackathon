@@ -51,7 +51,7 @@ Alexa never claims a recall it is not sure about: when a detail is missing it as
 | [docs/data-sources.md](docs/data-sources.md) | CPSC, NHTSA and openFDA: endpoints, limits, quirks |
 | [docs/costs.md](docs/costs.md) | Cost per service and the spending guards |
 | [docs/sources.md](docs/sources.md) | Sources for every claim (statistics, quotes) |
-| [docs/judge-review.md](docs/judge-review.md) | Our own strict review against the judging criteria |
+| [docs/process/judge-review.md](docs/process/judge-review.md) | Our own strict review against the judging criteria |
 | [FEEDBACK.md](FEEDBACK.md), [FRICTION_LOG.md](FRICTION_LOG.md) | Feedback on every tool and service; every significant problem and how we solved it |
 
 ## Architecture

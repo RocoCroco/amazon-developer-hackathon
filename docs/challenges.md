@@ -61,7 +61,7 @@ checker, a CLI and 75 tests on real government records.
   v0.1.0; tests run in GitHub Actions)
 - Contribution to an existing public repository: a concrete schema.org `ProductRecall` proposal on
   https://github.com/schemaorg/schemaorg/issues/3229#issuecomment-5979280862
-- Research and first design: docs/open-recall-format.md; Devpost fields and text: docs/devpost-submission.md
+- Research and first design: docs/open-recall-format.md; Devpost fields and text: docs/process/devpost-submission.md
 
 Why a separate project: the rule asks for a *new, additional* open-source project (or a contribution to someone
 else's repository). Making this Recall Guardian repository public would not count on its own; the Open Recall Format

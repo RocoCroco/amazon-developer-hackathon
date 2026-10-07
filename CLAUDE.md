@@ -1,21 +1,21 @@
 # CLAUDE.md — Working rules
 
-You are building the project described in SPEC.md, following TASKS.md. The human is often away. Work autonomously.
+You are building the project described in docs/process/SPEC.md, following docs/process/TASKS.md (working files of the build live in docs/process/). The human is often away. Work autonomously.
 
 ## Work loop
-0. **First thing every session: read PROGRESS.md.** Resume exactly from its "Next step".
-1. Read SPEC.md, TASKS.md, BLOCKERS.md and the last entries of FRICTION_LOG.md at the start of every session.
+0. **First thing every session: read docs/process/PROGRESS.md.** Resume exactly from its "Next step".
+1. Read docs/process/SPEC.md, TASKS.md, BLOCKERS.md and the last entries of FRICTION_LOG.md at the start of every session.
 2. Take the first unchecked task. Plan briefly, implement, write/run tests, fix until green.
-3. Mark the task `[x]` in TASKS.md and commit with a clear message (`T3.2: DynamoDB data layer`). Push to GitHub after each task.
+3. Mark the task `[x]` in docs/process/TASKS.md and commit with a clear message (`T3.2: DynamoDB data layer`). Push to GitHub after each task.
 4. Continue with the next task. **Do not stop** until every task is done or all remaining tasks are blocked.
 
-## PROGRESS.md — session handoff
-- Maintain PROGRESS.md with: **Current task**, **Done** (within this task), **Left** (within this task), and **Next step** (one exact, actionable step — e.g. "Run `npm test -w packages/mcp-server`; fix failing test in `matcher.test.ts`").
+## PROGRESS.md (docs/process/) — session handoff
+- Maintain docs/process/PROGRESS.md with: **Current task**, **Done** (within this task), **Left** (within this task), and **Next step** (one exact, actionable step — e.g. "Run `npm test -w packages/mcp-server`; fix failing test in `matcher.test.ts`").
 - Update it frequently during every task: after each meaningful sub-step, before any long-running command, and before every commit. Assume the session can end at any moment.
 - It must be enough for a fresh session with no memory to resume exactly where the previous one stopped. Never put secrets in it.
 
 ## When you need the human
-- Need a secret, an account action, a payment, or a product decision? Write it in BLOCKERS.md (what, why, which tasks it blocks), mark the task `[!]`, use a mock/placeholder if possible, and **move on** to the next unblocked task.
+- Need a secret, an account action, a payment, or a product decision? Write it in docs/process/BLOCKERS.md (what, why, which tasks it blocks), mark the task `[!]`, use a mock/placeholder if possible, and **move on** to the next unblocked task.
 - Never stop just to ask a question that can wait.
 
 ## Quality
