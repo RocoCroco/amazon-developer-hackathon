@@ -17,7 +17,7 @@ _Amazon already protects what you buy on Amazon. Recall Guardian protects everyt
 
 ## Demo
 
-<a href="https://www.youtube.com/watch?v=VIDEO_ID"><img src="docs/assets/video-thumbnail.jpg" alt="Watch the 2:24 demo video" width="100%" /></a>
+<a href="https://youtu.be/6uLrt3lpJdU"><img src="docs/assets/video-thumbnail.jpg" alt="Watch the 2:24 demo video" width="100%" /></a>
 
 **Live demo:** https://6aqlg4s33zg7tgjhoqsetxjqyi0pctry.lambda-url.us-east-1.on.aws/
 
@@ -54,7 +54,7 @@ more figures: [docs/impact.md](docs/impact.md).
 ![Recall Guardian architecture on AWS](docs/assets/architecture.png)
 
 <sub>Made from the official AWS Architecture Icons: [SVG](docs/assets/architecture.svg) ·
-[source](scripts/build-architecture.mjs) (`node scripts/build-architecture.mjs`) · text version (Mermaid) in
+[source](scripts/build-architecture.mjs) (`node scripts/build-architecture.mjs`) · every component in
 [docs/architecture.md](docs/architecture.md).</sub>
 
 1. **The family talks to Alexa+.** The simulator page listens for "Alexa" and streams the request to **Amazon
@@ -216,7 +216,6 @@ a schema.org `ProductRecall` proposal
 
 - [FEEDBACK.md](FEEDBACK.md): feedback on every tool, API and SDK we used.
 - [FRICTION_LOG.md](FRICTION_LOG.md): every significant problem, what we tried, and how we solved it.
-- How the project was built (spec, task list, hand-off notes): [docs/process/](docs/process/).
 
 ## License and acknowledgments
 
@@ -229,7 +228,7 @@ a schema.org `ProductRecall` proposal
 - [Model Context Protocol](https://modelcontextprotocol.io/) and its official
   [TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk).
 - Architecture diagram icons: [AWS Architecture Icons](https://aws.amazon.com/architecture/icons/).
-- Built with the help of [Claude Code](https://www.anthropic.com/claude-code); see [docs/process/](docs/process/).
+- Built with the help of [Claude Code](https://www.anthropic.com/claude-code).
 
 Alexa, Amazon, AWS and the related logos are trademarks of Amazon.com, Inc. or its affiliates. This is an
 independent hackathon project.

@@ -14,7 +14,6 @@ working from a written spec and task list, with a human making the product decis
 | [manual-checklist.md](manual-checklist.md) | Manual checks run before the demo |
 | [video-script.md](video-script.md) | The demo video script: presenter lines, demo recording, motion graphics brief |
 | [devpost-submission.md](devpost-submission.md) | The Devpost submission text |
-| [pre-submission-cleanup.md](pre-submission-cleanup.md) | The audit done before making the repository public |
 
 Problems met along the way and how they were solved: [FRICTION_LOG.md](../../FRICTION_LOG.md). Feedback on every
 tool and service used: [FEEDBACK.md](../../FEEDBACK.md).

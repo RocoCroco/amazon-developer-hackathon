@@ -63,7 +63,7 @@ Target: thin end-to-end slice (Phase 1) working by ~day 7 (Oct 8), then widen.
 - [x] T11.1 Open Source mini challenge: the rules ask for a separate open-source project (or a contribution to another public repo), not just this repo made public. Options in docs/challenges.md (browser client for Transcribe streaming; US recall data normalizer; MCP-on-Lambda example). The human chose an open recall standard: design in docs/open-recall-format.md; built outside this repo (spec, schema, 7 converters, checker, CLI, 75 tests); published by the human at https://github.com/RocoCroco/open-recall-format (release v0.1.0, CI green), and the schema.org proposal posted on issue #3229.
 - [x] T11.2 Documentation per challenge and architecture (docs/challenges.md, docs/architecture.md, docs/rules.md with the exact wording).
 - [x] T11.3 Fixes from the third voice test: a confirmed brand always reaches the server (next_step), no extra questions after "I don't know", voice picker in the settings, Claude second opinion wired into the deployed server.
-- [ ] T11.4 Pre-submission cleanup: remove unused images and internal notes, refresh screenshots, fix links (checklist in docs/process/pre-submission-cleanup.md). Do right before T7.2; some items are the human's call.
+- [x] T11.4 Pre-submission cleanup: remove unused images and internal notes, refresh screenshots, fix links (done 2026-10-07; working files moved to docs/process/). Do right before T7.2; some items are the human's call.
 
 ## Phase 7 — Release
 - [x] T7.1 Final secret scan of the whole repo and git history (e.g. gitleaks or a manual regex scan); fix anything found. **Done when:** scan is clean.

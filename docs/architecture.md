@@ -7,28 +7,9 @@ voice). Everything runs serverless on AWS in us-east-1, defined in one CDK stack
 
 ## 1. The pieces
 
-```mermaid
-flowchart LR
-  subgraph Browser["Browser (simulator page)"]
-    mic["Microphone<br/>wake word + follow-up"] --> page["Page<br/>bubbles, ring, household panel"]
-  end
-  mic -- "16 kHz PCM over a presigned WebSocket" --> transcribe[("Amazon Transcribe<br/>streaming, en-US,<br/>brand vocabulary")]
-  transcribe -- "partial and final transcripts" --> page
-  page -- "HTTPS /api/*" --> sim["Simulator Lambda<br/>(Function URL)"]
-  sim -- "Converse API, tool use" --> brain[("Claude Haiku 4.5<br/>on Amazon Bedrock")]
-  sim -- "SSML" --> polly[("Amazon Polly<br/>neural / generative")]
-  sim -- "MCP 2025-11-25<br/>Streamable HTTP<br/>Bearer demo key + household id" --> mcp["MCP server Lambda<br/>(Function URL), 11 tools"]
-  mcp -- "second opinion,<br/>downgrade-only" --> brain
-  mcp --> ddb[("DynamoDB<br/>one on-demand table")]
-  mcp -- "live, 6 s timeout" --> cpsc["CPSC recalls API"]
-  mcp -- "live" --> nhtsa["NHTSA recalls API"]
-  mcp -- "live" --> fda["openFDA enforcement"]
-  rule["EventBridge<br/>daily 07:00 UTC"] --> watcher["Watcher Lambda"]
-  watcher --> ddb
-  watcher -- "feeds" --> cpsc & fda & flat["NHTSA bulk file<br/>(child seats, tires)"]
-  sim -. "demo: publish a recall" .-> watcher
-  ssm[("SSM Parameter Store<br/>demo key")] -.-> mcp & sim
-```
+![Recall Guardian architecture on AWS](assets/architecture.png)
+
+<sub>Made from the official AWS Architecture Icons. [SVG](assets/architecture.svg) · regenerate with `node scripts/build-architecture.mjs`.</sub>
 
 | Part | Code | Runs on |
 |---|---|---|
