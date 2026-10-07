@@ -228,7 +228,6 @@ a schema.org `ProductRecall` proposal
 - [Model Context Protocol](https://modelcontextprotocol.io/) and its official
   [TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk).
 - Architecture diagram icons: [AWS Architecture Icons](https://aws.amazon.com/architecture/icons/).
-- Built with the help of [Claude Code](https://www.anthropic.com/claude-code).
 
 Alexa, Amazon, AWS and the related logos are trademarks of Amazon.com, Inc. or its affiliates. This is an
 independent hackathon project.
